@@ -1,8 +1,19 @@
-#include <Windows.h>
 #include <iostream>
+#include "Windows.h"
+#include "Window.hpp"
+
+
 
 int main()
 {
-    std::cout << "Let's do this" << std::endl;
+    tako::Window window;
+
+    while (!window.ShouldExit())
+    {
+        window.Poll();
+        std::cout << "hallo\n";
+        Sleep(16);
+    }
+    
     return 0;
 }
