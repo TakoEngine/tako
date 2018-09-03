@@ -1,6 +1,8 @@
 #include <iostream>
 #include "Windows.h"
 #include "Window.hpp"
+#include "Log.hpp"
+
 
 
 
@@ -11,7 +13,6 @@ int main()
     while (!window.ShouldExit())
     {
         window.Poll();
-        std::cout << "hallo\n";
         Sleep(16);
     }
     

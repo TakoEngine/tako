@@ -1,5 +1,6 @@
 #include "Window.hpp"
 #include <Windows.h>
+#include "Log.hpp"
 
 namespace tako
 {
@@ -51,6 +52,7 @@ namespace tako
             Impl* win = reinterpret_cast<Impl*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
             if (uMsg == WM_CLOSE)
             {
+                Log(LogLevel::Info, "Received close message");
                 PostQuitMessage(0);
                 return 0;
             }
