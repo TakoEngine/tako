@@ -6,6 +6,7 @@ namespace tako
     {
     public:
         Window();
+        ~Window();
         void Poll();
         bool ShouldExit();
     private:

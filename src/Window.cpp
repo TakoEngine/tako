@@ -64,6 +64,8 @@ namespace tako
     {
     }
 
+    Window::~Window() = default;
+
     void Window::Poll()
     {
         m_impl->Poll();
@@ -71,7 +73,7 @@ namespace tako
 
     bool Window::ShouldExit()
     {
-        m_impl->ShouldExit();
+        return m_impl->ShouldExit();
     }
 
 }
