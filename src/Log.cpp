@@ -5,9 +5,10 @@
 
 namespace tako
 {
-    void PlatformConsoleLog(tako::LogLevel level, std::string_view message)
+    void PlatformConsoleLog(tako::LogLevel level, const char* message)
     {
         local_persist HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+        const char* newLine = "\n";
         switch (level)
         {
         case LogLevel::Info:
@@ -21,6 +22,12 @@ namespace tako
             break;
         }
 
-        std::cout << message << std::endl;
+        DWORD written;
+        WriteConsole(console, message, strlen(message), &written, NULL);
+        WriteConsole(console, newLine, 1, &written, NULL);
+#ifndef NDEBUG
+        OutputDebugString(message);
+        OutputDebugString("\n");
+#endif
     }
 }

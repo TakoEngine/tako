@@ -11,11 +11,11 @@ namespace tako
         Warning
     };
 
-    void PlatformConsoleLog(LogLevel level, std::string_view message);
+    void PlatformConsoleLog(LogLevel level, const char* message);
 
     template<typename... Args>
     void Log(LogLevel level, const char* format, const Args&... args)
     {
-        PlatformConsoleLog(level, fmt::format(format, args...));
+        PlatformConsoleLog(level, fmt::format(format, args...).c_str());
     }
 }

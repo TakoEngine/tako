@@ -14,5 +14,5 @@ set(SOURCE_FILES
 	"include/Utility.hpp")
 
 add_subdirectory("dependencies/fmt" EXCLUDE_FROM_ALL)
-add_executable(${EXECUTABLE_NAME} ${SOURCE_FILES})
+add_executable(${EXECUTABLE_NAME} WIN32 ${SOURCE_FILES})
 target_link_libraries(${EXECUTABLE_NAME} PRIVATE fmt)
