@@ -1,10 +1,6 @@
 #include <iostream>
 #include "Windows.h"
 #include "Window.hpp"
-#include "Log.hpp"
-
-
-
 
 int main()
 {

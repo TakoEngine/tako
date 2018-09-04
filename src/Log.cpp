@@ -1,3 +1,4 @@
+#include "Utility.hpp"
 #include "Log.hpp"
 #include <iostream>
 #include <Windows.h>
@@ -6,7 +7,7 @@ namespace tako
 {
     void PlatformConsoleLog(tako::LogLevel level, std::string_view message)
     {
-        static HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+        local_persist HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
         switch (level)
         {
         case LogLevel::Info:

@@ -10,7 +10,8 @@ set(SOURCE_FILES
 	"include/Window.hpp"
 	"src/Window.cpp"
 	"include/Log.hpp"
-	"src/Log.cpp")
+	"src/Log.cpp"
+	"include/Utility.hpp")
 
 add_subdirectory("dependencies/fmt" EXCLUDE_FROM_ALL)
 add_executable(${EXECUTABLE_NAME} ${SOURCE_FILES})
