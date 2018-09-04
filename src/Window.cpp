@@ -27,7 +27,7 @@ namespace tako
         void Poll()
         {
             MSG msg;
-            while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+            while (PeekMessage(&msg, m_hwnd, 0, 0, PM_REMOVE))
             {
                 if (msg.message == WM_QUIT)
                 {
