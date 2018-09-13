@@ -2,6 +2,10 @@
 
 #define local_persist static
 
+#include <cassert>
+
+#define ASSERT(condition) assert(condition)
+
 #include "Log.hpp"
 
 #ifndef NDEBUG

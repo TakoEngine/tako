@@ -1,6 +1,7 @@
 #pragma once
 #include "NumberTypes.hpp"
 #include <string_view>
+#include "Utility.hpp"
 
 namespace tako
 {
@@ -11,6 +12,7 @@ namespace tako
         constexpr Color(U8 r, U8 g, U8 b, U8 a) : r(r), g(g), b(b), a(a) {}
         constexpr Color(std::string_view hexCode)
         {
+            ASSERT(hexCode.size() == 7 || hexCode.size() == 9 || hexCode.size() == 4);
             if (hexCode.size() == 7 || hexCode.size() == 9)
             {
                 r = ParseHex(hexCode.substr(1, 2));
@@ -71,13 +73,14 @@ namespace tako
                 case 'D': return 13;
                 case 'E': return 14;
                 case 'F': return 15;
+                default: ASSERT(false);
             }
         }
     };
 
     namespace literals
     {
-        constexpr Color operator ""_col(const char* hexCode, size_t size)
+        constexpr Color operator "" _col(const char* hexCode, size_t size)
         {
             return Color({ hexCode, size });
         }
