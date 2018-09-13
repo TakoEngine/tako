@@ -15,7 +15,10 @@ set(SOURCE_FILES
 	"include/FileSystem.hpp"
 	"src/FileSystem.cpp"
 	"include/WinUtility.hpp"
-	"include/NumberTypes.hpp")
+	"include/NumberTypes.hpp"
+	"include/Math.hpp"
+	"include/Bitmap.hpp"
+	"src/Bitmap.cpp")
 
 add_subdirectory("dependencies/fmt" EXCLUDE_FROM_ALL)
 add_executable(${EXECUTABLE_NAME} WIN32 ${SOURCE_FILES})
