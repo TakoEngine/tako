@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Utility.hpp"
 #include <Windows.h>
 #include <functional>

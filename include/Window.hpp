@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include "Bitmap.hpp"
 
 namespace tako
 {
@@ -10,8 +11,11 @@ namespace tako
         ~Window();
         void Poll();
         bool ShouldExit();
+        int GetWidth();
+        int GetHeight();
+        void DrawBitmap(const Bitmap& bitmap);
     private:
-        class Impl;
-        std::unique_ptr<Impl> m_impl;
+        class WindowImpl;
+        std::unique_ptr<WindowImpl> m_impl;
     };
 }
