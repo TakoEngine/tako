@@ -19,9 +19,17 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     }
 #endif
     tako::Window window;
-    tako::Bitmap map(160, 144);
-    map.Clear("#F00"_col);
-    map.FillRect(64, 64, 16, 16, "#00F"_col);
+    int w = 32, h = 32;
+    tako::Bitmap map(w, h);
+    for (int x = 0; x < w; x++)
+    {
+        for (int y = 0; y < h; y++)
+        {
+            float hue = (float) x / w;
+            float saturation = 1 - ((float)y / h);
+            map.SetPixel(x, y, tako::Color::FromHSL(hue, saturation, 0.5f));
+        }
+    }
 
     while (!window.ShouldExit())
     {

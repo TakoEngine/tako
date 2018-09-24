@@ -27,7 +27,25 @@ namespace tako
                 b = ParseDoubleHex(hexCode[3]);
                 a = 255;
             }
-        }   
+        }
+
+        constexpr static Color FromHSL(float h, float s, float l)
+        {
+            if (s == 0)
+            {
+                U8 c = l * 255;
+                return Color(c, c, c, 255);
+            }
+
+            float q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            float p = 2 * l - q;
+
+            float r = hue2rgb(p, q, h + 1.0f / 3);
+            float g = hue2rgb(p, q, h);
+            float b = hue2rgb(p, q, h - 1.0f / 3);
+
+            return Color(r * 255, g * 255, b * 255, 255);
+        }
 
         friend std::ostream& operator<<(std::ostream& os, const Color& col)
         {
@@ -36,7 +54,7 @@ namespace tako
         }
 
     private:
-        constexpr U8 ParseHex(std::string_view str)
+        constexpr static U8 ParseHex(std::string_view str)
         {
             U8 result = 0;
             for (auto c : str)
@@ -47,13 +65,13 @@ namespace tako
             return result;
         }
 
-        constexpr U8 ParseDoubleHex(char c)
+        constexpr static U8 ParseDoubleHex(char c)
         {
             U8 num = CharToNumber(c);
             return num * 16 + num;
         }
 
-        constexpr U8 CharToNumber(char cha)
+        constexpr static U8 CharToNumber(char cha)
         {
             switch (cha)
             {
@@ -75,6 +93,16 @@ namespace tako
                 case 'F': return 15;
                 default: ASSERT(false);
             }
+        }
+
+        constexpr static float hue2rgb(float p, float q, float t)
+        {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1.0f / 6) return p + (q - p) * 6 * t;
+            if (t < 1.0f / 2) return q;
+            if (t < 2.0f / 3) return p + (q - p) * (2.0f / 3 - t) * 6;
+            return p;
         }
     };
 

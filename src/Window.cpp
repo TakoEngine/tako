@@ -12,7 +12,7 @@ namespace tako
     class Window::WindowImpl
     {
     public:
-        WindowImpl() : m_bitmap(1, 1)
+        WindowImpl() : m_bitmap(100, 100)
         {
             WNDCLASSEX windowClass = { 0 };
             windowClass.cbSize = sizeof(WNDCLASSEX);
@@ -73,6 +73,26 @@ namespace tako
                     win->Resize(win->m_width, win->m_height);
                     win->Blit(win->m_bitmap);
                     win->Blit(0, 0, win->m_width, win->m_height);
+                } break;
+                case WM_GETMINMAXINFO:
+                {
+                    if (!win)
+                    {
+                        result = DefWindowProc(hwnd, uMsg, wParam, lParam);
+                        break;
+                    }
+
+                    RECT clientRect, windowRect;
+                    GetClientRect(hwnd, &clientRect);
+                    LONG clientWidth = clientRect.right - clientRect.left;
+                    LONG clientHeight = clientRect.bottom - clientRect.top;
+                    GetWindowRect(hwnd, &windowRect);
+                    LONG windowWidth = windowRect.right - windowRect.left;
+                    LONG windowHeight = windowRect.bottom - windowRect.top;
+                    
+                    MINMAXINFO* mmi = (MINMAXINFO*)lParam;
+                    mmi->ptMinTrackSize.x = win->m_bitmap.Width() + windowWidth - clientWidth;
+                    mmi->ptMinTrackSize.y = win->m_bitmap.Height() + windowHeight - clientHeight;
                 } break;
                 case WM_PAINT:
                 {
