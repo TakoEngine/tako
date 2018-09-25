@@ -1,6 +1,9 @@
 #include "Bitmap.hpp"
 #include "Utility.hpp"
 #include <cstring>
+#include "FileSystem.hpp"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 namespace tako
 {
@@ -15,7 +18,14 @@ namespace tako
         m_width(other.m_width),
         m_height(other.m_height),
         m_data(std::move(other.m_data))
-    {     
+    {
+    }
+
+    Bitmap::Bitmap(const Color* data, I32 w, I32 h) :
+        m_width(w), m_height(h),
+        m_data(new Color[w*h])
+    {
+        std::memcpy(m_data.get(), data, m_width * m_height * sizeof(Color));
     }
 
     Bitmap& Bitmap::operator=(Bitmap&& other)
@@ -89,10 +99,21 @@ namespace tako
             }
         }
     }
+
     Bitmap Bitmap::Clone() const
     {
-        Bitmap bitmap(m_width, m_height);
-        std::memcpy(bitmap.GetData(), GetData(), m_width * m_height * sizeof(Color));
+        return std::move(Bitmap(m_data.get(), m_width, m_height));
+    }
+
+    Bitmap Bitmap::FromFile(const char* filePath)
+    {
+        tako::U8* buffer = new tako::U8[4096];
+        size_t bytesRead = 0;
+        tako::FileSystem::ReadFile("C:\\Users\\kevin\\Desktop\\GB_Tetris.png", buffer, 4096, bytesRead);
+        int width, height, channels;
+        stbi_uc* img = stbi_load_from_memory(buffer, bytesRead, &width, &height, &channels, 4);
+        Bitmap bitmap((Color*) img, width, height);
+        stbi_image_free(img);
 
         return std::move(bitmap);
     }

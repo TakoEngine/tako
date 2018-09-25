@@ -1,3 +1,6 @@
 [submodule "dependencies/fmt"]
 	path = dependencies/fmt
 	url = https://github.com/fmtlib/fmt
+[submodule "dependencies/stb"]
+	path = dependencies/stb
+	url = https://github.com/nothings/stb

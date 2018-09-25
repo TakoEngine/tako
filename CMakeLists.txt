@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(EXECUTABLE_NAME "tako")
 include_directories("include")
+include_directories("dependencies/stb")
 set(SOURCE_FILES
 	"src/main.cpp"
 	"include/Window.hpp"
