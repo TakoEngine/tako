@@ -45,5 +45,16 @@ namespace tako::FileSystem
         CloseHandle(*fileHandle);
         return false;
     }
+
+    size_t GetFileSize(const char * filePath)
+    {
+        auto fileHandle = GetFileHandle(filePath);
+        ASSERT(fileHandle);
+
+        LARGE_INTEGER size;
+        GetFileSizeEx(fileHandle.value(), &size);
+
+        return size.QuadPart;
+    }
 }
 
