@@ -525,8 +525,8 @@ namespace tako
             size_t fileSize = FileSystem::GetFileSize(codePath);
             std::vector<U8> code(fileSize);
             size_t bytesRead = 0;
-            FileSystem::ReadFile(codePath, code.data(), code.size(), bytesRead);
-            ASSERT(fileSize == bytesRead);
+            bool readSuccess = FileSystem::ReadFile(codePath, code.data(), code.size(), bytesRead);
+            ASSERT(readSuccess && fileSize == bytesRead);
 
             VkShaderModuleCreateInfo createInfo = {};
             createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -542,7 +542,7 @@ namespace tako
 
         ~WindowImpl()
         {
-            vkDeviceWaitIdle(m_vkDevice); //TODO: wait somewhere else
+            ASSERT(vkDeviceWaitIdle(m_vkDevice) == VK_SUCCESS); //TODO: wait somewhere else
 
             vkDestroySemaphore(m_vkDevice, m_renderFinishedSemaphore, nullptr);
             vkDestroySemaphore(m_vkDevice, m_imageAvailableSemaphore, nullptr);
@@ -570,9 +570,11 @@ namespace tako
 
         void Draw()
         {
+            auto result = vkQueueWaitIdle(m_presentQueue);
+            ASSERT(result == VK_SUCCESS);
+
             uint32_t imageIndex;
-            VkResult result = VK_ERROR_INITIALIZATION_FAILED;
-            result = vkAcquireNextImageKHR(m_vkDevice, m_swapChain, 9999999, m_imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+            result = vkAcquireNextImageKHR(m_vkDevice, m_swapChain, (std::numeric_limits<uint64_t>::max)(), m_imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
             ASSERT(result == VK_SUCCESS);
 
             VkSubmitInfo submitInfo = {};

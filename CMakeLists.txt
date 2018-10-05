@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.7)
 project("tako")
 
 set(CMAKE_CXX_STANDARD 17)
@@ -6,8 +6,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(EXECUTABLE_NAME "tako")
 include_directories("include")
 include_directories("dependencies/stb")
-include_directories("C:\\VulkanSDK\\1.1.82.1\\Include")
-link_directories("C:\\VulkanSDK\\1.1.82.1\\Lib")
 set(SOURCE_FILES
 	"src/main.cpp"
 	"include/Window.hpp"
@@ -23,8 +21,11 @@ set(SOURCE_FILES
 	"include/Bitmap.hpp"
 	"src/Bitmap.cpp")
 
+find_package(vulkan REQUIRED)
+include_directories(${Vulkan_INCLUDE_DIRS})
+
 add_subdirectory("dependencies/fmt" EXCLUDE_FROM_ALL)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVK_USE_PLATFORM_WIN32_KHR")
 add_executable(${EXECUTABLE_NAME} WIN32 ${SOURCE_FILES})
 target_link_libraries(${EXECUTABLE_NAME} PRIVATE fmt)
-target_link_libraries(${EXECUTABLE_NAME} PRIVATE vulkan-1)
+target_link_libraries(${EXECUTABLE_NAME} PRIVATE ${Vulkan_LIBRARIES})
