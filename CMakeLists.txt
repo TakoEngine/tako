@@ -19,7 +19,9 @@ set(SOURCE_FILES
 	"include/NumberTypes.hpp"
 	"include/Math.hpp"
 	"include/Bitmap.hpp"
-	"src/Bitmap.cpp")
+	"src/Bitmap.cpp"
+	"include/GraphicsContext.hpp"
+	"src/VulkanContext.cpp")
 
 find_package(vulkan REQUIRED)
 include_directories(${Vulkan_INCLUDE_DIRS})

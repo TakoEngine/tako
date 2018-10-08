@@ -1,6 +1,6 @@
 #pragma once
+#include "WindowHandle.hpp"
 #include <memory>
-#include "Bitmap.hpp"
 
 namespace tako
 {
@@ -13,7 +13,7 @@ namespace tako
         bool ShouldExit();
         int GetWidth();
         int GetHeight();
-        void DrawBitmap(const Bitmap& bitmap);
+        WindowHandle GetHandle() const;
     private:
         class WindowImpl;
         std::unique_ptr<WindowImpl> m_impl;

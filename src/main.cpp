@@ -1,12 +1,9 @@
 #include <iostream>
 #include "Windows.h"
 #include "Window.hpp"
+#include "GraphicsContext.hpp"
 #include "Utility.hpp"
 #include "FileSystem.hpp"
-
-#include <vulkan/vulkan.h>
-
-using namespace tako::literals;
 
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow)
 {
@@ -18,10 +15,12 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     }
 #endif
     tako::Window window;
+    tako::GraphicsContext context(window);
 
     while (!window.ShouldExit())
     {
         window.Poll();
+        context.Present();
         Sleep(16);
     }
     
