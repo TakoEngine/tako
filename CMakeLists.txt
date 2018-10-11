@@ -16,6 +16,7 @@ set(SOURCE_FILES
 	"include/FileSystem.hpp"
 	"src/FileSystem.cpp"
 	"include/WinUtility.hpp"
+	"src/WinUtility.cpp"
 	"include/NumberTypes.hpp"
 	"include/Math.hpp"
 	"include/Bitmap.hpp"

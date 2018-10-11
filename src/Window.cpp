@@ -1,6 +1,6 @@
 #include "Window.hpp"
 #include <Windows.h>
-#include "Utility.hpp"
+#include "WinUtility.hpp"
 #include "Bitmap.hpp"
 #include "FileSystem.hpp"
 #include <algorithm>
