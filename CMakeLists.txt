@@ -3,32 +3,6 @@ project("tako")
 
 set(CMAKE_CXX_STANDARD 17)
 
-set(EXECUTABLE_NAME "tako")
-include_directories("include")
-include_directories("dependencies/stb")
-set(SOURCE_FILES
-	"src/main.cpp"
-	"include/Window.hpp"
-	"src/Window.cpp"
-	"include/Log.hpp"
-	"src/Log.cpp"
-	"include/Utility.hpp"
-	"include/FileSystem.hpp"
-	"src/FileSystem.cpp"
-	"include/WinUtility.hpp"
-	"src/WinUtility.cpp"
-	"include/NumberTypes.hpp"
-	"include/Math.hpp"
-	"include/Bitmap.hpp"
-	"src/Bitmap.cpp"
-	"include/GraphicsContext.hpp"
-	"src/VulkanContext.cpp")
-
-find_package(vulkan REQUIRED)
-include_directories(${Vulkan_INCLUDE_DIRS})
-
 add_subdirectory("dependencies/fmt" EXCLUDE_FROM_ALL)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVK_USE_PLATFORM_WIN32_KHR")
-add_executable(${EXECUTABLE_NAME} WIN32 ${SOURCE_FILES})
-target_link_libraries(${EXECUTABLE_NAME} PRIVATE fmt)
-target_link_libraries(${EXECUTABLE_NAME} PRIVATE ${Vulkan_LIBRARIES})
+add_subdirectory("Tako")
+add_subdirectory("Sandbox")
