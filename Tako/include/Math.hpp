@@ -5,6 +5,253 @@
 
 namespace tako
 {
+    namespace mathf
+    {
+        constexpr float abs(float x)
+        {
+            return x < 0 ? -x : x;
+        }
+
+        //TODO: optimize
+        constexpr float sqrt(float x, float margin = 0.000001f)
+        {
+            if (x < 0) return -1;
+            float a = 1;
+            float b = x;
+            while (abs(a - b) < margin)
+            {
+                a = (a + b) / 2;
+                b = x / a;
+            }
+
+            return a;
+        }
+
+        const float PI = 3.1415927f;
+    }
+
+    struct Vector2
+    {
+        float x, y;
+
+        constexpr Vector2(float x, float y) : x(x), y(y) {}
+
+        constexpr bool operator==(const Vector2& rhs) const
+        {
+            return x == rhs.x && y == rhs.y;
+        }
+
+        constexpr bool operator!=(const Vector2& rhs) const
+        {
+            return !operator==(rhs);
+        }
+
+        constexpr Vector2& operator-=(const Vector2& rhs)
+        {
+            x -= rhs.x;
+            y -= rhs.y;
+            return *this;
+        }
+
+        friend constexpr Vector2 operator-(Vector2 lhs, const Vector2 rhs)
+        {
+            return lhs -= rhs;
+        }
+
+        constexpr Vector2& operator/=(const float factor)
+        {
+            x /= factor;
+            y /= factor;
+            return *this;
+        }
+
+        constexpr float magnitude() const
+        {
+            return mathf::sqrt(x*x + y * y);
+        }
+
+        constexpr Vector2& normalize()
+        {
+            float mag = magnitude();
+            if (mag < 0.0001f)
+            {
+                return *this = Vector2(0, 0);
+            }
+
+            return operator/=(mag);
+        }
+    };
+
+    struct Vector3
+    {
+        float x, y, z;
+
+        constexpr Vector3(float x, float y, float z) : x(x), y(y), z(z) {}
+
+        constexpr bool operator==(const Vector3& rhs) const
+        {
+            return x == rhs.x && y == rhs.y && z == rhs.z;
+        }
+
+        constexpr bool operator!=(const Vector3& rhs) const
+        {
+            return !operator==(rhs);
+        }
+
+        constexpr Vector3& operator-=(const Vector3& rhs)
+        {
+            x -= rhs.x;
+            y -= rhs.y;
+            z -= rhs.z;
+            return *this;
+        }
+
+        friend constexpr Vector3 operator-(Vector3 lhs, const Vector3 rhs)
+        {
+            return lhs -= rhs;
+        }
+
+        constexpr Vector3& operator/=(const float factor)
+        {
+            x /= factor;
+            y /= factor;
+            z /= factor;
+            return *this;
+        }
+
+        constexpr float magnitude() const
+        {
+            return mathf::sqrt(x*x + y * y + z * z);
+        }
+
+        constexpr Vector3& normalize()
+        {
+            float mag = magnitude();
+            if (mag < 0.0001f)
+            {
+                return *this = Vector3(0, 0, 0);
+            }
+
+            return operator/=(mag);
+        }
+
+        constexpr static Vector3 cross(const Vector3& lhs, const Vector3& rhs)
+        {
+            float x = lhs.y * rhs.z - lhs.z * rhs.y;
+            float y = lhs.z * rhs.x - lhs.x * rhs.z;
+            float z = lhs.x * rhs.y - lhs.y * rhs.x;
+
+            return Vector3(x, y, z);
+        }
+
+        constexpr Vector3 cross(const Vector3& rhs) const
+        {
+            return Vector3::cross(*this, rhs);
+        }
+    };
+
+    struct Matrix4
+    {
+        float m[16];
+
+        constexpr Matrix4() : m() {}
+        constexpr Matrix4(float m1, float m2, float m3, float m4,
+            float m5, float m6, float m7, float m8,
+            float m9, float m10, float m11, float m12,
+            float m13, float m14, float m15, float m16) : m{ m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16 } {}
+        static const Matrix4 identity;
+
+        constexpr float& operator[](int i)
+        {
+            return m[i];
+        }
+
+        constexpr const float& operator[](int i) const
+        {
+            return m[i];
+        }
+
+        constexpr Matrix4& translate(float x, float y, float z)
+        {
+            m[12] += x;
+            m[13] += y;
+            m[14] += z;
+            return *this;
+        }
+
+        constexpr static Matrix4 translation(float x, float y, float z)
+        {
+            Matrix4 mat = identity;
+            mat.translate(x, y, z);
+            return mat;
+        }
+
+        constexpr Matrix4& scale(float x, float y, float z)
+        {
+            m[0] *= x;
+            m[5] *= y;
+            m[10] *= z;
+            return *this;
+        }
+
+        constexpr static Matrix4 lookAt(Vector3& eye, Vector3& target, Vector3& upDir)
+        {
+            Vector3 forward = eye - target;
+            forward.normalize();
+
+            Vector3 left = upDir.cross(forward);
+            left.normalize();
+
+            Vector3 up = forward.cross(left);
+
+            Matrix4 matrix = Matrix4::identity;
+
+            matrix[0] = left.x;
+            matrix[4] = left.y;
+            matrix[8] = left.z;
+            matrix[1] = up.x;
+            matrix[5] = up.y;
+            matrix[9] = up.z;
+            matrix[2] = forward.x;
+            matrix[6] = forward.y;
+            matrix[10] = forward.z;
+
+            matrix[12] = -left.x * eye.x - left.y * eye.y - left.z * eye.z;
+            matrix[13] = -up.x * eye.x - up.y * eye.y - up.z * eye.z;
+            matrix[14] = -forward.x * eye.x - forward.y * eye.y - forward.z * eye.z;
+
+            return matrix;
+        }
+
+        constexpr static Matrix4 perspective(float fov, float aspect, float nearDist, float farDist)
+        {
+            if (fov <= 0 || aspect == 0)
+            {
+                return identity;
+            }
+
+            Matrix4 result;
+            float tanHalfFov = tan(fov / 2);
+
+
+            result[0] = 1 / (aspect * tanHalfFov);
+            result[5] = 1 / tanHalfFov;
+            result[10] = farDist / (nearDist - farDist);
+            result[11] = -1;
+            result[14] = -(farDist * nearDist) / (farDist - nearDist);
+
+            return result;
+        }
+    };
+
+    const Matrix4 Matrix4::identity =
+    {
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+    };
+
     struct Color
     {
         U8 r = 0, g = 0, b = 0, a = 0;
