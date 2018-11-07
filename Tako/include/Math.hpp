@@ -244,14 +244,6 @@ namespace tako
         }
     };
 
-    const Matrix4 Matrix4::identity =
-    {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1
-    };
-
     struct Color
     {
         U8 r = 0, g = 0, b = 0, a = 0;

@@ -12,6 +12,7 @@ set(SOURCE_FILES
 	"src/WinUtility.cpp"
 	"include/NumberTypes.hpp"
 	"include/Math.hpp"
+	"src/Math.cpp"
 	"include/Bitmap.hpp"
 	"src/Bitmap.cpp"
 	"include/GraphicsContext.hpp"

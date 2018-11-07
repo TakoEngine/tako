@@ -9,6 +9,7 @@
 #include <array>
 #include <set>
 #include <limits>
+#include "Math.hpp"
 
 static std::array<const char*, 3> vkWinExtensions = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
 static std::array<const char*, 1> vkDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
@@ -16,6 +17,45 @@ static std::array<const char*, 1> vkWinValidationLayers = { "VK_LAYER_LUNARG_sta
 
 namespace tako
 {
+    struct Vertex {
+        Vector2 pos;
+        Vector3 color;
+
+        static constexpr VkVertexInputBindingDescription GetBindingDescription() {
+            VkVertexInputBindingDescription bindingDescription = {};
+            bindingDescription.binding = 0;
+            bindingDescription.stride = sizeof(Vertex);
+            bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+            return bindingDescription;
+        }
+
+        static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
+            std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions = {};
+
+            attributeDescriptions[0].binding = 0;
+            attributeDescriptions[0].location = 0;
+            attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+            attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
+            attributeDescriptions[1].binding = 0;
+            attributeDescriptions[1].location = 1;
+            attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+            attributeDescriptions[1].offset = offsetof(Vertex, color);
+
+            return attributeDescriptions;
+        }
+    };
+
+    const std::vector<Vertex> vertices = {
+        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+    };
+
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
         VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -327,12 +367,15 @@ namespace tako
 
                 VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
 
+                auto bindingDescription = Vertex::GetBindingDescription();
+                auto attributeDescriptions = Vertex::getAttributeDescriptions();
+
                 VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
                 vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-                vertexInputInfo.vertexBindingDescriptionCount = 0;
-                vertexInputInfo.pVertexBindingDescriptions = nullptr;
-                vertexInputInfo.vertexAttributeDescriptionCount = 0;
-                vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+                vertexInputInfo.vertexBindingDescriptionCount = 1;
+                vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+                vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+                vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
                 VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
                 inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -446,6 +489,37 @@ namespace tako
             }
 
             {
+                VkBufferCreateInfo bufferInfo = {};
+                bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+                bufferInfo.size = sizeof(vertices[0]) * vertices.size();
+                bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+                bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+                result = vkCreateBuffer(m_vkDevice, &bufferInfo, nullptr, &m_vertexBuffer);
+                ASSERT(result == VK_SUCCESS);
+
+                VkMemoryRequirements memRequirements;
+                vkGetBufferMemoryRequirements(m_vkDevice, m_vertexBuffer, &memRequirements);
+
+                VkMemoryAllocateInfo allocInfo = {};
+                allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+                allocInfo.allocationSize = memRequirements.size;
+                allocInfo.memoryTypeIndex = FindMemoryType(physicalDevice, memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                
+                result = vkAllocateMemory(m_vkDevice, &allocInfo, nullptr, &m_vertexBufferMemory);
+                ASSERT(result == VK_SUCCESS);
+
+                result = vkBindBufferMemory(m_vkDevice, m_vertexBuffer, m_vertexBufferMemory, 0);
+                ASSERT(result == VK_SUCCESS);
+
+                void* data;
+                result = vkMapMemory(m_vkDevice, m_vertexBufferMemory, 0, bufferInfo.size, 0, &data);
+                ASSERT(result == VK_SUCCESS);
+                memcpy(data, vertices.data(), (size_t) bufferInfo.size);
+                vkUnmapMemory(m_vkDevice, m_vertexBufferMemory);
+            }
+
+            {
                 m_commandBuffers.resize(m_swapChainFramebuffers.size());
 
                 VkCommandBufferAllocateInfo allocInfo = {};
@@ -481,7 +555,12 @@ namespace tako
                 vkCmdBeginRenderPass(m_commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
                 vkCmdBindPipeline(m_commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipeline);
-                vkCmdDraw(m_commandBuffers[i], 3, 1, 0, 0);
+
+                VkBuffer vertexBuffers[] = { m_vertexBuffer };
+                VkDeviceSize offsets[] = { 0 };
+                vkCmdBindVertexBuffers(m_commandBuffers[i], 0, 1, vertexBuffers, offsets);
+
+                vkCmdDraw(m_commandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 
                 vkCmdEndRenderPass(m_commandBuffers[i]);
                 result = vkEndCommandBuffer(m_commandBuffers[i]);
@@ -539,6 +618,8 @@ namespace tako
                 vkDestroyImageView(m_vkDevice, imageView, nullptr);
             }
             vkDestroySwapchainKHR(m_vkDevice, m_swapChain, nullptr);
+            vkDestroyBuffer(m_vkDevice, m_vertexBuffer, nullptr);
+            vkFreeMemory(m_vkDevice, m_vertexBufferMemory, nullptr);
             vkDestroyDevice(m_vkDevice, nullptr);
             vkDestroySurfaceKHR(vkInstance, m_surface, nullptr);
             auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(vkInstance, "vkDestroyDebugUtilsMessengerEXT");
@@ -584,6 +665,22 @@ namespace tako
             result = vkQueuePresentKHR(m_presentQueue, &presentInfo);
             ASSERT(result == VK_SUCCESS);
         }
+
+        uint32_t FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties)
+        {
+            VkPhysicalDeviceMemoryProperties memProperties;
+            vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+            
+            for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+            {
+                if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+                {
+                    return i;
+                }
+            }
+
+            ASSERT(false);
+        }
     private:
         VkInstance vkInstance;
         VkDebugUtilsMessengerEXT callback;
@@ -602,6 +699,8 @@ namespace tako
         std::vector<VkCommandBuffer> m_commandBuffers;
         VkSemaphore m_imageAvailableSemaphore;
         VkSemaphore m_renderFinishedSemaphore;
+        VkBuffer m_vertexBuffer;
+        VkDeviceMemory m_vertexBufferMemory;
     };
 
     GraphicsContext::GraphicsContext(Window& window) : m_impl(new ContextImpl(window.GetHandle()))
