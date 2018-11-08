@@ -47,13 +47,17 @@ namespace tako
         }
     };
 
-    const std::vector<Vertex> vertices = {
+    const std::vector<Vertex> vertices =
+    {
         {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
         {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
         {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
         {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+    };
+
+    const std::vector<uint16_t> indices =
+    {
+        0, 1, 2, 2, 3, 0
     };
 
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
@@ -489,34 +493,47 @@ namespace tako
             }
 
             {
-                VkBufferCreateInfo bufferInfo = {};
-                bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-                bufferInfo.size = sizeof(vertices[0]) * vertices.size();
-                bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-                bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+                const VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
-                result = vkCreateBuffer(m_vkDevice, &bufferInfo, nullptr, &m_vertexBuffer);
-                ASSERT(result == VK_SUCCESS);
-
-                VkMemoryRequirements memRequirements;
-                vkGetBufferMemoryRequirements(m_vkDevice, m_vertexBuffer, &memRequirements);
-
-                VkMemoryAllocateInfo allocInfo = {};
-                allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-                allocInfo.allocationSize = memRequirements.size;
-                allocInfo.memoryTypeIndex = FindMemoryType(physicalDevice, memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-                
-                result = vkAllocateMemory(m_vkDevice, &allocInfo, nullptr, &m_vertexBufferMemory);
-                ASSERT(result == VK_SUCCESS);
-
-                result = vkBindBufferMemory(m_vkDevice, m_vertexBuffer, m_vertexBufferMemory, 0);
-                ASSERT(result == VK_SUCCESS);
+                VkBuffer stagingBuffer;
+                VkDeviceMemory stagingBufferMemory;
+                CreateBuffer(physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 
                 void* data;
-                result = vkMapMemory(m_vkDevice, m_vertexBufferMemory, 0, bufferInfo.size, 0, &data);
+                result = vkMapMemory(m_vkDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
                 ASSERT(result == VK_SUCCESS);
-                memcpy(data, vertices.data(), (size_t) bufferInfo.size);
-                vkUnmapMemory(m_vkDevice, m_vertexBufferMemory);
+                memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
+                vkUnmapMemory(m_vkDevice, stagingBufferMemory);
+
+                CreateBuffer(physicalDevice, bufferSize, 
+                    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                    m_vertexBuffer, m_vertexBufferMemory);
+
+                CopyBuffer(stagingBuffer, m_vertexBuffer, bufferSize);
+
+                vkDestroyBuffer(m_vkDevice, stagingBuffer, nullptr);
+                vkFreeMemory(m_vkDevice, stagingBufferMemory, nullptr);
+            }
+
+            {
+                VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+                VkBuffer stagingBuffer;
+                VkDeviceMemory stagingBufferMemory;
+                CreateBuffer(physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+                void* data;
+                result = vkMapMemory(m_vkDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
+                ASSERT(result == VK_SUCCESS);
+                memcpy(data, indices.data(), static_cast<size_t>(bufferSize));
+                vkUnmapMemory(m_vkDevice, stagingBufferMemory);
+
+                CreateBuffer(physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_indexBuffer, m_indexBufferMemory);
+
+                CopyBuffer(stagingBuffer, m_indexBuffer, bufferSize);
+
+                vkDestroyBuffer(m_vkDevice, stagingBuffer, nullptr);
+                vkFreeMemory(m_vkDevice, stagingBufferMemory, nullptr);
             }
 
             {
@@ -559,8 +576,9 @@ namespace tako
                 VkBuffer vertexBuffers[] = { m_vertexBuffer };
                 VkDeviceSize offsets[] = { 0 };
                 vkCmdBindVertexBuffers(m_commandBuffers[i], 0, 1, vertexBuffers, offsets);
+                vkCmdBindIndexBuffer(m_commandBuffers[i], m_indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
-                vkCmdDraw(m_commandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+                vkCmdDrawIndexed(m_commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
                 vkCmdEndRenderPass(m_commandBuffers[i]);
                 result = vkEndCommandBuffer(m_commandBuffers[i]);
@@ -618,6 +636,8 @@ namespace tako
                 vkDestroyImageView(m_vkDevice, imageView, nullptr);
             }
             vkDestroySwapchainKHR(m_vkDevice, m_swapChain, nullptr);
+            vkDestroyBuffer(m_vkDevice, m_indexBuffer, nullptr);
+            vkFreeMemory(m_vkDevice, m_indexBufferMemory, nullptr);
             vkDestroyBuffer(m_vkDevice, m_vertexBuffer, nullptr);
             vkFreeMemory(m_vkDevice, m_vertexBufferMemory, nullptr);
             vkDestroyDevice(m_vkDevice, nullptr);
@@ -681,6 +701,72 @@ namespace tako
 
             ASSERT(false);
         }
+
+        void CreateBuffer(VkPhysicalDevice physicalDevice, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
+        {
+            VkBufferCreateInfo bufferInfo = {};
+            bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+            bufferInfo.size = size;
+            bufferInfo.usage = usage;
+            bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+            auto result = vkCreateBuffer(m_vkDevice, &bufferInfo, nullptr, &buffer);
+            ASSERT(result == VK_SUCCESS);
+
+            VkMemoryRequirements memRequirements;
+            vkGetBufferMemoryRequirements(m_vkDevice, buffer, &memRequirements);
+
+            VkMemoryAllocateInfo allocInfo = {};
+            allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+            allocInfo.allocationSize = memRequirements.size;
+            allocInfo.memoryTypeIndex = FindMemoryType(physicalDevice, memRequirements.memoryTypeBits, properties);
+
+            result = vkAllocateMemory(m_vkDevice, &allocInfo, nullptr, &bufferMemory);
+            ASSERT(result == VK_SUCCESS);
+
+            result = vkBindBufferMemory(m_vkDevice, buffer, bufferMemory, 0);
+            ASSERT(result == VK_SUCCESS);
+        }
+
+        void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
+        {
+            VkCommandBufferAllocateInfo allocInfo = {};
+            allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            allocInfo.commandPool = m_commandPool;
+            allocInfo.commandBufferCount = 1;
+
+            VkCommandBuffer commandBuffer;
+            auto result = vkAllocateCommandBuffers(m_vkDevice, &allocInfo, &commandBuffer);
+            ASSERT(result == VK_SUCCESS);
+
+            VkCommandBufferBeginInfo beginInfo = {};
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+            result = vkBeginCommandBuffer(commandBuffer, &beginInfo);
+            ASSERT(result == VK_SUCCESS);
+
+            VkBufferCopy copyRegion = {};
+            copyRegion.srcOffset = 0; // Optional
+            copyRegion.dstOffset = 0; // Optional
+            copyRegion.size = size;
+            vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+            result = vkEndCommandBuffer(commandBuffer);
+            ASSERT(result == VK_SUCCESS);
+
+            VkSubmitInfo submitInfo = {};
+            submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            submitInfo.commandBufferCount = 1;
+            submitInfo.pCommandBuffers = &commandBuffer;
+
+            vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+            vkQueueWaitIdle(m_graphicsQueue);
+
+            vkFreeCommandBuffers(m_vkDevice, m_commandPool, 1, &commandBuffer);
+        }
+
     private:
         VkInstance vkInstance;
         VkDebugUtilsMessengerEXT callback;
@@ -701,6 +787,8 @@ namespace tako
         VkSemaphore m_renderFinishedSemaphore;
         VkBuffer m_vertexBuffer;
         VkDeviceMemory m_vertexBufferMemory;
+        VkBuffer m_indexBuffer;
+        VkDeviceMemory m_indexBufferMemory;
     };
 
     GraphicsContext::GraphicsContext(Window& window) : m_impl(new ContextImpl(window.GetHandle()))
