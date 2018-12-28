@@ -10,6 +10,7 @@
 #include <set>
 #include <limits>
 #include "Math.hpp"
+#include <chrono>
 
 static std::array<const char*, 3> vkWinExtensions = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
 static std::array<const char*, 1> vkDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
@@ -49,15 +50,22 @@ namespace tako
 
     const std::vector<Vertex> vertices =
     {
-        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+        {{-1, -1}, {1.0f, 0.0f, 0.0f}},
+        {{ 1, -1}, {0.0f, 1.0f, 0.0f}},
+        {{ 1,  1}, {0.0f, 0.0f, 1.0f}},
+        {{-1,  1}, {1.0f, 1.0f, 1.0f}}
     };
 
     const std::vector<uint16_t> indices =
     {
         0, 1, 2, 2, 3, 0
+    };
+
+    struct UniformBufferObject
+    {
+        Matrix4 model;
+        Matrix4 view;
+        Matrix4 proj;
     };
 
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
@@ -232,7 +240,6 @@ namespace tako
                 vkGetDeviceQueue(m_vkDevice, presentFamily, 0, &m_presentQueue);
             }
 
-            VkExtent2D swapChainExtent;
             //Swapchain TODO: check if options are available
             const VkFormat imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
             {
@@ -251,7 +258,7 @@ namespace tako
                 createInfo.minImageCount = capabilities.minImageCount + 1; // triple buffering
                 createInfo.imageFormat = imageFormat;
                 createInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-                createInfo.imageExtent = swapChainExtent = { clientWidth, clientHeight }; //TODO: clamp to allowed values
+                createInfo.imageExtent = m_swapChainExtent = { clientWidth, clientHeight }; //TODO: clamp to allowed values
                 createInfo.imageArrayLayers = 1;
                 createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
@@ -352,6 +359,22 @@ namespace tako
             }
 
             {
+                VkDescriptorSetLayoutBinding uboLayoutBinding = {};
+                uboLayoutBinding.binding = 0;
+                uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                uboLayoutBinding.descriptorCount = 1;
+                uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+                VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+                layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+                layoutInfo.bindingCount = 1;
+                layoutInfo.pBindings = &uboLayoutBinding;
+
+                result = vkCreateDescriptorSetLayout(m_vkDevice, &layoutInfo, nullptr, &m_descriptorSetLayout);
+                ASSERT(result == VK_SUCCESS);
+            }
+
+            {
                 const char* vertPath = "shaders/shader.vert.spv";
                 const char* fragPath = "shaders/shader.frag.spv";
                 VkShaderModule vertShaderModule = CreateShaderModule(vertPath);
@@ -389,14 +412,14 @@ namespace tako
                 VkViewport viewport = {};
                 viewport.x = 0.0f;
                 viewport.y = 0.0f;
-                viewport.width = (float)swapChainExtent.width;
-                viewport.height = (float)swapChainExtent.height;
+                viewport.width = (float)m_swapChainExtent.width;
+                viewport.height = (float)m_swapChainExtent.height;
                 viewport.minDepth = 0.0f;
                 viewport.maxDepth = 1.0f;
 
                 VkRect2D scissor = {};
                 scissor.offset = { 0, 0 };
-                scissor.extent = swapChainExtent;
+                scissor.extent = m_swapChainExtent;
 
                 VkPipelineViewportStateCreateInfo viewportState = {};
                 viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -435,6 +458,8 @@ namespace tako
 
                 VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
                 pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+                pipelineLayoutInfo.setLayoutCount = 1;
+                pipelineLayoutInfo.pSetLayouts = &m_descriptorSetLayout;
 
                 auto result = vkCreatePipelineLayout(m_vkDevice, &pipelineLayoutInfo, nullptr, &m_pipelineLayout);
                 ASSERT(result == VK_SUCCESS);
@@ -474,8 +499,8 @@ namespace tako
                     framebufferInfo.renderPass = m_renderPass;
                     framebufferInfo.attachmentCount = 1;
                     framebufferInfo.pAttachments = attachments;
-                    framebufferInfo.width = swapChainExtent.width;
-                    framebufferInfo.height = swapChainExtent.height;
+                    framebufferInfo.width = m_swapChainExtent.width;
+                    framebufferInfo.height = m_swapChainExtent.height;
                     framebufferInfo.layers = 1;
 
                     auto result = vkCreateFramebuffer(m_vkDevice, &framebufferInfo, nullptr, &m_swapChainFramebuffers[i]);
@@ -537,6 +562,37 @@ namespace tako
             }
 
             {
+                VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+
+                m_uniformBuffers.resize(m_swapChainImages.size());
+                m_uniformBuffersMemory.resize(m_swapChainImages.size());
+
+                for (size_t i = 0; i < m_swapChainImages.size(); i++)
+                {
+                    CreateBuffer(physicalDevice, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_uniformBuffers[i], m_uniformBuffersMemory[i]);
+                }
+            }
+
+            // createDescriptorPool
+            {
+                VkDescriptorPoolSize poolSize = {};
+                poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                poolSize.descriptorCount = static_cast<uint32_t>(m_swapChainImages.size());
+
+                VkDescriptorPoolCreateInfo poolInfo = {};
+                poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+                poolInfo.poolSizeCount = 1;
+                poolInfo.pPoolSizes = &poolSize;
+                poolInfo.maxSets = static_cast<uint32_t>(m_swapChainImages.size());;
+                poolInfo.flags = 0;
+
+                result = vkCreateDescriptorPool(m_vkDevice, &poolInfo, nullptr, &m_descriptorPool);
+                ASSERT(result == VK_SUCCESS);
+            }
+
+            CreateDescriptorSets();
+
+            {
                 m_commandBuffers.resize(m_swapChainFramebuffers.size());
 
                 VkCommandBufferAllocateInfo allocInfo = {};
@@ -565,7 +621,7 @@ namespace tako
                 renderPassInfo.renderPass = m_renderPass;
                 renderPassInfo.framebuffer = m_swapChainFramebuffers[i];
                 renderPassInfo.renderArea.offset = { 0, 0 };
-                renderPassInfo.renderArea.extent = swapChainExtent;
+                renderPassInfo.renderArea.extent = m_swapChainExtent;
                 renderPassInfo.clearValueCount = 1;
                 renderPassInfo.pClearValues = &clearColor;
 
@@ -578,6 +634,7 @@ namespace tako
                 vkCmdBindVertexBuffers(m_commandBuffers[i], 0, 1, vertexBuffers, offsets);
                 vkCmdBindIndexBuffer(m_commandBuffers[i], m_indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
+                vkCmdBindDescriptorSets(m_commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[0], 0, nullptr);
                 vkCmdDrawIndexed(m_commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
                 vkCmdEndRenderPass(m_commandBuffers[i]);
@@ -636,10 +693,17 @@ namespace tako
                 vkDestroyImageView(m_vkDevice, imageView, nullptr);
             }
             vkDestroySwapchainKHR(m_vkDevice, m_swapChain, nullptr);
+            vkDestroyDescriptorSetLayout(m_vkDevice, m_descriptorSetLayout, nullptr);
+            for (size_t i = 0; i < m_uniformBuffers.size(); i++)
+            {
+                vkDestroyBuffer(m_vkDevice, m_uniformBuffers[i], nullptr);
+                vkFreeMemory(m_vkDevice, m_uniformBuffersMemory[i], nullptr);
+            }
             vkDestroyBuffer(m_vkDevice, m_indexBuffer, nullptr);
             vkFreeMemory(m_vkDevice, m_indexBufferMemory, nullptr);
             vkDestroyBuffer(m_vkDevice, m_vertexBuffer, nullptr);
             vkFreeMemory(m_vkDevice, m_vertexBufferMemory, nullptr);
+            vkDestroyDescriptorPool(m_vkDevice, m_descriptorPool, nullptr);
             vkDestroyDevice(m_vkDevice, nullptr);
             vkDestroySurfaceKHR(vkInstance, m_surface, nullptr);
             auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(vkInstance, "vkDestroyDebugUtilsMessengerEXT");
@@ -655,6 +719,8 @@ namespace tako
             uint32_t imageIndex;
             result = vkAcquireNextImageKHR(m_vkDevice, m_swapChain, (std::numeric_limits<uint64_t>::max)(), m_imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
             ASSERT(result == VK_SUCCESS);
+
+            UpdateUniformBuffer(imageIndex);
 
             VkSubmitInfo submitInfo = {};
             submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -684,6 +750,29 @@ namespace tako
 
             result = vkQueuePresentKHR(m_presentQueue, &presentInfo);
             ASSERT(result == VK_SUCCESS);
+        }
+
+        void UpdateUniformBuffer(uint32_t currentImage)
+        {
+            static auto startTime = std::chrono::high_resolution_clock::now();
+
+            auto currentTime = std::chrono::high_resolution_clock::now();
+            float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+            UniformBufferObject ubo = {};
+            ubo.model = Matrix4::rotate(time);
+            ubo.view = Matrix4::lookAt(Vector3(0, 0, 2), Vector3(0, 0, 0), Vector3(0, 1, 0));
+            //ubo.model = Matrix4::identity;
+            //ubo.view = Matrix4::identity;
+            ubo.proj = Matrix4::perspective(45, m_swapChainExtent.width / (float)m_swapChainExtent.height, 0.1f, 10);
+        
+            //ubo.proj[1][1] *= -1; ??
+
+            void* data;
+            auto result = vkMapMemory(m_vkDevice, m_uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
+            ASSERT(result == VK_SUCCESS);
+            memcpy(data, &ubo, sizeof(ubo));
+            vkUnmapMemory(m_vkDevice, m_uniformBuffersMemory[currentImage]);
         }
 
         uint32_t FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties)
@@ -767,7 +856,41 @@ namespace tako
             vkFreeCommandBuffers(m_vkDevice, m_commandPool, 1, &commandBuffer);
         }
 
+        void CreateDescriptorSets()
+        {
+            std::vector<VkDescriptorSetLayout> layouts(m_swapChainImages.size(), m_descriptorSetLayout);
+            VkDescriptorSetAllocateInfo allocInfo = {};
+            allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+            allocInfo.descriptorPool = m_descriptorPool;
+            allocInfo.descriptorSetCount = static_cast<uint32_t>(m_swapChainImages.size());
+            allocInfo.pSetLayouts = layouts.data();
+
+            m_descriptorSets.resize(m_swapChainImages.size());
+            auto result = vkAllocateDescriptorSets(m_vkDevice, &allocInfo, m_descriptorSets.data());
+            ASSERT(result == VK_SUCCESS);
+
+            for (size_t i = 0; i < m_swapChainImages.size(); i++)
+            {
+                VkDescriptorBufferInfo bufferInfo = {};
+                bufferInfo.buffer = m_uniformBuffers[i];
+                bufferInfo.offset = 0;
+                bufferInfo.range = VK_WHOLE_SIZE;
+
+                VkWriteDescriptorSet descriptorWrite = {};
+                descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                descriptorWrite.dstSet = m_descriptorSets[i];
+                descriptorWrite.dstBinding = 0;
+                descriptorWrite.dstArrayElement = 0;
+                descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                descriptorWrite.descriptorCount = 1;
+                descriptorWrite.pBufferInfo = &bufferInfo;
+
+                vkUpdateDescriptorSets(m_vkDevice, 1, &descriptorWrite, 0, nullptr);
+            }
+        }
+
     private:
+        VkExtent2D m_swapChainExtent;
         VkInstance vkInstance;
         VkDebugUtilsMessengerEXT callback;
         VkDevice m_vkDevice;
@@ -779,6 +902,7 @@ namespace tako
         std::vector<VkImageView> m_swapChainImageViews;
         std::vector<VkFramebuffer> m_swapChainFramebuffers;
         VkRenderPass m_renderPass;
+        VkDescriptorSetLayout m_descriptorSetLayout;
         VkPipelineLayout m_pipelineLayout;
         VkPipeline m_graphicsPipeline;
         VkCommandPool m_commandPool;
@@ -789,6 +913,10 @@ namespace tako
         VkDeviceMemory m_vertexBufferMemory;
         VkBuffer m_indexBuffer;
         VkDeviceMemory m_indexBufferMemory;
+        std::vector<VkBuffer> m_uniformBuffers;
+        std::vector<VkDeviceMemory> m_uniformBuffersMemory;
+        VkDescriptorPool m_descriptorPool;
+        std::vector<VkDescriptorSet> m_descriptorSets;
     };
 
     GraphicsContext::GraphicsContext(Window& window) : m_impl(new ContextImpl(window.GetHandle()))

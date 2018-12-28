@@ -194,6 +194,17 @@ namespace tako
             return *this;
         }
 
+        constexpr static Matrix4 rotate(float angle)
+        {
+            return Matrix4
+            (
+                1,           0,          0, 0,
+                0,  cos(angle), -sin(angle), 0,
+                0,  sin(angle), cos(angle), 0,
+                0,           0,          0, 1
+            );
+        }
+
         constexpr static Matrix4 lookAt(Vector3& eye, Vector3& target, Vector3& upDir)
         {
             Vector3 forward = eye - target;
