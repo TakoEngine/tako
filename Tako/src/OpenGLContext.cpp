@@ -49,9 +49,11 @@ namespace tako
     constexpr const char* quadFragmentShader = R"GLSL(
         #version 110
 
+		uniform vec4 color;
+
         void main()
         {
-            gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+            gl_FragColor = color;
         }
     )GLSL";
 
@@ -103,8 +105,9 @@ namespace tako
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+			SetupQuadPipeline();
             Resize(1024, 768);
-            SetupQuadPipeline();
+            
             //Bitmap map(64, 64);
             //map.Clear({ 255, 128, 128, 255 });
 
@@ -116,41 +119,24 @@ namespace tako
         void Resize(int w, int h)
         {
             glViewport(0, 0, w, h);
-            //glOrtho(0, w, h, 0, 0, 128);
-            /*
-            glMatrixMode(GL_PROJECTION);
-            glLoadIdentity();
-            
-            
-            glMatrixMode(GL_MODELVIEW);
-            */
+
+			Matrix4 ortho = Matrix4::transpose(Matrix4::ortho(0, w, h, 0, 0, 100));
+			glUseProgram(m_quadProgram);
+			glUniformMatrix4fv(m_quadProjectionUniform, 1, GL_FALSE, &ortho[0]);
         }
 
-        void DrawSquare(float x, float y, float w, float h)
+        void DrawSquare(float x, float y, float w, float h, Color c)
         {
-            /*
-            glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-            glBegin(GL_QUADS);
-            glTexCoord2d(0, 0); glVertex3f(x  , y  , 0);
-            glTexCoord2d(0, 1); glVertex3f(x  , y+h, 0);
-            glTexCoord2d(1, 1); glVertex3f(x+w, y+h, 0);
-            glTexCoord2d(1, 0); glVertex3f(x+w, y  , 0);
-            
-            
-            glEnd();
-            */
+			glUseProgram(m_quadProgram);
 
-            //Matrix4 projection = Matrix4::ortho(0, 1024, 768, 0, 0, 100);
 			Matrix4 mat = Matrix4::identity;
-            //mat.translate(x / 1024*2 - 1, 1-y / 768*2, 0);
-            //mat.scale(w / 1024, h / 768, 1);
-            //mat.translate(x+w/2, y+h/2, 0);
 			mat.translate(x, y, 0);
 			mat.scale(w, h, 1);
-			//mat = Matrix4::transpose(mat);
-			//mat.Print();
-            glUseProgram(m_quadProgram);
 			glUniformMatrix4fv(m_quadModelUniform, 1, GL_FALSE, &mat[0]);
+
+			float col[4] = {c.r / 255.0f, c.g / 255.0f, c.b / 255.0f, c.a / 255.0f};
+			glUniform4fv(m_quadColorUniform, 1, col);
+
             glEnableVertexAttribArray(0);
             glBindBuffer(GL_ARRAY_BUFFER, m_quadVBO);
             glVertexAttribPointer(0, 2, GLenum::GL_FLOAT, GL_FALSE, 0, NULL);
@@ -195,25 +181,15 @@ namespace tako
 
             m_quadProjectionUniform = glGetUniformLocation(m_quadProgram, "projection");
             m_quadModelUniform = glGetUniformLocation(m_quadProgram, "model");
-
-            Matrix4 ortho = Matrix4::transpose(Matrix4::ortho(0, 1024, 768, 0, 0, 100));
-            glUseProgram(m_quadProgram);
-            glUniformMatrix4fv(m_quadProjectionUniform, 1, GL_FALSE, &ortho[0]);
+			m_quadColorUniform = glGetUniformLocation(m_quadProgram, "color");
         }
 
         void Draw()
         {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            //glLoadIdentity();
-            //glTranslatef(0.0f, 0.0f, -5.0f);
-            
-            
-            //glBindTexture(GL_TEXTURE_2D, bitmap);
-            //DrawSquare(300, 300, 256, 256);
 
-            //glBindTexture(GL_TEXTURE_2D, 0);
-            DrawSquare(100, 100, 100, 100);
-			DrawSquare(0, 0, 100, 100);
+            DrawSquare(100, 100, 100, 100, Color("#FFFF00AA"));
+			DrawSquare(0, 0, 100, 100, Color("#00FFFF"));
 
             glFlush();
             SwapBuffers(m_hdc);
@@ -227,6 +203,7 @@ namespace tako
         GLuint m_quadVBO;
         GLuint m_quadProjectionUniform;
         GLuint m_quadModelUniform;
+		GLuint m_quadColorUniform;
     };
 
     GraphicsContext::GraphicsContext(Window& window) : m_impl(new ContextImpl(window.GetHandle()))
