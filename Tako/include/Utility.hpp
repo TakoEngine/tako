@@ -18,6 +18,6 @@
 
 #define LOG(format, ...)
 #define LOG_WARN(format, ...)
-#define LOG_ERR(format, ...)    ::tako::Log(tako::LogLevel::Error, format, ##_VA_ARGS__);
+#define LOG_ERR(format, ...)    ::tako::Log(tako::LogLevel::Error, format, ##__VA_ARGS__);
 
 #endif

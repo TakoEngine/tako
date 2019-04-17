@@ -33,5 +33,5 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     }
 
     LOG("terminating")
-        return 0;
+    return 0;
 }

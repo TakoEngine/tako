@@ -194,6 +194,17 @@ namespace tako
             return *this;
         }
 
+		constexpr static Matrix4 transpose(const Matrix4& m)
+		{
+			return Matrix4
+			{
+				m[ 0], m[ 4], m[ 8], m[12],
+				m[ 1], m[ 5], m[ 9], m[13],
+				m[ 2], m[ 6], m[10], m[14],
+				m[ 3], m[ 7], m[11], m[15],
+			};
+		}
+
         constexpr static Matrix4 rotate(float angle)
         {
             return Matrix4
@@ -253,6 +264,23 @@ namespace tako
 
             return result;
         }
+
+        constexpr static Matrix4 ortho(float left, float right, float bottom, float top, float nearDistance, float farDistance)
+        {
+            Matrix4 m;
+
+            m[0] = 2 / (right - left);
+            m[3] = -(right + left) / (right - left);
+            m[5] = 2 / (top - bottom);
+            m[7] = -(top + bottom) / (top - bottom);
+            m[10] = -2 / (farDistance - nearDistance);
+            m[11] = -(farDistance + nearDistance) / (farDistance - nearDistance);
+            m[15] = 1;
+
+            return m;
+        }
+
+		void Print();
     };
 
     struct Color

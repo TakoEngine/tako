@@ -108,9 +108,9 @@ namespace tako
 
     Bitmap Bitmap::FromFile(const char* filePath)
     {
-        tako::U8* buffer = new tako::U8[4096];
+        tako::U8* buffer = new tako::U8[4096*4];
         size_t bytesRead = 0;
-        tako::FileSystem::ReadFile("C:\\Users\\kevin\\Desktop\\GB_Tetris.png", buffer, 4096, bytesRead);
+        tako::FileSystem::ReadFile(filePath, buffer, 4096*4, bytesRead);
         int width, height, channels;
         stbi_uc* img = stbi_load_from_memory(buffer, bytesRead, &width, &height, &channels, 4);
         Bitmap bitmap((Color*) img, width, height);
