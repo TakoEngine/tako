@@ -32,30 +32,39 @@ namespace tako
         { 0, 1}
     };
 
-    constexpr const char* quadVertexShader = R"GLSL(
-        #version 110
+	struct ImageVertex
+	{
+		Vector2 position;
+		Vector2 texcoord;
+	};
 
-        attribute vec2 position;
+	static const ImageVertex imageVertices[] =
+	{
+		{ {0, 0}, {0, 0}},
+		{ {1, 0}, {1, 0}},
+		{ {1, 1}, {1, 1}},
+		{ {0, 0}, {0, 0}},
+		{ {1, 1}, {1, 1}},
+		{ {0, 1}, {0, 1}}
+	};
+	
+    constexpr const char* quadVertexShader =
+        #include "quad.vert.glsl"
+	;
 
-        uniform mat4 projection;
-        uniform mat4 model;
+    constexpr const char* quadFragmentShader =
+		#include "quad.frag.glsl"    
+	;
 
-        void main()
-        {
-            gl_Position = projection * model * vec4(position, 0.0, 1.0);
-        }
-    )GLSL";
+	constexpr const char* imageVertexShader =
+		#include "image.vert.glsl"
+	;
 
-    constexpr const char* quadFragmentShader = R"GLSL(
-        #version 110
+	constexpr const char* imageFragmentShader =
+		#include "image.frag.glsl"    
+	;
+	
 
-		uniform vec4 color;
-
-        void main()
-        {
-            gl_FragColor = color;
-        }
-    )GLSL";
 
     class GraphicsContext::ContextImpl
     {
@@ -104,25 +113,39 @@ namespace tako
             glAlphaFunc(GL_GREATER, 0.1);
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
+			
 			SetupQuadPipeline();
+			SetupImagePipeline();
             Resize(1024, 768);
             
             //Bitmap map(64, 64);
-            //map.Clear({ 255, 128, 128, 255 });
+            //map.Clear({ 0, 0, 0, 255 });
 
             //map.FillRect(32, 0, 32, 32, {255, 0, 0, 255});
-            //Bitmap map = Bitmap::FromFile("adasd");
-            //bitmap = UploadBitmap(map);
+            Bitmap map = Bitmap::FromFile("C:\\Users\\kevin\\Desktop\\tree.png");
+            bitmap = UploadBitmap(map);
         }
 
         void Resize(int w, int h)
         {
             glViewport(0, 0, w, h);
 
+			auto err = glGetError();
+			if (err != GL_NO_ERROR)
+			{
+				LOG("error preresize");
+			}
+
 			Matrix4 ortho = Matrix4::transpose(Matrix4::ortho(0, w, h, 0, 0, 100));
 			glUseProgram(m_quadProgram);
 			glUniformMatrix4fv(m_quadProjectionUniform, 1, GL_FALSE, &ortho[0]);
+			glUseProgram(m_imageProgram);
+			glUniformMatrix4fv(m_imageProjectionUniform, 1, GL_FALSE, &ortho[0]);
+			err = glGetError();
+			if (err != GL_NO_ERROR)
+			{
+				LOG("error resize");
+			}
         }
 
         void DrawSquare(float x, float y, float w, float h, Color c)
@@ -137,11 +160,33 @@ namespace tako
 			float col[4] = {c.r / 255.0f, c.g / 255.0f, c.b / 255.0f, c.a / 255.0f};
 			glUniform4fv(m_quadColorUniform, 1, col);
 
-            glEnableVertexAttribArray(0);
+            
             glBindBuffer(GL_ARRAY_BUFFER, m_quadVBO);
             glVertexAttribPointer(0, 2, GLenum::GL_FLOAT, GL_FALSE, 0, NULL);
+			glEnableVertexAttribArray(0);
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
+
+		void DrawImage(float x, float y, float w, float h, GLuint texture)
+		{
+			glUseProgram(m_imageProgram);
+
+			Matrix4 mat = Matrix4::identity;
+			mat.translate(x, y, 0);
+			mat.scale(w, h, 1);
+			glUniformMatrix4fv(m_imageModelUniform, 1, GL_FALSE, &mat[0]);
+
+			//glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, texture);
+			//glUniform1i(m_imageTextureUniform, 0);
+
+			glBindBuffer(GL_ARRAY_BUFFER, m_imageVBO);
+			glVertexAttribPointer(0, 2, GLenum::GL_FLOAT, GL_FALSE, sizeof(ImageVertex), NULL);
+			glEnableVertexAttribArray(0);
+			glVertexAttribPointer(1, 2, GLenum::GL_FLOAT, GL_FALSE, sizeof(ImageVertex), (void*) offsetof(ImageVertex, texcoord));
+			glEnableVertexAttribArray(1);
+			glDrawArrays(GL_TRIANGLES, 0, 6);
+		}
 
         static GLuint UploadBitmap(const Bitmap& bitmap)
         {
@@ -164,6 +209,12 @@ namespace tako
             glShaderSource(sh, 1, &shaderPointer, NULL);
             glCompileShader(sh);
 
+			auto err = glGetError();
+			if (err != GL_NO_ERROR)
+			{
+				LOG("error!");
+			}
+
             return sh;
         }
 
@@ -184,12 +235,43 @@ namespace tako
 			m_quadColorUniform = glGetUniformLocation(m_quadProgram, "color");
         }
 
+		void SetupImagePipeline()
+		{
+			m_imageProgram = glCreateProgram();
+			glAttachShader(m_imageProgram, CompileShader(imageVertexShader, GL_VERTEX_SHADER));
+			glAttachShader(m_imageProgram, CompileShader(imageFragmentShader, GL_FRAGMENT_SHADER));
+			glLinkProgram(m_imageProgram);
+
+			m_imageVBO = 0;
+			glGenBuffers(1, &m_imageVBO);
+			glBindBuffer(GL_ARRAY_BUFFER, m_imageVBO);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(imageVertices), imageVertices, GL_STATIC_DRAW);
+
+			m_imageProjectionUniform = glGetUniformLocation(m_imageProgram, "projection");
+			m_imageModelUniform = glGetUniformLocation(m_imageProgram, "model");
+			m_imageTextureUniform = glGetUniformLocation(m_imageProgram, "texture");
+			
+			auto err = glGetError();
+			if (err != GL_NO_ERROR)
+			{
+				LOG("error pip!");
+			}
+		}
+
         void Draw()
         {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             DrawSquare(100, 100, 100, 100, Color("#FFFF00AA"));
 			DrawSquare(0, 0, 100, 100, Color("#00FFFF"));
+			DrawImage(200, 200, 67*2, 80*2, bitmap);
+
+			auto err = glGetError();
+			if (err != GL_NO_ERROR)
+			{
+				LOG("error!");
+			}
+
 
             glFlush();
             SwapBuffers(m_hdc);
@@ -204,6 +286,12 @@ namespace tako
         GLuint m_quadProjectionUniform;
         GLuint m_quadModelUniform;
 		GLuint m_quadColorUniform;
+
+		GLuint m_imageProgram;
+		GLuint m_imageVBO;
+		GLuint m_imageProjectionUniform;
+		GLuint m_imageModelUniform;
+		GLuint m_imageTextureUniform;
     };
 
     GraphicsContext::GraphicsContext(Window& window) : m_impl(new ContextImpl(window.GetHandle()))

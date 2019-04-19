@@ -1,0 +1,1 @@
+add_executable(string_literal "string_literal.cpp")
