@@ -55,10 +55,15 @@ namespace tako
             MSG msg;
             while (PeekMessage(&msg, m_hwnd, 0, 0, PM_REMOVE))
             {
-                if (msg.message == WM_QUIT)
-                {
-                    m_shouldExit = true;
-                }
+				if (msg.message == WM_QUIT)
+				{
+					LOG("WM_QUIT");
+					if (m_callback)
+					{
+						AppQuit evt;
+						m_callback(evt);
+					}
+				}
 
                 TranslateMessage(&msg);
                 DispatchMessage(&msg);
@@ -74,6 +79,12 @@ namespace tako
         HWND m_hwnd;
         bool m_shouldExit = false;
         int m_width, m_height;
+		std::function<void(Event&)> m_callback;
+
+		void SetEventCallback(const std::function<void(Event&)>& callback)
+		{
+			m_callback = callback;
+		}
 
         static LRESULT WINAPI WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
@@ -88,6 +99,15 @@ namespace tako
                     win->m_width = clientRect.right - clientRect.left;
                     win->m_height = clientRect.bottom - clientRect.top;
                     win->Resize(win->m_width, win->m_height);
+
+					if (win->m_callback)
+					{
+						WindowResize evt;
+						evt.width = win->m_width;
+						evt.height = win->m_height;
+						win->m_callback(evt);
+					}
+					
                 } break;
                 case WM_GETMINMAXINFO:
                 {
@@ -125,7 +145,16 @@ namespace tako
                 case WM_CLOSE:
                 {
                     LOG("Received close message");
-                    PostQuitMessage(0);
+					WindowClose evt;
+					if (win->m_callback)
+					{
+						win->m_callback(evt);
+					}
+					if (!evt.abortQuit)
+					{
+						PostQuitMessage(0);
+						LOG("post quit");
+					}
                 } break;
                 default: result = DefWindowProc(hwnd, uMsg, wParam, lParam);
             }
@@ -172,4 +201,9 @@ namespace tako
     {
         return m_impl->m_hwnd;
     }
+
+	void Window::SetEventCallback(const std::function<void(Event&)>& callback)
+	{
+		m_impl->SetEventCallback(callback);
+	}
 }

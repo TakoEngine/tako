@@ -69,7 +69,7 @@ namespace tako
     class GraphicsContext::ContextImpl
     {
     public:
-        ContextImpl(HWND hwnd)
+        ContextImpl(HWND hwnd, int width, int height)
         {
             m_hdc = GetDC(hwnd);
             PIXELFORMATDESCRIPTOR pfd;
@@ -116,7 +116,7 @@ namespace tako
 			
 			SetupQuadPipeline();
 			SetupImagePipeline();
-            Resize(1024, 768);
+            Resize(width, height);
             
             //Bitmap map(64, 64);
             //map.Clear({ 0, 0, 0, 255 });
@@ -276,6 +276,20 @@ namespace tako
             glFlush();
             SwapBuffers(m_hdc);
         }
+
+		void HandleEvent(Event& evt)
+		{
+			switch (evt.GetType())
+			{
+			case tako::EventType::WindowResize:
+			{
+				tako::WindowResize& res = static_cast<tako::WindowResize&>(evt);
+				LOG("Window Resize: {} {} {}", res.GetName(), res.width, res.height);
+				Resize(res.width, res.height);
+				Draw();
+			} break;
+			}
+		}
     private:
         HDC m_hdc;
         HGLRC m_hrc;
@@ -294,7 +308,7 @@ namespace tako
 		GLuint m_imageTextureUniform;
     };
 
-    GraphicsContext::GraphicsContext(Window& window) : m_impl(new ContextImpl(window.GetHandle()))
+    GraphicsContext::GraphicsContext(WindowHandle handle, int width, int height) : m_impl(new ContextImpl(handle, width, height))
     {
     }
 
@@ -304,4 +318,14 @@ namespace tako
     {
         m_impl->Draw();
     }
+
+	void GraphicsContext::Resize(int width, int height)
+	{
+		m_impl->Resize(width, height);
+	}
+
+	void GraphicsContext::HandleEvent(Event& evt)
+	{
+		m_impl->HandleEvent(evt);
+	}
 }
