@@ -122,7 +122,7 @@ namespace tako
             //map.Clear({ 0, 0, 0, 255 });
 
             //map.FillRect(32, 0, 32, 32, {255, 0, 0, 255});
-            Bitmap map = Bitmap::FromFile("C:\\Users\\kevin\\Desktop\\tree.png");
+            Bitmap map = Bitmap::FromFile("./tree.png");
             bitmap = UploadBitmap(map);
         }
 
