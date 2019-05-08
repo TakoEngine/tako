@@ -42,9 +42,9 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 			keepRunning = false;
 			LOG("Quitting...");
 		} break;
-		default:
-			LOG("Unknown Event: {}", ev.GetName());
 		}
+
+		LOG("Event: {}", ev);
 	});
 	
 	broadcaster.Register(&onEvent);

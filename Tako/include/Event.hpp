@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <functional>
+#include <iostream>
 
 namespace tako
 {
@@ -17,7 +18,16 @@ namespace tako
 	public:
 		virtual EventType GetType() const = 0;
 		virtual const char* GetName() const = 0;
+
+		friend std::ostream& operator<<(std::ostream& os, const Event& evt);
+	protected:
+		virtual void DebugPrint(std::ostream& os) const
+		{
+			os << GetName();
+		}
 	};
+
+	
 
 #define EVENT_CLASS_TYPE(type) \
 	virtual EventType GetType() const override { return EventType::##type; } \
@@ -38,6 +48,11 @@ namespace tako
 
 		int width;
 		int height;
+	protected:
+		virtual void DebugPrint(std::ostream& os) const
+		{
+			os << GetName() << "(" << width << "," << height << ")";
+		}
 	};
 
 	class AppQuit : public Event

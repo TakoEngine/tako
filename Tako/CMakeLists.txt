@@ -18,7 +18,9 @@ set(SOURCE_FILES
 	"include/GraphicsContext.hpp"
 #	"src/VulkanContext.cpp"
 	"src/OpenGLContext.cpp"
-	"include/Tako.hpp")
+	"include/Tako.hpp"
+	"include/Event.hpp"
+	"src/Event.cpp")
 
 function(add_shader filename)
 	SET(SHADER_IN ${CMAKE_SOURCE_DIR}/Tako/shaders/${filename})
