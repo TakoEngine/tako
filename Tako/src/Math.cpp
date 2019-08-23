@@ -3,13 +3,13 @@
 
 namespace tako
 {
-    const Matrix4 Matrix4::identity =
-    {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1
-    };
+	const Matrix4 Matrix4::identity =
+	{
+		1, 0, 0, 0,
+		0, 1, 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1
+	};
 
 	void Matrix4::Print()
 	{

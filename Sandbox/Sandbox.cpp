@@ -2,5 +2,5 @@
 
 void tako::Setup()
 {
-    LOG("SANDBOX SETUP");
+	LOG("SANDBOX SETUP");
 }

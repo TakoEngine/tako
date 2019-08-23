@@ -3,5 +3,5 @@
 
 namespace tako
 {
-    using WindowHandle = HWND;
+	using WindowHandle = HWND;
 }

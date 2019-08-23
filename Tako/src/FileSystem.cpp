@@ -5,56 +5,56 @@
 
 std::optional<HANDLE> GetFileHandle(const char* filePath)
 {
-    HANDLE fileHandle = ::CreateFile(filePath,
-                          GENERIC_READ,
-                          FILE_SHARE_READ,
-                          NULL,
-                          OPEN_EXISTING,
-                          FILE_ATTRIBUTE_NORMAL,
-                          NULL);
-    if (fileHandle == INVALID_HANDLE_VALUE)
-    {
-        LOG_ERR("Can't open file {}: {}", filePath, GetLastErrorMessage());
-        return {};
-    }
+	HANDLE fileHandle = ::CreateFile(filePath,
+		GENERIC_READ,
+		FILE_SHARE_READ,
+		NULL,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL);
+	if (fileHandle == INVALID_HANDLE_VALUE)
+	{
+		LOG_ERR("Can't open file {}: {}", filePath, GetLastErrorMessage());
+		return {};
+	}
 
-    return fileHandle;
+	return fileHandle;
 }
 
 namespace tako::FileSystem
 {
-    bool ReadFile(const char* filePath, U8* buffer, size_t bufferSize, size_t& bytesRead)
-    {
-        auto fileHandle = GetFileHandle(filePath);
-        if (!fileHandle)
-        {
-            return false;
-        }
+	bool ReadFile(const char* filePath, U8* buffer, size_t bufferSize, size_t& bytesRead)
+	{
+		auto fileHandle = GetFileHandle(filePath);
+		if (!fileHandle)
+		{
+			return false;
+		}
 
-        DWORD bytes;
-        BOOL result = ::ReadFile(*fileHandle, buffer, bufferSize, &bytes, NULL);
+		DWORD bytes;
+		BOOL result = ::ReadFile(*fileHandle, buffer, bufferSize, &bytes, NULL);
 
-        if (result == TRUE)
-        {
-            bytesRead = bytes;
-            CloseHandle(*fileHandle);
-            return true;
-        }
-        
-        LOG_ERR("Error reading file {}: {}", filePath, GetLastErrorMessage());
-        CloseHandle(*fileHandle);
-        return false;
-    }
+		if (result == TRUE)
+		{
+			bytesRead = bytes;
+			CloseHandle(*fileHandle);
+			return true;
+		}
 
-    size_t GetFileSize(const char * filePath)
-    {
-        auto fileHandle = GetFileHandle(filePath);
-        ASSERT(fileHandle);
+		LOG_ERR("Error reading file {}: {}", filePath, GetLastErrorMessage());
+		CloseHandle(*fileHandle);
+		return false;
+	}
 
-        LARGE_INTEGER size;
-        GetFileSizeEx(fileHandle.value(), &size);
+	size_t GetFileSize(const char* filePath)
+	{
+		auto fileHandle = GetFileHandle(filePath);
+		ASSERT(fileHandle);
 
-        return size.QuadPart;
-    }
+		LARGE_INTEGER size;
+		GetFileSizeEx(fileHandle.value(), &size);
+
+		return size.QuadPart;
+	}
 }
 

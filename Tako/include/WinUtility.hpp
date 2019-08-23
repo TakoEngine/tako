@@ -7,18 +7,18 @@
 class WinString
 {
 public:
-    WinString(LPSTR buffer, size_t size);
-    WinString(const WinString& other) = delete;
-    WinString(WinString&& other);
-    WinString& operator=(WinString&& other);
-    ~WinString();
+	WinString(LPSTR buffer, size_t size);
+	WinString(const WinString& other) = delete;
+	WinString(WinString&& other);
+	WinString& operator=(WinString&& other);
+	~WinString();
 
-    constexpr operator std::string_view() const;
+	constexpr operator std::string_view() const;
 private:
-    friend std::ostream& operator<<(std::ostream& os, const WinString& str);
+	friend std::ostream& operator<<(std::ostream& os, const WinString& str);
 
-    LPSTR buffer;
-    size_t size;
+	LPSTR buffer;
+	size_t size;
 };
 
 WinString GetErrorMessage(DWORD err);

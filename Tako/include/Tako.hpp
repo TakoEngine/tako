@@ -9,21 +9,21 @@
 
 namespace tako
 {
-    extern void Setup();
+	extern void Setup();
 }
 
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow)
 {
 #ifndef NDEBUG
-    {
-        AllocConsole();
-        HWND hWnd = GetConsoleWindow();
-        ShowWindow(hWnd, SW_SHOWNORMAL);
-    }
+	{
+		AllocConsole();
+		HWND hWnd = GetConsoleWindow();
+		ShowWindow(hWnd, SW_SHOWNORMAL);
+	}
 #endif
-    tako::Window window;
-    tako::GraphicsContext context(window.GetHandle(), window.GetWidth(), window.GetHeight());
-    tako::Setup();
+	tako::Window window;
+	tako::GraphicsContext context(window.GetHandle(), window.GetWidth(), window.GetHeight());
+	tako::Setup();
 	tako::Broadcaster broadcaster;
 
 	bool keepRunning = true;
@@ -46,23 +46,23 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 
 		LOG("Event: {}", ev);
 	});
-	
+
 	broadcaster.Register(&onEvent);
 	broadcaster.Register(&context);
 
-	window.SetEventCallback([&](tako::Event & evt)
+	window.SetEventCallback([&](tako::Event& evt)
 	{
 		broadcaster.Broadcast(evt);
 	});
-	
 
-    while (keepRunning)
-    {
-        window.Poll();
-        context.Present();
-        Sleep(16);
-    }
 
-    LOG("terminating")
-    return 0;
+	while (keepRunning)
+	{
+		window.Poll();
+		context.Present();
+		Sleep(16);
+	}
+
+	LOG("terminating")
+	return 0;
 }

@@ -10,27 +10,27 @@ using namespace gl20;
 
 namespace tako
 {
-    glbinding::ProcAddress GetGLProcAddress(const char* name)
-    {
-        auto procAddress = reinterpret_cast<glbinding::ProcAddress>(wglGetProcAddress(name));
-        if (procAddress == nullptr)
-        {
-            static auto module = LoadLibrary("OPENGL32.DLL");
-            procAddress = reinterpret_cast<glbinding::ProcAddress>(GetProcAddress(module, name));
-        }
+	glbinding::ProcAddress GetGLProcAddress(const char* name)
+	{
+		auto procAddress = reinterpret_cast<glbinding::ProcAddress>(wglGetProcAddress(name));
+		if (procAddress == nullptr)
+		{
+			static auto module = LoadLibrary("OPENGL32.DLL");
+			procAddress = reinterpret_cast<glbinding::ProcAddress>(GetProcAddress(module, name));
+		}
 
-        return procAddress;
-    }
+		return procAddress;
+	}
 
-    static const Vector2 vertices[] =
-    {
-        { 0, 0},
-        { 1, 0},
-        { 1, 1},
-        { 0, 0},
-        { 1, 1},
-        { 0, 1}
-    };
+	static const Vector2 vertices[] =
+	{
+		{ 0, 0},
+		{ 1, 0},
+		{ 1, 1},
+		{ 0, 0},
+		{ 1, 1},
+		{ 0, 1}
+	};
 
 	struct ImageVertex
 	{
@@ -47,12 +47,12 @@ namespace tako
 		{ {1, 1}, {1, 1}},
 		{ {0, 1}, {0, 1}}
 	};
-	
-    constexpr const char* quadVertexShader =
-        #include "quad.vert.glsl"
+
+	constexpr const char* quadVertexShader =
+		#include "quad.vert.glsl"
 	;
 
-    constexpr const char* quadFragmentShader =
+	constexpr const char* quadFragmentShader =
 		#include "quad.frag.glsl"    
 	;
 
@@ -63,72 +63,60 @@ namespace tako
 	constexpr const char* imageFragmentShader =
 		#include "image.frag.glsl"    
 	;
-	
-
-
-    class GraphicsContext::ContextImpl
-    {
-    public:
-        ContextImpl(HWND hwnd, int width, int height)
-        {
-            m_hdc = GetDC(hwnd);
-            PIXELFORMATDESCRIPTOR pfd;
-
-            memset(&pfd, 0, sizeof(pfd));
-
-            pfd.nSize = sizeof(pfd);
-
-            pfd.nVersion = 1;
-
-            pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL;
-
-            pfd.iPixelType = PFD_TYPE_RGBA;
-
-            pfd.cColorBits = 32;
 
 
 
-            int pf = ChoosePixelFormat(m_hdc, &pfd);
+	class GraphicsContext::ContextImpl
+	{
+	public:
+		ContextImpl(HWND hwnd, int width, int height)
+		{
+			m_hdc = GetDC(hwnd);
+			PIXELFORMATDESCRIPTOR pfd;
 
-            SetPixelFormat(m_hdc, pf, &pfd);
+			memset(&pfd, 0, sizeof(pfd));
+			pfd.nSize = sizeof(pfd);
+			pfd.nVersion = 1;
+			pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL;
+			pfd.iPixelType = PFD_TYPE_RGBA;
+			pfd.cColorBits = 32;
 
-            DescribePixelFormat(m_hdc, pf, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
+			int pf = ChoosePixelFormat(m_hdc, &pfd);
+			SetPixelFormat(m_hdc, pf, &pfd);
+			DescribePixelFormat(m_hdc, pf, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
+			ReleaseDC(hwnd, m_hdc);
 
-            ReleaseDC(hwnd, m_hdc);
+
+			m_hrc = wglCreateContext(m_hdc);
+			wglMakeCurrent(m_hdc, m_hrc);
 
 
+			glbinding::Binding::initialize(GetGLProcAddress);
+			glClearColor(0, 0.5f, 0, 1);
 
-            m_hrc = wglCreateContext(m_hdc);
+			glEnable(GL_DEPTH_TEST);
+			glDepthFunc(GL_LESS);
+			glEnable(GL_TEXTURE_2D);
+			glEnable(GL_ALPHA_TEST);
+			glAlphaFunc(GL_GREATER, 0.1);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-            wglMakeCurrent(m_hdc, m_hrc);
-
-            
-            glbinding::Binding::initialize(GetGLProcAddress);
-            glClearColor(0, 0.5f, 0, 1);   
-
-            glEnable(GL_DEPTH_TEST);
-            glDepthFunc(GL_LESS);
-            glEnable(GL_TEXTURE_2D);
-            glEnable(GL_ALPHA_TEST);
-            glAlphaFunc(GL_GREATER, 0.1);
-            glEnable(GL_BLEND);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			
 			SetupQuadPipeline();
 			SetupImagePipeline();
-            Resize(width, height);
-            
-            //Bitmap map(64, 64);
-            //map.Clear({ 0, 0, 0, 255 });
+			Resize(width, height);
 
-            //map.FillRect(32, 0, 32, 32, {255, 0, 0, 255});
-            Bitmap map = Bitmap::FromFile("./tree.png");
-            bitmap = UploadBitmap(map);
-        }
+			//Bitmap map(64, 64);
+			//map.Clear({ 0, 0, 0, 255 });
 
-        void Resize(int w, int h)
-        {
-            glViewport(0, 0, w, h);
+			//map.FillRect(32, 0, 32, 32, {255, 0, 0, 255});
+			Bitmap map = Bitmap::FromFile("./tree.png");
+			bitmap = UploadBitmap(map);
+		}
+
+		void Resize(int w, int h)
+		{
+			glViewport(0, 0, w, h);
 
 			auto err = glGetError();
 			if (err != GL_NO_ERROR)
@@ -146,10 +134,10 @@ namespace tako
 			{
 				LOG("error resize");
 			}
-        }
+		}
 
-        void DrawSquare(float x, float y, float w, float h, Color c)
-        {
+		void DrawSquare(float x, float y, float w, float h, Color c)
+		{
 			glUseProgram(m_quadProgram);
 
 			Matrix4 mat = Matrix4::identity;
@@ -157,15 +145,15 @@ namespace tako
 			mat.scale(w, h, 1);
 			glUniformMatrix4fv(m_quadModelUniform, 1, GL_FALSE, &mat[0]);
 
-			float col[4] = {c.r / 255.0f, c.g / 255.0f, c.b / 255.0f, c.a / 255.0f};
+			float col[4] = { c.r / 255.0f, c.g / 255.0f, c.b / 255.0f, c.a / 255.0f };
 			glUniform4fv(m_quadColorUniform, 1, col);
 
-            
-            glBindBuffer(GL_ARRAY_BUFFER, m_quadVBO);
-            glVertexAttribPointer(0, 2, GLenum::GL_FLOAT, GL_FALSE, 0, NULL);
+
+			glBindBuffer(GL_ARRAY_BUFFER, m_quadVBO);
+			glVertexAttribPointer(0, 2, GLenum::GL_FLOAT, GL_FALSE, 0, NULL);
 			glEnableVertexAttribArray(0);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-        }
+			glDrawArrays(GL_TRIANGLES, 0, 6);
+		}
 
 		void DrawImage(float x, float y, float w, float h, GLuint texture)
 		{
@@ -183,31 +171,31 @@ namespace tako
 			glBindBuffer(GL_ARRAY_BUFFER, m_imageVBO);
 			glVertexAttribPointer(0, 2, GLenum::GL_FLOAT, GL_FALSE, sizeof(ImageVertex), NULL);
 			glEnableVertexAttribArray(0);
-			glVertexAttribPointer(1, 2, GLenum::GL_FLOAT, GL_FALSE, sizeof(ImageVertex), (void*) offsetof(ImageVertex, texcoord));
+			glVertexAttribPointer(1, 2, GLenum::GL_FLOAT, GL_FALSE, sizeof(ImageVertex), (void*)offsetof(ImageVertex, texcoord));
 			glEnableVertexAttribArray(1);
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 		}
 
-        static GLuint UploadBitmap(const Bitmap& bitmap)
-        {
-            GLuint texture;
-            glGenTextures(1, &texture);
-            glBindTexture(GL_TEXTURE_2D, texture);
+		static GLuint UploadBitmap(const Bitmap& bitmap)
+		{
+			GLuint texture;
+			glGenTextures(1, &texture);
+			glBindTexture(GL_TEXTURE_2D, texture);
 
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bitmap.Width(), bitmap.Height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap.GetData());
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bitmap.Width(), bitmap.Height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap.GetData());
 
-            return texture;
-        }
+			return texture;
+		}
 
 
-        static GLuint CompileShader(const char* shaderSource, GLenum type)
-        {
-            const GLchar* shaderPointer = shaderSource;
-            GLuint sh = glCreateShader(type);
-            glShaderSource(sh, 1, &shaderPointer, NULL);
-            glCompileShader(sh);
+		static GLuint CompileShader(const char* shaderSource, GLenum type)
+		{
+			const GLchar* shaderPointer = shaderSource;
+			GLuint sh = glCreateShader(type);
+			glShaderSource(sh, 1, &shaderPointer, NULL);
+			glCompileShader(sh);
 
 			auto err = glGetError();
 			if (err != GL_NO_ERROR)
@@ -215,25 +203,25 @@ namespace tako
 				LOG("error!");
 			}
 
-            return sh;
-        }
+			return sh;
+		}
 
-        void SetupQuadPipeline()
-        {
-            m_quadProgram = glCreateProgram();
-            glAttachShader(m_quadProgram, CompileShader(quadVertexShader, GL_VERTEX_SHADER));
-            glAttachShader(m_quadProgram, CompileShader(quadFragmentShader, GL_FRAGMENT_SHADER));
-            glLinkProgram(m_quadProgram);
+		void SetupQuadPipeline()
+		{
+			m_quadProgram = glCreateProgram();
+			glAttachShader(m_quadProgram, CompileShader(quadVertexShader, GL_VERTEX_SHADER));
+			glAttachShader(m_quadProgram, CompileShader(quadFragmentShader, GL_FRAGMENT_SHADER));
+			glLinkProgram(m_quadProgram);
 
-            m_quadVBO = 0;
-            glGenBuffers(1, &m_quadVBO);
-            glBindBuffer(GL_ARRAY_BUFFER, m_quadVBO);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+			m_quadVBO = 0;
+			glGenBuffers(1, &m_quadVBO);
+			glBindBuffer(GL_ARRAY_BUFFER, m_quadVBO);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-            m_quadProjectionUniform = glGetUniformLocation(m_quadProgram, "projection");
-            m_quadModelUniform = glGetUniformLocation(m_quadProgram, "model");
+			m_quadProjectionUniform = glGetUniformLocation(m_quadProgram, "projection");
+			m_quadModelUniform = glGetUniformLocation(m_quadProgram, "model");
 			m_quadColorUniform = glGetUniformLocation(m_quadProgram, "color");
-        }
+		}
 
 		void SetupImagePipeline()
 		{
@@ -250,7 +238,7 @@ namespace tako
 			m_imageProjectionUniform = glGetUniformLocation(m_imageProgram, "projection");
 			m_imageModelUniform = glGetUniformLocation(m_imageProgram, "model");
 			m_imageTextureUniform = glGetUniformLocation(m_imageProgram, "texture");
-			
+
 			auto err = glGetError();
 			if (err != GL_NO_ERROR)
 			{
@@ -258,13 +246,13 @@ namespace tako
 			}
 		}
 
-        void Draw()
-        {
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		void Draw()
+		{
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            DrawSquare(100, 100, 100, 100, Color("#FFFF00AA"));
+			DrawSquare(100, 100, 100, 100, Color("#FFFF00AA"));
 			DrawSquare(0, 0, 100, 100, Color("#00FFFF"));
-			DrawImage(200, 200, 67*2, 80*2, bitmap);
+			DrawImage(200, 200, 67 * 2, 80 * 2, bitmap);
 
 			auto err = glGetError();
 			if (err != GL_NO_ERROR)
@@ -273,9 +261,9 @@ namespace tako
 			}
 
 
-            glFlush();
-            SwapBuffers(m_hdc);
-        }
+			glFlush();
+			SwapBuffers(m_hdc);
+		}
 
 		void HandleEvent(Event& evt)
 		{
@@ -290,15 +278,15 @@ namespace tako
 			} break;
 			}
 		}
-    private:
-        HDC m_hdc;
-        HGLRC m_hrc;
-        GLuint bitmap;
+	private:
+		HDC m_hdc;
+		HGLRC m_hrc;
+		GLuint bitmap;
 
-        GLuint m_quadProgram;
-        GLuint m_quadVBO;
-        GLuint m_quadProjectionUniform;
-        GLuint m_quadModelUniform;
+		GLuint m_quadProgram;
+		GLuint m_quadVBO;
+		GLuint m_quadProjectionUniform;
+		GLuint m_quadModelUniform;
 		GLuint m_quadColorUniform;
 
 		GLuint m_imageProgram;
@@ -306,18 +294,18 @@ namespace tako
 		GLuint m_imageProjectionUniform;
 		GLuint m_imageModelUniform;
 		GLuint m_imageTextureUniform;
-    };
+	};
 
-    GraphicsContext::GraphicsContext(WindowHandle handle, int width, int height) : m_impl(new ContextImpl(handle, width, height))
-    {
-    }
+	GraphicsContext::GraphicsContext(WindowHandle handle, int width, int height) : m_impl(new ContextImpl(handle, width, height))
+	{
+	}
 
-    GraphicsContext::~GraphicsContext() = default;
+	GraphicsContext::~GraphicsContext() = default;
 
-    void GraphicsContext::Present()
-    {
-        m_impl->Draw();
-    }
+	void GraphicsContext::Present()
+	{
+		m_impl->Draw();
+	}
 
 	void GraphicsContext::Resize(int width, int height)
 	{

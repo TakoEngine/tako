@@ -27,7 +27,7 @@ namespace tako
 		}
 	};
 
-	
+
 
 #define EVENT_CLASS_TYPE(type) \
 	virtual EventType GetType() const override { return EventType::##type; } \
