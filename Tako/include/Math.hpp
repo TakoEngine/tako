@@ -205,7 +205,7 @@ namespace tako
 			};
 		}
 
-		constexpr static Matrix4 rotate(float angle)
+		static Matrix4 rotate(float angle)
 		{
 			return Matrix4
 			(

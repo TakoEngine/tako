@@ -34,3 +34,8 @@
 /.vs
 /CMakeSettings.json
 *.spv
+/.vscode
+/build
+/out
+/.idea
+/cmake-build*

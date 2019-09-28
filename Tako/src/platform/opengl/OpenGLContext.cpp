@@ -1,15 +1,20 @@
 #include "GraphicsContext.hpp"
+
+#include "Math.hpp"
+#include "Bitmap.hpp"
+#ifdef _WIN32
 #include <Windows.h>
 #include <glbinding/gl20/gl.h>
 #include <glbinding/Binding.h>
-#include "Math.hpp"
-#include "Bitmap.hpp"
 using namespace gl20;
 
 #pragma comment(lib, "opengl32.lib")
+#endif
+#include <GLES2/gl2.h>
 
 namespace tako
 {
+	#ifdef _WIN32
 	glbinding::ProcAddress GetGLProcAddress(const char* name)
 	{
 		auto procAddress = reinterpret_cast<glbinding::ProcAddress>(wglGetProcAddress(name));
@@ -21,6 +26,7 @@ namespace tako
 
 		return procAddress;
 	}
+	#endif
 
 	static const Vector2 vertices[] =
 	{
@@ -69,8 +75,10 @@ namespace tako
 	class GraphicsContext::ContextImpl
 	{
 	public:
-		ContextImpl(HWND hwnd, int width, int height)
+		ContextImpl(WindowHandle hwnd, int width, int height)
 		{
+			m_handle = hwnd;
+			/*
 			m_hdc = GetDC(hwnd);
 			PIXELFORMATDESCRIPTOR pfd;
 
@@ -92,15 +100,18 @@ namespace tako
 
 
 			glbinding::Binding::initialize(GetGLProcAddress);
+			*/
 			glClearColor(0, 0.5f, 0, 1);
+
 
 			glEnable(GL_DEPTH_TEST);
 			glDepthFunc(GL_LESS);
-			glEnable(GL_TEXTURE_2D);
-			glEnable(GL_ALPHA_TEST);
-			glAlphaFunc(GL_GREATER, 0.1);
+			//glEnable(GL_TEXTURE_2D);
+			//glEnable(GL_ALPHA_TEST);
+			//glAlphaFunc(GL_GREATER, 0.1);
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			
 
 			SetupQuadPipeline();
 			SetupImagePipeline();
@@ -110,8 +121,8 @@ namespace tako
 			//map.Clear({ 0, 0, 0, 255 });
 
 			//map.FillRect(32, 0, 32, 32, {255, 0, 0, 255});
-			Bitmap map = Bitmap::FromFile("./tree.png");
-			bitmap = UploadBitmap(map);
+			//Bitmap map = Bitmap::FromFile("./tree.png");
+			//bitmap = UploadBitmap(map);
 		}
 
 		void Resize(int w, int h)
@@ -150,7 +161,7 @@ namespace tako
 
 
 			glBindBuffer(GL_ARRAY_BUFFER, m_quadVBO);
-			glVertexAttribPointer(0, 2, GLenum::GL_FLOAT, GL_FALSE, 0, NULL);
+			glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
 			glEnableVertexAttribArray(0);
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 		}
@@ -169,9 +180,9 @@ namespace tako
 			//glUniform1i(m_imageTextureUniform, 0);
 
 			glBindBuffer(GL_ARRAY_BUFFER, m_imageVBO);
-			glVertexAttribPointer(0, 2, GLenum::GL_FLOAT, GL_FALSE, sizeof(ImageVertex), NULL);
+			glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(ImageVertex), NULL);
 			glEnableVertexAttribArray(0);
-			glVertexAttribPointer(1, 2, GLenum::GL_FLOAT, GL_FALSE, sizeof(ImageVertex), (void*)offsetof(ImageVertex, texcoord));
+			glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(ImageVertex), (void*)offsetof(ImageVertex, texcoord));
 			glEnableVertexAttribArray(1);
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 		}
@@ -197,10 +208,28 @@ namespace tako
 			glShaderSource(sh, 1, &shaderPointer, NULL);
 			glCompileShader(sh);
 
+			GLint isCompiled = 0;
+			glGetShaderiv(sh, GL_COMPILE_STATUS, &isCompiled);
+			if(isCompiled == GL_FALSE)
+			{
+				GLint maxLength = 0;
+				glGetShaderiv(sh, GL_INFO_LOG_LENGTH, &maxLength);
+
+				// The maxLength includes the NULL character
+				std::vector<GLchar> errorLog(maxLength);
+				glGetShaderInfoLog(sh, maxLength, &maxLength, &errorLog[0]);
+				LOG_ERR("{}", std::string(errorLog.begin(),errorLog.end()));
+
+				// Provide the infolog in whatever manor you deem best.
+				// Exit with failure.
+				glDeleteShader(sh); // Don't leak the shader.
+				return 0;
+			}
+
 			auto err = glGetError();
 			if (err != GL_NO_ERROR)
 			{
-				LOG("error!");
+				LOG("error compiling shader!");
 			}
 
 			return sh;
@@ -212,6 +241,11 @@ namespace tako
 			glAttachShader(m_quadProgram, CompileShader(quadVertexShader, GL_VERTEX_SHADER));
 			glAttachShader(m_quadProgram, CompileShader(quadFragmentShader, GL_FRAGMENT_SHADER));
 			glLinkProgram(m_quadProgram);
+			auto err = glGetError();
+			if (err != GL_NO_ERROR)
+			{
+				LOG("error shader");
+			}
 
 			m_quadVBO = 0;
 			glGenBuffers(1, &m_quadVBO);
@@ -251,18 +285,20 @@ namespace tako
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 			DrawSquare(100, 100, 100, 100, Color("#FFFF00AA"));
-			DrawSquare(0, 0, 100, 100, Color("#00FFFF"));
-			DrawImage(200, 200, 67 * 2, 80 * 2, bitmap);
+			DrawSquare(0, 0, 100, 100, Color("#00FFAA"));
+			DrawSquare(50, 50, 100, 100, Color("#00FF55"));
+			DrawSquare(200, 200, 100, 100, Color("#00FFAA"));
+			//DrawImage(200, 200, 67 * 2, 80 * 2, bitmap);
 
 			auto err = glGetError();
 			if (err != GL_NO_ERROR)
 			{
-				LOG("error!");
+				LOG("draw error!");
 			}
 
 
 			glFlush();
-			SwapBuffers(m_hdc);
+			//SwapBuffers(m_hdc);
 		}
 
 		void HandleEvent(Event& evt)
@@ -279,9 +315,10 @@ namespace tako
 			}
 		}
 	private:
-		HDC m_hdc;
-		HGLRC m_hrc;
-		GLuint bitmap;
+		//HDC m_hdc;
+		//HGLRC m_hrc;
+		//GLuint bitmap;
+		WindowHandle m_handle;
 
 		GLuint m_quadProgram;
 		GLuint m_quadVBO;

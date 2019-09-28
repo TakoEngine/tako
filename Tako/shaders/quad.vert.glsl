@@ -1,4 +1,5 @@
-#version 110
+#version 100
+precision mediump float;
 
 attribute vec2 position;
 

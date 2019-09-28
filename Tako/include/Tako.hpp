@@ -1,17 +1,43 @@
 #pragma once
 
 #include <iostream>
-#include "Windows.h"
+//#include "Windows.h"
 #include "Window.hpp"
 #include "GraphicsContext.hpp"
 #include "Utility.hpp"
 #include "FileSystem.hpp"
+#include <emscripten.h>
 
 namespace tako
 {
 	extern void Setup();
 }
 
+struct TickStruct
+{
+	tako::Window* window;
+	tako::GraphicsContext* context;
+};
+
+void Tick(void* p)
+{
+	TickStruct* data = reinterpret_cast<TickStruct*>(p);
+	data->window->Poll();
+	data->context->Present();
+}
+
+int main()
+{
+	tako::Window window;
+	tako::GraphicsContext context(window.GetHandle(), 1024, 768);
+	tako::Setup();
+	TickStruct data;
+	data.window = &window;
+	data.context = &context;
+	emscripten_set_main_loop_arg(Tick, &data, 0, 1);
+	return 0;
+}
+/*
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow)
 {
 #ifndef NDEBUG
@@ -66,3 +92,4 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 	LOG("terminating")
 	return 0;
 }
+*/

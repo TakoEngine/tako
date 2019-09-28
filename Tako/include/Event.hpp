@@ -30,7 +30,7 @@ namespace tako
 
 
 #define EVENT_CLASS_TYPE(type) \
-	virtual EventType GetType() const override { return EventType::##type; } \
+	virtual EventType GetType() const override { return EventType::type; } \
 	virtual const char* GetName() const override { return #type; }
 
 	class WindowClose : public Event
@@ -49,7 +49,7 @@ namespace tako
 		int width;
 		int height;
 	protected:
-		virtual void DebugPrint(std::ostream& os) const
+		virtual void DebugPrint(std::ostream& os) const override
 		{
 			os << GetName() << "(" << width << "," << height << ")";
 		}

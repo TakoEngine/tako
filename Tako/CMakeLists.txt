@@ -2,14 +2,9 @@ set(TAKO_DLL "tako")
 
 set(SOURCE_FILES
 	"include/Window.hpp"
-	"src/Window.cpp"
 	"include/Log.hpp"
-	"src/Log.cpp"
 	"include/Utility.hpp"
 	"include/FileSystem.hpp"
-	"src/FileSystem.cpp"
-	"include/WinUtility.hpp"
-	"src/WinUtility.cpp"
 	"include/NumberTypes.hpp"
 	"include/Math.hpp"
 	"src/Math.cpp"
@@ -17,10 +12,28 @@ set(SOURCE_FILES
 	"src/Bitmap.cpp"
 	"include/GraphicsContext.hpp"
 #	"src/VulkanContext.cpp"
-	"src/OpenGLContext.cpp"
+    "src/platform/opengl/OpenGLContext.cpp"
 	"include/Tako.hpp"
 	"include/Event.hpp"
-	"src/Event.cpp")
+	"src/Event.cpp"
+	)
+
+if (WIN32)
+set(SOURCE_FILES ${SOURCE_FILES}
+	"src/platform/win32/Window.cpp"
+	"src/platform/win32/Log.cpp"
+	"src/platform/win32/FileSystem.cpp"
+	"include/WinUtility.hpp"
+	"src/platform/win32/WinUtility.cpp"
+)
+ENDIF(WIN32)
+
+if (EMSCRIPTEN)
+set(SOURCE_FILES ${SOURCE_FILES}
+	"src/platform/web/Window.cpp"
+	"src/platform/web/Log.cpp"
+)
+ENDIF(EMSCRIPTEN)
 
 function(add_shader filename)
 	SET(SHADER_IN ${CMAKE_SOURCE_DIR}/Tako/shaders/${filename})
@@ -53,9 +66,10 @@ target_compile_definitions(${TAKO_DLL} PRIVATE "VK_USE_PLATFORM_WIN32_KHR")
 target_link_libraries(${TAKO_DLL} PRIVATE ${Vulkan_LIBRARIES})
 ]]
 
-find_package(glbinding REQUIRED)
+#find_package(glbinding REQUIRED)
 #configure_file(${glbinding_DIR}/glbinding.dll "glbinding.dll" COPYONLY)
-target_link_libraries(${TAKO_DLL} PRIVATE glbinding::glbinding)
+#target_link_libraries(${TAKO_DLL} PRIVATE glbinding::glbinding)
+target_link_libraries(${TAKO_DLL} PRIVATE GLESv2)
 
 
 
