@@ -12,6 +12,13 @@ set(SOURCE_FILES
 	"include/Bitmap.hpp"
 	"src/Bitmap.cpp"
 	"include/GraphicsContext.hpp"
+	"include/Texture.hpp"
+	"include/PixelArtDrawer.hpp"
+	"src/platform/opengl/OpenGLPixelArtDrawer.hpp"
+	"src/platform/opengl/OpenGLPixelArtDrawer.cpp"
+	"include/Texture.hpp"
+	"src/platform/opengl/OpenGLTexture.hpp"
+	"src/platform/opengl/OpenGLTexture.cpp"
 #	"src/VulkanContext.cpp"
     "src/platform/opengl/OpenGLContext.cpp"
 	"include/Tako.hpp"
@@ -33,8 +40,7 @@ if (EMSCRIPTEN)
 set(SOURCE_FILES ${SOURCE_FILES}
 	"src/platform/web/Window.cpp"
 	"src/platform/web/Log.cpp"
-	"src/platform/web/FileSystem.cpp"
-)
+	"src/platform/web/FileSystem.cpp")
 ENDIF(EMSCRIPTEN)
 
 function(add_shader filename)

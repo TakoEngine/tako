@@ -2,6 +2,7 @@
 #include "Window.hpp"
 #include <memory>
 #include "Event.hpp"
+#include "PixelArtDrawer.hpp"
 
 namespace tako
 {
@@ -13,6 +14,7 @@ namespace tako
 		void Present();
 		void Resize(int width, int height);
 		virtual void HandleEvent(Event& evt) override;
+		PixelArtDrawer* CreatePixelArtDrawer();
 	private:
 		class ContextImpl;
 		std::unique_ptr<ContextImpl> m_impl;

@@ -10,19 +10,24 @@
 
 namespace tako
 {
-	extern void Setup();
+	extern void Setup(PixelArtDrawer* drawer);
+	extern void Update();
+	extern void Draw(PixelArtDrawer* drawer);
 }
 
 struct TickStruct
 {
 	tako::Window* window;
 	tako::GraphicsContext* context;
+	tako::PixelArtDrawer* drawer;
 };
 
 void Tick(void* p)
 {
 	TickStruct* data = reinterpret_cast<TickStruct*>(p);
 	data->window->Poll();
+    tako::Update();
+	tako::Draw(data->drawer);
 	data->context->Present();
 }
 
@@ -30,10 +35,11 @@ int main()
 {
 	tako::Window window;
 	tako::GraphicsContext context(window.GetHandle(), 1024, 768);
-	tako::Setup();
 	TickStruct data;
 	data.window = &window;
 	data.context = &context;
+	data.drawer = context.CreatePixelArtDrawer();
+    tako::Setup(data.drawer);
 	emscripten_set_main_loop_arg(Tick, &data, 0, 1);
 	return 0;
 }
