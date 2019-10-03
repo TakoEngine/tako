@@ -23,6 +23,7 @@ namespace tako
 				return;
 			}
 
+			glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 			m_window = glfwCreateWindow(1024, 768, "Hello Web", NULL, NULL);
 			if (!m_window)
 			{
@@ -30,6 +31,9 @@ namespace tako
 				return;
 			}
 
+			glfwSetWindowUserPointer(m_window, this);
+
+			glfwSetFramebufferSizeCallback(m_window, FrameBufferSizeCallback);
 			glfwMakeContextCurrent(m_window);
 		}
 
@@ -68,6 +72,18 @@ namespace tako
 			m_height = height;
 		}
 
+		static void FrameBufferSizeCallback(GLFWwindow* window, int width, int height)
+        {
+            Window::WindowImpl* win = static_cast<Window::WindowImpl*>(glfwGetWindowUserPointer(window));
+		    win->Resize(width, height);
+            if (win->m_callback)
+            {
+                WindowResize evt;
+                evt.width = win->m_width;
+                evt.height = win->m_height;
+                win->m_callback(evt);
+            }
+        }
 	};
 
 

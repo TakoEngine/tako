@@ -35,6 +35,15 @@ int main()
 {
 	tako::Window window;
 	tako::GraphicsContext context(window.GetHandle(), 1024, 768);
+    tako::Broadcaster broadcaster;
+
+    broadcaster.Register(&context);
+
+    window.SetEventCallback([&](tako::Event& evt)
+    {
+        broadcaster.Broadcast(evt);
+    });
+
 	TickStruct data;
 	data.window = &window;
 	data.context = &context;

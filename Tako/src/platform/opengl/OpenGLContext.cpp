@@ -161,8 +161,7 @@ namespace tako
 			{
 				tako::WindowResize& res = static_cast<tako::WindowResize&>(evt);
 				LOG("Window Resize: {} {} {}", res.GetName(), res.width, res.height);
-				//Resize(res.width, res.height);
-				Draw();
+                GetPixelArtDrawer()->Resize(res.width, res.height);
 			} break;
 			}
 		}
