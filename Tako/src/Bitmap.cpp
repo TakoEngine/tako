@@ -115,6 +115,7 @@ namespace tako
 		stbi_uc* img = stbi_load_from_memory(buffer, bytesRead, &width, &height, &channels, 4);
 		Bitmap bitmap((Color*)img, width, height);
 		stbi_image_free(img);
+		delete[] buffer;
 
 		return std::move(bitmap);
 	}

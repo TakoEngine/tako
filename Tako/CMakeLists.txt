@@ -1,3 +1,4 @@
+include(tako)
 set(TAKO_DLL "tako")
 
 set(SOURCE_FILES
@@ -32,6 +33,7 @@ if (EMSCRIPTEN)
 set(SOURCE_FILES ${SOURCE_FILES}
 	"src/platform/web/Window.cpp"
 	"src/platform/web/Log.cpp"
+	"src/platform/web/FileSystem.cpp"
 )
 ENDIF(EMSCRIPTEN)
 

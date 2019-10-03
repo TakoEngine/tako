@@ -104,9 +104,8 @@ namespace tako
 			glClearColor(0, 0.5f, 0, 1);
 
 
-			glEnable(GL_DEPTH_TEST);
+			glDisable(GL_DEPTH_TEST);
 			glDepthFunc(GL_LESS);
-			//glEnable(GL_TEXTURE_2D);
 			//glEnable(GL_ALPHA_TEST);
 			//glAlphaFunc(GL_GREATER, 0.1);
 			glEnable(GL_BLEND);
@@ -117,12 +116,8 @@ namespace tako
 			SetupImagePipeline();
 			Resize(width, height);
 
-			//Bitmap map(64, 64);
-			//map.Clear({ 0, 0, 0, 255 });
-
-			//map.FillRect(32, 0, 32, 32, {255, 0, 0, 255});
-			//Bitmap map = Bitmap::FromFile("./tree.png");
-			//bitmap = UploadBitmap(map);
+            Bitmap tree = Bitmap::FromFile("tree.png");
+            bitmap = UploadBitmap(tree);
 		}
 
 		void Resize(int w, int h)
@@ -193,9 +188,11 @@ namespace tako
 			glGenTextures(1, &texture);
 			glBindTexture(GL_TEXTURE_2D, texture);
 
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bitmap.Width(), bitmap.Height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap.GetData());
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bitmap.Width(), bitmap.Height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap.GetData());
 
 			return texture;
 		}
@@ -284,11 +281,13 @@ namespace tako
 		{
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+
 			DrawSquare(100, 100, 100, 100, Color("#FFFF00AA"));
 			DrawSquare(0, 0, 100, 100, Color("#00FFAA"));
-			DrawSquare(50, 50, 100, 100, Color("#00FF55"));
-			DrawSquare(200, 200, 100, 100, Color("#00FFAA"));
-			//DrawImage(200, 200, 67 * 2, 80 * 2, bitmap);
+			DrawSquare(50, 50, 100, 100, Color("#00FF5555"));
+            DrawImage(175, 175, 67 * 2, 80 * 2, bitmap);
+			//DrawSquare(200, 200, 100, 100, Color("#00FFAA"));
+
 
 			auto err = glGetError();
 			if (err != GL_NO_ERROR)
@@ -317,7 +316,7 @@ namespace tako
 	private:
 		//HDC m_hdc;
 		//HGLRC m_hrc;
-		//GLuint bitmap;
+		GLuint bitmap;
 		WindowHandle m_handle;
 
 		GLuint m_quadProgram;
