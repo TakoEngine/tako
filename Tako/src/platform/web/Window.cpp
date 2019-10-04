@@ -1,12 +1,8 @@
 #include "Window.hpp"
 #include "Bitmap.hpp"
-#include "FileSystem.hpp"
-#include <GLFW/glfw3.h>
 #include <algorithm>
-#include <vector>
-#include <array>
-#include <set>
 #include <limits>
+#include <emscripten/html5.h>
 
 using namespace tako::literals;
 
@@ -17,47 +13,37 @@ namespace tako
 	public:
 		WindowImpl()
 		{
-			if (!glfwInit())
-			{
-				LOG_ERR("Error initializing GLFW");
-				return;
-			}
-
-			glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-			m_window = glfwCreateWindow(1024, 768, "Hello Web", NULL, NULL);
-			if (!m_window)
-			{
-				LOG_ERR("Error creating Window");
-				return;
-			}
-
-			glfwSetWindowUserPointer(m_window, this);
-
-			glfwSetFramebufferSizeCallback(m_window, FrameBufferSizeCallback);
-			glfwMakeContextCurrent(m_window);
+            EmscriptenWebGLContextAttributes attributes;
+            emscripten_webgl_init_context_attributes(&attributes);
+            attributes.alpha = false;
+            attributes.antialias = false;
+            m_contextHandle = emscripten_webgl_create_context(0, &attributes);
+            emscripten_webgl_make_context_current(m_contextHandle);
+            double width, height;
+            emscripten_get_element_css_size(0, &width, &height);
+            int w, h;
+            emscripten_get_canvas_element_size(0, &w, &h);
+            Resize(width, height);
+            emscripten_set_resize_callback(0, this, false, WindowResizeCallback);
 		}
 
 
 		~WindowImpl()
 		{
-			glfwTerminate();
 		}
 
 		void Poll()
 		{
-			//glClearColor(0, 0.5f, 0, 1);
-			//glClear(GL_COLOR_BUFFER_BIT);
-			glfwSwapBuffers(m_window);
-			glfwPollEvents();
 		}
 
 		bool ShouldExit()
 		{
-			return glfwWindowShouldClose(m_window);
+			return false;
 		}
 		friend Window;
 	private:
 		int m_width, m_height;
+        EMSCRIPTEN_WEBGL_CONTEXT_HANDLE m_contextHandle;
 		std::function<void(Event&)> m_callback;
 		GLFWwindow* m_window;
 
@@ -70,11 +56,14 @@ namespace tako
 		{
 			m_width = width;
 			m_height = height;
+			emscripten_set_canvas_element_size(0, width, height);
 		}
 
-		static void FrameBufferSizeCallback(GLFWwindow* window, int width, int height)
+		static EM_BOOL WindowResizeCallback(int eventType, const EmscriptenUiEvent *uiEvent, void *userData)
         {
-            Window::WindowImpl* win = static_cast<Window::WindowImpl*>(glfwGetWindowUserPointer(window));
+            Window::WindowImpl* win = static_cast<Window::WindowImpl*>(userData);
+            double width, height;
+            emscripten_get_element_css_size(0, &width, &height);
 		    win->Resize(width, height);
             if (win->m_callback)
             {
@@ -83,6 +72,8 @@ namespace tako
                 evt.height = win->m_height;
                 win->m_callback(evt);
             }
+
+            return true;
         }
 	};
 

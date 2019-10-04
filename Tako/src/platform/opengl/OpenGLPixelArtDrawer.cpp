@@ -58,25 +58,6 @@ namespace tako
 
         SetupQuadPipeline();
         SetupImagePipeline();
-
-        glViewport(0, 0, 400, 400);
-
-        auto err = glGetError();
-        if (err != GL_NO_ERROR)
-        {
-            LOG("error preresize");
-        }
-
-        Matrix4 ortho = Matrix4::transpose(Matrix4::ortho(0, 400, 400, 0, 0, 100));
-        glUseProgram(m_quadProgram);
-        glUniformMatrix4fv(m_quadProjectionUniform, 1, GL_FALSE, &ortho[0]);
-        glUseProgram(m_imageProgram);
-        glUniformMatrix4fv(m_imageProjectionUniform, 1, GL_FALSE, &ortho[0]);
-        err = glGetError();
-        if (err != GL_NO_ERROR)
-        {
-            LOG("error resize");
-        }
     }
 
     OpenGLPixelArtDrawer::~OpenGLPixelArtDrawer()
@@ -119,7 +100,7 @@ namespace tako
         glUniformMatrix4fv(m_imageModelUniform, 1, GL_FALSE, &mat[0]);
 
         //glActiveTexture(GL_TEXTURE0);
-        static_cast<const OpenGLTexture*>(img)->Bind();
+        dynamic_cast<const OpenGLTexture*>(img)->Bind();
         //glUniform1i(m_imageTextureUniform, 0);
 
         glBindBuffer(GL_ARRAY_BUFFER, m_imageVBO);

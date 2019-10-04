@@ -34,7 +34,7 @@ void Tick(void* p)
 int main()
 {
 	tako::Window window;
-	tako::GraphicsContext context(window.GetHandle(), 1024, 768);
+	tako::GraphicsContext context(window.GetHandle(), window.GetWidth(), window.GetHeight());
     tako::Broadcaster broadcaster;
 
     broadcaster.Register(&context);
