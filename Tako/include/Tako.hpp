@@ -14,7 +14,15 @@ namespace tako
 	extern void Setup(PixelArtDrawer* drawer);
 	extern void Update(Input* input, float dt);
 	extern void Draw(PixelArtDrawer* drawer);
+
+    static tako::PixelArtDrawer* Graphics;
 }
+
+struct UpdateStruct
+{
+    tako::PixelArtDrawer* drawer;
+    tako::Input* input;
+};
 
 struct TickStruct
 {
@@ -58,6 +66,7 @@ int main()
 	data.context = &context;
 	data.drawer = context.CreatePixelArtDrawer();
 	data.input = &input;
+	tako::Graphics = data.drawer;
     tako::Setup(data.drawer);
 	emscripten_set_main_loop_arg(Tick, &data, 0, 1);
 	return 0;
