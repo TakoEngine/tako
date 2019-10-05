@@ -51,6 +51,9 @@ namespace tako
 
     OpenGLPixelArtDrawer::OpenGLPixelArtDrawer()
     {
+        m_scale = 1;
+        m_sizeSet = false;
+        glClearColor(0, 0, 0, 1);
         glDisable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
         glEnable(GL_BLEND);
@@ -65,14 +68,67 @@ namespace tako
 
     }
 
+    void OpenGLPixelArtDrawer::SetClearColor(Color c)
+    {
+        m_clearColor = c;
+        if (!m_sizeSet)
+        {
+            glClearColor(c.r / 255.0f, c.g / 255.0f, c.b / 255.0f, c.a / 255.0f);
+        }
+    }
+
+    void OpenGLPixelArtDrawer::SetTargetSize(int width, int height)
+    {
+        m_sizeW = width;
+        m_sizeH = height;
+
+        if (m_sizeSet || m_autoScale)
+        {
+            CalculateScale();
+        }
+        if (m_sizeSet)
+        {
+            glClearColor(0, 0, 0, 1);
+        }
+    }
+
+    void OpenGLPixelArtDrawer::AutoScale()
+    {
+        m_autoScale = true;
+        CalculateScale();
+    }
+
+    void OpenGLPixelArtDrawer::SetCameraPosition(Vector2 position)
+    {
+        m_cameraPosition = position;
+    }
+
+    Vector2 OpenGLPixelArtDrawer::GetCameraPosition()
+    {
+        return m_cameraPosition;
+    }
+
+    Vector2 OpenGLPixelArtDrawer::GetCameraViewSize()
+    {
+        return
+        {
+            static_cast<float>(m_width) / m_scale,
+            static_cast<float>(m_height) / m_scale
+        };
+    }
+
     void OpenGLPixelArtDrawer::Clear()
     {
-        glClearColor(0, 0.5f, 0, 1);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        if (m_sizeSet)
+        {
+            DrawRectangle(0, 0, m_sizeW, m_sizeH, m_clearColor);
+        }
     }
 
     void OpenGLPixelArtDrawer::DrawRectangle(float x, float y, float w, float h, Color c)
     {
+        GetDrawOffset(x, y, w, h);
         glUseProgram(m_quadProgram);
 
         Matrix4 mat = Matrix4::identity;
@@ -92,6 +148,7 @@ namespace tako
 
     void OpenGLPixelArtDrawer::DrawImage(float x, float y, float w, float h, const Texture* img)
     {
+        GetDrawOffset(x, y, w, h);
         glUseProgram(m_imageProgram);
 
         Matrix4 mat = Matrix4::identity;
@@ -113,6 +170,12 @@ namespace tako
 
     void OpenGLPixelArtDrawer::Resize(int w, int h)
     {
+        m_width = w;
+        m_height = h;
+        if (m_sizeSet || m_autoScale)
+        {
+            CalculateScale();
+        }
         glViewport(0, 0, w, h);
 
         auto err = glGetError();
@@ -218,6 +281,32 @@ namespace tako
         {
             LOG("error pip!");
         }
+    }
+
+    void OpenGLPixelArtDrawer::GetDrawOffset(float& x, float& y, float& w, float& h)
+    {
+        auto extents = GetCameraViewSize() / 2;
+        x = x - m_cameraPosition.x + extents.x;
+        y = m_cameraPosition.y - y + extents.y;
+
+        x = x * m_scale;
+        y = y * m_scale;
+        w = w * m_scale;
+        h = h * m_scale;
+
+        if (m_sizeSet)
+        {
+            x += (m_width - m_sizeW * m_scale) / 2;
+            y += (m_height - m_sizeH * m_scale) / 2;
+        }
+    }
+
+    void OpenGLPixelArtDrawer::CalculateScale()
+    {
+        int wScale = m_width / m_sizeW;
+        int hScale = m_height / m_sizeH;
+        m_scale = std::max(1, std::min(wScale, hScale));
+        LOG("SCALE {}", m_scale);
     }
 
 

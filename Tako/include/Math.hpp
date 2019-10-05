@@ -61,6 +61,11 @@ namespace tako
 			return *this;
 		}
 
+        friend constexpr Vector2 operator+(Vector2 lhs, const Vector2 rhs)
+        {
+            return lhs += rhs;
+        }
+
 		friend constexpr Vector2 operator-(Vector2 lhs, const Vector2 rhs)
 		{
 			return lhs -= rhs;
@@ -71,6 +76,13 @@ namespace tako
 		    lhs.x *= rhs;
 		    lhs.y *= rhs;
 		    return lhs;
+        }
+
+        friend constexpr Vector2 operator/(Vector2 lhs, const float rhs)
+        {
+            lhs.x /= rhs;
+            lhs.y /= rhs;
+            return lhs;
         }
 
 		constexpr Vector2& operator/=(const float factor)

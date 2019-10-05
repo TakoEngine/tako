@@ -12,6 +12,13 @@ namespace tako
         OpenGLPixelArtDrawer();
         ~OpenGLPixelArtDrawer() override;
 
+        void SetClearColor(Color c) override;
+        void SetTargetSize(int width, int height) override;
+        void AutoScale() override;
+        void SetCameraPosition(Vector2 position) override;
+        Vector2 GetCameraPosition() override;
+        Vector2 GetCameraViewSize() override;
+
         void Clear() override;
         void DrawRectangle(float x, float y, float w, float h, Color c) override;
         void DrawImage(float x, float y, float w, float h, const Texture* img) override;
@@ -23,6 +30,19 @@ namespace tako
     private:
         void SetupQuadPipeline();
         void SetupImagePipeline();
+        void GetDrawOffset(float& x, float& y, float& w, float& h);
+        void CalculateScale();
+
+        Vector2 m_cameraPosition;
+        U32 m_width;
+        U32 m_height;
+
+        bool m_sizeSet;
+        bool m_autoScale;
+        U32 m_scale;
+        U32 m_sizeW;
+        U32 m_sizeH;
+        Color m_clearColor;
 
         GLuint m_quadProgram;
         GLuint m_quadVBO;

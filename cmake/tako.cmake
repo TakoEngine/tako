@@ -1,6 +1,6 @@
 function(tako_setup target)
     if (DEFINED EMSCRIPTEN)
-        set(CMAKE_EXECUTABLE_SUFFIX ".html" PARENT_SCOPE)
+        #set(CMAKE_EXECUTABLE_SUFFIX ".html" PARENT_SCOPE)
         set_target_properties(${target} PROPERTIES LINK_FLAGS "--emrun")
     endif()
 endfunction()

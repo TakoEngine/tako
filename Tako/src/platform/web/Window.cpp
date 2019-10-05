@@ -27,14 +27,6 @@ namespace tako
             {"KeyS", Key::S},
             {"KeyD", Key::D}
         };
-
-        Key CodeToKey(const EM_UTF8*)
-        {
-            for (auto a: KeyCodeMapping)
-            {
-
-            }
-        }
     }
 	class Window::WindowImpl
 	{
