@@ -1,13 +1,41 @@
 #include "Window.hpp"
 #include "Bitmap.hpp"
+#include "string.h"
 #include <algorithm>
 #include <limits>
+#include <map>
 #include <emscripten/html5.h>
 
 using namespace tako::literals;
 
 namespace tako
 {
+    namespace
+    {
+        struct StrCmp
+        {
+            bool operator()(const EM_UTF8* a, const EM_UTF8* b) const
+            {
+                return std::strcmp(a, b) < 0;
+            }
+        };
+
+        std::map<const EM_UTF8*, Key, StrCmp> KeyCodeMapping
+        {
+            {"KeyW", Key::W},
+            {"KeyA", Key::A},
+            {"KeyS", Key::S},
+            {"KeyD", Key::D}
+        };
+
+        Key CodeToKey(const EM_UTF8*)
+        {
+            for (auto a: KeyCodeMapping)
+            {
+
+            }
+        }
+    }
 	class Window::WindowImpl
 	{
 	public:
@@ -25,6 +53,10 @@ namespace tako
             emscripten_get_canvas_element_size(0, &w, &h);
             Resize(width, height);
             emscripten_set_resize_callback(0, this, false, WindowResizeCallback);
+
+            emscripten_set_keypress_callback(0, this, false, KeyPressCallback);
+            emscripten_set_keydown_callback(0, this, false, KeyPressCallback);
+            emscripten_set_keyup_callback(0, this, false, KeyPressCallback);
 		}
 
 
@@ -59,7 +91,7 @@ namespace tako
 			emscripten_set_canvas_element_size(0, width, height);
 		}
 
-		static EM_BOOL WindowResizeCallback(int eventType, const EmscriptenUiEvent *uiEvent, void *userData)
+		static EM_BOOL WindowResizeCallback(int eventType, const EmscriptenUiEvent* uiEvent, void* userData)
         {
             Window::WindowImpl* win = static_cast<Window::WindowImpl*>(userData);
             double width, height;
@@ -74,6 +106,33 @@ namespace tako
             }
 
             return true;
+        }
+
+        static EM_BOOL KeyPressCallback(int eventType, const EmscriptenKeyboardEvent* keyEvent, void* userData)
+        {
+            Window::WindowImpl* win = static_cast<Window::WindowImpl*>(userData);
+            if (KeyCodeMapping.count(keyEvent->code) <= 0)
+            {
+                return false;
+            }
+            if (win->m_callback)
+            {
+                KeyPress evt;
+                evt.key = KeyCodeMapping[keyEvent->code];
+                switch (eventType)
+                {
+                    case EMSCRIPTEN_EVENT_KEYPRESS:
+                    case EMSCRIPTEN_EVENT_KEYDOWN:
+                        evt.status = KeyStatus::Down;
+                        break;
+                    case EMSCRIPTEN_EVENT_KEYUP:
+                        evt.status = KeyStatus::Up;
+                        break;
+                }
+                win->m_callback(evt);
+            }
+
+		    return true;
         }
 	};
 

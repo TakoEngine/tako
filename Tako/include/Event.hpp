@@ -10,6 +10,7 @@ namespace tako
 	{
 		WindowClose,
 		WindowResize,
+		KeyPress,
 		AppQuit
 	};
 
@@ -54,6 +55,30 @@ namespace tako
 			os << GetName() << "(" << width << "," << height << ")";
 		}
 	};
+
+	enum class Key
+    {
+	    W = 0,
+	    A,
+	    S,
+	    D,
+        Unknown
+    };
+
+    enum class KeyStatus
+    {
+        Up = 0,
+        Down
+    };
+
+    class KeyPress : public Event
+    {
+    public:
+        EVENT_CLASS_TYPE(KeyPress)
+
+        Key key;
+        KeyStatus status;
+    };
 
 	class AppQuit : public Event
 	{

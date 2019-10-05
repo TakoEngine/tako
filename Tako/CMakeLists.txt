@@ -24,6 +24,8 @@ set(SOURCE_FILES
 	"include/Tako.hpp"
 	"include/Event.hpp"
 	"src/Event.cpp"
+	"include/Input.hpp"
+	"src/Input.cpp"
 	)
 
 if (WIN32)
@@ -56,10 +58,10 @@ function(add_shader filename)
 	set(SOURCE_FILES ${SOURCE_FILES} ${SHADER_OUT} PARENT_SCOPE)
 endfunction()
 
-add_shader("quad.vert.glsl")
-add_shader("quad.frag.glsl")
-add_shader("image.vert.glsl")
-add_shader("image.frag.glsl")
+# add_shader("quad.vert.glsl")
+# add_shader("quad.frag.glsl")
+# add_shader("image.vert.glsl")
+# add_shader("image.frag.glsl")
 
 
 add_library(${TAKO_DLL} ${SOURCE_FILES})
