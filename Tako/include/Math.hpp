@@ -34,6 +34,7 @@ namespace tako
 	{
 		float x, y;
 
+		constexpr Vector2() : x(0), y(0) {}
 		constexpr Vector2(float x, float y) : x(x), y(y) {}
 
 		constexpr bool operator==(const Vector2& rhs) const
@@ -46,6 +47,13 @@ namespace tako
 			return !operator==(rhs);
 		}
 
+        constexpr Vector2& operator+=(const Vector2& rhs)
+        {
+            x += rhs.x;
+            y += rhs.y;
+            return *this;
+        }
+
 		constexpr Vector2& operator-=(const Vector2& rhs)
 		{
 			x -= rhs.x;
@@ -57,6 +65,13 @@ namespace tako
 		{
 			return lhs -= rhs;
 		}
+
+		friend constexpr Vector2 operator*(Vector2 lhs, const float rhs)
+        {
+		    lhs.x *= rhs;
+		    lhs.y *= rhs;
+		    return lhs;
+        }
 
 		constexpr Vector2& operator/=(const float factor)
 		{
