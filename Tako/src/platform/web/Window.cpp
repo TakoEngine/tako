@@ -25,7 +25,13 @@ namespace tako
             {"KeyW", Key::W},
             {"KeyA", Key::A},
             {"KeyS", Key::S},
-            {"KeyD", Key::D}
+            {"KeyD", Key::D},
+            {"ArrowDown", Key::Down},
+            {"ArrowLeft", Key::Left},
+            {"ArrowRight", Key::Right},
+            {"ArrowUp", Key::Up},
+            {"Space", Key::Space},
+            {"Enter", Key::Enter}
         };
     }
 	class Window::WindowImpl

@@ -62,6 +62,12 @@ namespace tako
 	    A,
 	    S,
 	    D,
+	    Up,
+	    Down,
+	    Left,
+	    Right,
+	    Space,
+	    Enter,
         Unknown
     };
 
