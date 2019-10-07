@@ -19,6 +19,8 @@ set(SOURCE_FILES
 	"include/Texture.hpp"
 	"src/platform/opengl/OpenGLTexture.hpp"
 	"src/platform/opengl/OpenGLTexture.cpp"
+	"src/platform/opengl/OpenGLSprite.hpp"
+	"src/platform/opengl/OpenGLSprite.cpp"
 #	"src/VulkanContext.cpp"
     "src/platform/opengl/OpenGLContext.cpp"
 	"include/Tako.hpp"
@@ -26,6 +28,7 @@ set(SOURCE_FILES
 	"src/Event.cpp"
 	"include/Input.hpp"
 	"src/Input.cpp"
+	"include/Sprite.hpp"
 	)
 
 if (WIN32)

@@ -2,6 +2,7 @@
 
 #include "PixelArtDrawer.hpp"
 #include "OpenGLTexture.hpp"
+#include "OpenGLSprite.hpp"
 #include <GLES2/gl2.h>
 
 namespace tako
@@ -22,12 +23,15 @@ namespace tako
         void Clear() override;
         void DrawRectangle(float x, float y, float w, float h, Color c) override;
         void DrawImage(float x, float y, float w, float h, const Texture* img) override;
+        void DrawSprite(float x, float y, float w, float h, const Sprite* sprite) override ;
 
         Texture* CreateTexture(const Bitmap& bitmap) override;
+        Sprite* CreateSprite(const Texture* texture, float x, float y, float w, float h) override;
 
         void Resize(int w, int h);
 
     private:
+        void DrawTextureQuad(float x, float y, float w, float h, const OpenGLTexture* texture, GLuint buffer);
         void SetupQuadPipeline();
         void SetupImagePipeline();
         void GetDrawOffset(float& x, float& y, float& w, float& h);

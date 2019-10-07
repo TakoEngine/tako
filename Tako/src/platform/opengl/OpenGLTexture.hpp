@@ -8,11 +8,14 @@ namespace tako
     class OpenGLTexture : public Texture
     {
     public:
-        explicit OpenGLTexture(GLuint id);
         explicit OpenGLTexture(const Bitmap& bitmap);
         ~OpenGLTexture() override;
         void Bind() const;
+
+        inline int GetWidth() const { return m_width; }
+        inline int GetHeight() const { return m_height; }
     private:
         GLuint m_id;
+        int m_width, m_height;
     };
 }

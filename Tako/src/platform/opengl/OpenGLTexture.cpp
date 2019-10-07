@@ -3,12 +3,7 @@
 namespace tako
 {
 
-    OpenGLTexture::OpenGLTexture(GLuint id)
-    {
-        m_id = id;
-    }
-
-    OpenGLTexture::OpenGLTexture(const Bitmap &bitmap)
+    OpenGLTexture::OpenGLTexture(const Bitmap &bitmap) : m_width(bitmap.Width()), m_height(bitmap.Height())
     {
         glGenTextures(1, &m_id);
         glBindTexture(GL_TEXTURE_2D, m_id);

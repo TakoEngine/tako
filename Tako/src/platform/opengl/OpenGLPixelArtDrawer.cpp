@@ -1,5 +1,6 @@
 #include "OpenGLPixelArtDrawer.hpp"
 #include <vector>
+#include <array>
 
 namespace tako
 {
@@ -21,15 +22,20 @@ namespace tako
             Vector2 texcoord;
         };
 
-        constexpr ImageVertex imageVertices[] =
+        constexpr std::array<ImageVertex, 6> CreateImageVertices(float x, float y, float w, float h)
         {
-            { {0, 0}, {0, 0}},
-            { {1, 0}, {1, 0}},
-            { {1, 1}, {1, 1}},
-            { {0, 0}, {0, 0}},
-            { {1, 1}, {1, 1}},
-            { {0, 1}, {0, 1}}
-        };
+            return
+            {{
+                    { {0, 0}, {x    , y    } },
+                    { {1, 0}, {x + w, y    } },
+                    { {1, 1}, {x + w, y + h } },
+                    { {0, 0}, {x    , y    }} ,
+                    { {1, 1}, {x + w, y + h} },
+                    { {0, 1}, {x    , y + h} }
+            }};
+        }
+
+        constexpr std::array<ImageVertex, 6> imageVertices = CreateImageVertices(0, 0, 1, 1);
 
         constexpr const char* quadVertexShader =
             #include "quad.vert.glsl"
@@ -148,24 +154,13 @@ namespace tako
 
     void OpenGLPixelArtDrawer::DrawImage(float x, float y, float w, float h, const Texture* img)
     {
-        GetDrawOffset(x, y, w, h);
-        glUseProgram(m_imageProgram);
+        DrawTextureQuad(x, y, w, h, dynamic_cast<const OpenGLTexture*>(img), m_imageVBO);
+    }
 
-        Matrix4 mat = Matrix4::identity;
-        mat.translate(x, y, 0);
-        mat.scale(w, h, 1);
-        glUniformMatrix4fv(m_imageModelUniform, 1, GL_FALSE, &mat[0]);
-
-        //glActiveTexture(GL_TEXTURE0);
-        dynamic_cast<const OpenGLTexture*>(img)->Bind();
-        //glUniform1i(m_imageTextureUniform, 0);
-
-        glBindBuffer(GL_ARRAY_BUFFER, m_imageVBO);
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(ImageVertex), NULL);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(ImageVertex), (void*)offsetof(ImageVertex, texcoord));
-        glEnableVertexAttribArray(1);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+    void OpenGLPixelArtDrawer::DrawSprite(float x, float y, float w, float h, const Sprite* sprite)
+    {
+        auto s = dynamic_cast<const OpenGLSprite*>(sprite);
+        DrawTextureQuad(x, y, w, h, s->GetTexture(), s->GetBuffer());
     }
 
     void OpenGLPixelArtDrawer::Resize(int w, int h)
@@ -199,6 +194,23 @@ namespace tako
     Texture* OpenGLPixelArtDrawer::CreateTexture(const Bitmap &bitmap)
     {
         return new OpenGLTexture(bitmap);
+    }
+
+    Sprite* OpenGLPixelArtDrawer::CreateSprite(const Texture* texture, float x, float y, float w, float h)
+    {
+        auto tex = dynamic_cast<const OpenGLTexture*>(texture);
+        float sX = x / tex->GetWidth();
+        float sY = y / tex->GetHeight();
+        float sW = w / tex->GetWidth();
+        float sH = h / tex->GetHeight();
+        auto vertices = CreateImageVertices(sX, sY, sW, sH);
+
+        GLuint spriteVBO = 0;
+        glGenBuffers(1, &spriteVBO);
+        glBindBuffer(GL_ARRAY_BUFFER, spriteVBO);
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(ImageVertex), &vertices[0], GL_STATIC_DRAW);
+
+        return new OpenGLSprite(tex, spriteVBO);
     }
 
     namespace
@@ -238,6 +250,28 @@ namespace tako
         }
     }
 
+    void OpenGLPixelArtDrawer::DrawTextureQuad(float x, float y, float w, float h, const OpenGLTexture* texture, GLuint buffer)
+    {
+        GetDrawOffset(x, y, w, h);
+        glUseProgram(m_imageProgram);
+
+        Matrix4 mat = Matrix4::identity;
+        mat.translate(x, y, 0);
+        mat.scale(w, h, 1);
+        glUniformMatrix4fv(m_imageModelUniform, 1, GL_FALSE, &mat[0]);
+
+        //glActiveTexture(GL_TEXTURE0);
+        texture->Bind();
+        //glUniform1i(m_imageTextureUniform, 0);
+
+        glBindBuffer(GL_ARRAY_BUFFER, buffer);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(ImageVertex), NULL);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(ImageVertex), (void*)offsetof(ImageVertex, texcoord));
+        glEnableVertexAttribArray(1);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+    }
+
     void OpenGLPixelArtDrawer::SetupQuadPipeline()
     {
         m_quadProgram = glCreateProgram();
@@ -270,7 +304,7 @@ namespace tako
         m_imageVBO = 0;
         glGenBuffers(1, &m_imageVBO);
         glBindBuffer(GL_ARRAY_BUFFER, m_imageVBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(imageVertices), imageVertices, GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, imageVertices.size() * sizeof(ImageVertex), &imageVertices[0], GL_STATIC_DRAW);
 
         m_imageProjectionUniform = glGetUniformLocation(m_imageProgram, "projection");
         m_imageModelUniform = glGetUniformLocation(m_imageProgram, "model");
