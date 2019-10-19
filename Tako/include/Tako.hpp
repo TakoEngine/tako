@@ -8,6 +8,7 @@
 #include "FileSystem.hpp"
 #include "Input.hpp"
 #include <emscripten.h>
+#include "Audio.hpp"
 
 namespace tako
 {
@@ -52,6 +53,8 @@ int main()
 	tako::GraphicsContext context(window.GetHandle(), window.GetWidth(), window.GetHeight());
 	tako::Input input;
     tako::Broadcaster broadcaster;
+	tako::Audio audio;
+	audio.Init();
 
     broadcaster.Register(&context);
     broadcaster.Register(&input);

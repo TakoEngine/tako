@@ -29,6 +29,8 @@ set(SOURCE_FILES
 	"include/Input.hpp"
 	"src/Input.cpp"
 	"include/Sprite.hpp"
+	"include/Audio.hpp"
+	"src/Audio.cpp"
 	)
 
 if (WIN32)
@@ -70,6 +72,7 @@ endfunction()
 add_library(${TAKO_DLL} ${SOURCE_FILES})
 target_include_directories(${TAKO_DLL} PUBLIC "include")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/stb")
+target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/dr_libs")
 target_include_directories(${TAKO_DLL} PUBLIC "${CMAKE_BINARY_DIR}/shader")
 
 #[[ Vulkan
@@ -83,6 +86,7 @@ target_link_libraries(${TAKO_DLL} PRIVATE ${Vulkan_LIBRARIES})
 #configure_file(${glbinding_DIR}/glbinding.dll "glbinding.dll" COPYONLY)
 #target_link_libraries(${TAKO_DLL} PRIVATE glbinding::glbinding)
 target_link_libraries(${TAKO_DLL} PRIVATE GLESv2)
+target_link_libraries(${TAKO_DLL} PRIVATE openal)
 
 
 
