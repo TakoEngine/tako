@@ -101,6 +101,17 @@ namespace tako
 		}
 	}
 
+	void Bitmap::DrawBitmap(I32 x, I32 y, I32 xb, I32 yb, I32 w, I32 h, const Bitmap& bitmap)
+	{
+		for (int i = 0; i < w; i++)
+		{
+			for (int j = 0; j < h; j++)
+			{
+				SetPixel(x + i, y + j, bitmap.GetPixel(xb + i, yb + j));
+			}
+		}
+	}
+
 	Bitmap Bitmap::Clone() const
 	{
 		return std::move(Bitmap(m_data.get(), m_width, m_height));

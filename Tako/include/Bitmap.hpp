@@ -22,6 +22,7 @@ namespace tako
 		void Clear(Color c);
 		void FillRect(I32 x, I32 y, I32 w, I32 h, Color c);
 		void DrawBitmap(I32 x, I32 y, const Bitmap& bitmap);
+		void DrawBitmap(I32 x, I32 y, I32 xb, I32 yb, I32 w, I32 h, const Bitmap& bitmap);
 
 		Bitmap Clone() const;
 		static Bitmap FromFile(const char* filePath);
