@@ -1,24 +1,26 @@
 #pragma once
 
 #include <iostream>
-//#include "Windows.h"
+//
 #include "Window.hpp"
 #include "GraphicsContext.hpp"
 #include "Utility.hpp"
 #include "FileSystem.hpp"
 #include "Input.hpp"
-#include <emscripten.h>
+//#include <emscripten.h>
 #include "Audio.hpp"
 
 namespace tako
 {
-	extern void Setup(PixelArtDrawer* drawer);
+	extern void Setup();
 	extern void Update(Input* input, float dt);
-	extern void Draw(PixelArtDrawer* drawer);
+	extern void Draw();
 
-    static tako::PixelArtDrawer* Graphics;
+#ifdef TAKO_OPENGL
+	static tako::PixelArtDrawer* Graphics;
+#endif
 }
-
+/*
 struct UpdateStruct
 {
     tako::PixelArtDrawer* drawer;
@@ -46,15 +48,20 @@ void Tick(void* p)
 	data->context->Present();
 	data->lastFrame = time;
 }
+*/
 
+/*
 int main()
 {
 	tako::Window window;
 	tako::GraphicsContext context(window.GetHandle(), window.GetWidth(), window.GetHeight());
 	tako::Input input;
     tako::Broadcaster broadcaster;
+#ifdef TAKO_OPENAL
 	tako::Audio audio;
 	audio.Init();
+#endif
+	
 
     broadcaster.Register(&context);
     broadcaster.Register(&input);
@@ -72,61 +79,6 @@ int main()
 	tako::Graphics = data.drawer;
     tako::Setup(data.drawer);
 	emscripten_set_main_loop_arg(Tick, &data, 0, 1);
-	return 0;
-}
-/*
-INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow)
-{
-#ifndef NDEBUG
-	{
-		AllocConsole();
-		HWND hWnd = GetConsoleWindow();
-		ShowWindow(hWnd, SW_SHOWNORMAL);
-	}
-#endif
-	tako::Window window;
-	tako::GraphicsContext context(window.GetHandle(), window.GetWidth(), window.GetHeight());
-	tako::Setup();
-	tako::Broadcaster broadcaster;
-
-	bool keepRunning = true;
-
-	tako::CallbackEventHandler onEvent([&](tako::Event& ev)
-	{
-		switch (ev.GetType())
-		{
-		case tako::EventType::WindowClose:
-		{
-			tako::WindowClose& clo = static_cast<tako::WindowClose&>(ev);
-			clo.abortQuit = false;
-		} break;
-		case tako::EventType::AppQuit:
-		{
-			keepRunning = false;
-			LOG("Quitting...");
-		} break;
-		}
-
-		LOG("Event: {}", ev);
-	});
-
-	broadcaster.Register(&onEvent);
-	broadcaster.Register(&context);
-
-	window.SetEventCallback([&](tako::Event& evt)
-	{
-		broadcaster.Broadcast(evt);
-	});
-
-
-	while (keepRunning)
-	{
-		window.Poll();
-		context.Present();
-		Sleep(16);
-	}
-
-	LOG("terminating")
 	return 0;
 }
 */

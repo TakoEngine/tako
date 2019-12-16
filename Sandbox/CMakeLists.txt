@@ -1,5 +1,5 @@
 include(tako)
-add_executable(sandbox "Sandbox.cpp")
+add_executable(sandbox WIN32 "Sandbox.cpp")
 tako_setup(sandbox)
 target_link_libraries(sandbox PRIVATE tako)
 if (DEFINED EMSCRIPTEN)

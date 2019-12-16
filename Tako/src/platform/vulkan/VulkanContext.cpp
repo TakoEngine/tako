@@ -919,7 +919,7 @@ namespace tako
 		std::vector<VkDescriptorSet> m_descriptorSets;
 	};
 
-	GraphicsContext::GraphicsContext(Window& window) : m_impl(new ContextImpl(window.GetHandle()))
+	GraphicsContext::GraphicsContext(WindowHandle handle, int width, int height) : m_impl(new ContextImpl(handle))
 	{
 	}
 
@@ -928,5 +928,12 @@ namespace tako
 	void GraphicsContext::Present()
 	{
 		m_impl->Draw();
+	}
+
+	void GraphicsContext::Resize(int width, int height) {}
+	void GraphicsContext::HandleEvent(Event& evt) {}
+	PixelArtDrawer* GraphicsContext::CreatePixelArtDrawer()
+	{
+		return nullptr;
 	}
 }

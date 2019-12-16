@@ -14,15 +14,6 @@ set(SOURCE_FILES
 	"include/GraphicsContext.hpp"
 	"include/Texture.hpp"
 	"include/PixelArtDrawer.hpp"
-	"src/platform/opengl/OpenGLPixelArtDrawer.hpp"
-	"src/platform/opengl/OpenGLPixelArtDrawer.cpp"
-	"include/Texture.hpp"
-	"src/platform/opengl/OpenGLTexture.hpp"
-	"src/platform/opengl/OpenGLTexture.cpp"
-	"src/platform/opengl/OpenGLSprite.hpp"
-	"src/platform/opengl/OpenGLSprite.cpp"
-#	"src/VulkanContext.cpp"
-    "src/platform/opengl/OpenGLContext.cpp"
 	"include/Tako.hpp"
 	"include/Event.hpp"
 	"src/Event.cpp"
@@ -33,8 +24,28 @@ set(SOURCE_FILES
 	"src/Audio.cpp"
 	)
 
+function(set_feature define val)
+	set(${define} ${val} PARENT_SCOPE)
+	if(val)
+		add_compile_definitions(${define})
+	endif()
+endfunction()
+
+if (WIN32)
+set_feature(TAKO_OPENGL false)
+set_feature(TAKO_VULKAN true)
+set_feature(TAKO_OPENAL false)
+endif(WIN32)
+
+if (EMSCRIPTEN)
+set_feature(TAKO_OPENGL true)
+set_feature(TAKO_VULKAN false)
+set_feature(TAKO_OPENAL true)
+endif(EMSCRIPTEN)
+
 if (WIN32)
 set(SOURCE_FILES ${SOURCE_FILES}
+	"src/platform/win32/Main.cpp"
 	"src/platform/win32/Window.cpp"
 	"src/platform/win32/Log.cpp"
 	"src/platform/win32/FileSystem.cpp"
@@ -49,6 +60,17 @@ set(SOURCE_FILES ${SOURCE_FILES}
 	"src/platform/web/Log.cpp"
 	"src/platform/web/FileSystem.cpp")
 ENDIF(EMSCRIPTEN)
+
+if (TAKO_OPENGL)
+set (SOURCE_FILES ${SOURCE_FILES}
+	"src/platform/opengl/OpenGLPixelArtDrawer.hpp"
+	"src/platform/opengl/OpenGLPixelArtDrawer.cpp"
+	"src/platform/opengl/OpenGLTexture.hpp"
+	"src/platform/opengl/OpenGLTexture.cpp"
+	"src/platform/opengl/OpenGLSprite.hpp"
+	"src/platform/opengl/OpenGLSprite.cpp"
+    "src/platform/opengl/OpenGLContext.cpp"
+)
 
 function(add_shader filename)
 	SET(SHADER_IN ${CMAKE_SOURCE_DIR}/Tako/shaders/${filename})
@@ -68,6 +90,16 @@ endfunction()
 # add_shader("image.vert.glsl")
 # add_shader("image.frag.glsl")
 
+endif(TAKO_OPENGL)
+
+if (TAKO_VULKAN)
+set(SOURCE_FILES ${SOURCE_FILES}
+	"src/platform/vulkan/VulkanContext.cpp"
+)
+#configure_file("shaders/shader.vert.spv" ${CMAKE_BINARY_DIR}/shaders/shader.vert.spv COPYONLY)
+#configure_file("shaders/shader.frag.spv" ${CMAKE_BINARY_DIR}/shaders/shader.frag.spv COPYONLY)
+endif(TAKO_VULKAN)
+
 
 add_library(${TAKO_DLL} ${SOURCE_FILES})
 target_include_directories(${TAKO_DLL} PUBLIC "include")
@@ -75,18 +107,23 @@ target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencie
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/dr_libs")
 target_include_directories(${TAKO_DLL} PUBLIC "${CMAKE_BINARY_DIR}/shader")
 
-#[[ Vulkan
+if (TAKO_VULKAN)
 find_package(vulkan REQUIRED)
 target_include_directories(${TAKO_DLL} PUBLIC ${Vulkan_INCLUDE_DIRS})
 target_compile_definitions(${TAKO_DLL} PRIVATE "VK_USE_PLATFORM_WIN32_KHR")
 target_link_libraries(${TAKO_DLL} PRIVATE ${Vulkan_LIBRARIES})
-]]
+endif(TAKO_VULKAN)
 
 #find_package(glbinding REQUIRED)
 #configure_file(${glbinding_DIR}/glbinding.dll "glbinding.dll" COPYONLY)
 #target_link_libraries(${TAKO_DLL} PRIVATE glbinding::glbinding)
+if (TAKO_OPENGL)
 target_link_libraries(${TAKO_DLL} PRIVATE GLESv2)
+endif(TAKO_OPENGL)
+
+if (TAKO_OPENAL)
 target_link_libraries(${TAKO_DLL} PRIVATE openal)
+endif(TAKO_OPENAL)
 
 
 

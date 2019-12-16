@@ -1,4 +1,5 @@
 #include "Audio.hpp"
+#ifdef TAKO_OPENAL
 #include "NumberTypes.hpp"
 #define DR_WAV_IMPLEMENTATION
 #include "dr_wav.h"
@@ -8,12 +9,14 @@
 #define SAMPLE_FORMAT   ma_format_f32
 #define CHANNEL_COUNT   2
 #define SAMPLE_RATE     48000
+#endif
 
 
 namespace tako
 {
 	AudioClip::AudioClip(const char* file)
 	{
+#ifdef TAKO_OPENAL
 		drwav wavFile;
 		drwav_init_file(&wavFile, file, nullptr);
 
@@ -28,6 +31,7 @@ namespace tako
 
 		free(sampleBuffer);
 		drwav_uninit(&wavFile);
+#endif
 	}
 
 	Audio::Audio()
@@ -36,14 +40,17 @@ namespace tako
 
 	void Audio::Init()
 	{
+#ifdef TAKO_OPENAL
 		m_device = alcOpenDevice(nullptr);
 		m_context = alcCreateContext(m_device, nullptr);
 		alcMakeContextCurrent(m_context);
 		alGenSources(m_sources.size(), &m_sources[0]);
+#endif
 	}
 
 	void Audio::Play(AudioClip& clip)
 	{
+#ifdef TAKO_OPENAL
 		ALuint source;
 		for (auto source: m_sources)
 		{
@@ -59,8 +66,9 @@ namespace tako
 			return;
 		}
 		LOG("No source available!");
+#endif
 	}
-
+#ifdef TAKO_OPENAL
 	std::array<ALuint, 64> Audio::m_sources;
+#endif
 }
-
