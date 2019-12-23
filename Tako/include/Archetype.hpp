@@ -152,11 +152,25 @@ namespace tako
 		}
 	}
 
+	struct Archetype;
+
+	class EntityHandle
+	{
+	public:
+		Entity id;
+	private:
+		Archetype* archeType;
+		Chunk* chunk;
+		int indexChunk;
+		friend class Archetype;
+		friend class World;
+	};
+
 	struct Archetype
 	{
 		Archetype()
 		{
-			chunk = std::make_unique<Chunk>();
+			chunks.emplace_back(std::make_unique<Chunk>());
 		}
 
 		template<class... Cs>
@@ -178,17 +192,36 @@ namespace tako
 			return arch;
 		}
 
-		int AddEntity(Entity entity)
+		EntityHandle AddEntity(Entity entity)
 		{
-			return AddEntityToChunk(*chunk, entity);
+			int index;
+			if (chunksFilled == chunks.size())
+			{
+				chunks.emplace_back(std::make_unique<Chunk>());
+			}
+
+			Chunk& chunk = *chunks[chunksFilled];
+			index = AddEntityToChunk(chunk, entity);
+
+			if (chunk.header.last >= chunkCapacity)
+			{
+				chunksFilled++;
+			}
+			EntityHandle handle;
+			handle.id = entity;
+			handle.archeType = this;
+			handle.chunk = &chunk;
+			handle.indexChunk = index;
+			return handle;
 		}
 
 		U64 componentHash;
-		//std::vector<std::unique_ptr<Chunk>> chunks;
-		std::unique_ptr<Chunk> chunk;
+		std::vector<std::unique_ptr<Chunk>> chunks;
+		int chunksFilled = 0;
 		std::vector<ComponenTypeInfo> componentInfo;
 		U16 chunkCapacity;
 	private:
+		friend class World;
 
 		int AddEntityToChunk(Chunk& chunk, Entity entity)
 		{
@@ -212,7 +245,7 @@ namespace tako
 			ASSERT(index < chunkCapacity);
 			ASSERT(index < chunk.header.last);
 			U8 compID = ComponentIDGenerator::GetID<T>();
-			auto info = std::find_if(componentInfo.begin(), componentInfo.end(), [&](c)
+			auto info = std::find_if(componentInfo.begin(), componentInfo.end(), [&](ComponenTypeInfo c)
 			{
 				return c.id == compID;
 			});
@@ -220,7 +253,7 @@ namespace tako
 			ASSERT(info != componentInfo.end());
 
 			T* arr = reinterpret_cast<T*>(&chunk.data[info->offset]);
-			return arr[index]
+			return arr[index];
 		}
 	};
 }

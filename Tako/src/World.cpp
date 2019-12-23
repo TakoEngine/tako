@@ -7,11 +7,10 @@ namespace tako
 		m_archetypes.insert({0, Archetype::Create<>()});
 	}
 
-	Entity World::Create()
+	EntityHandle World::Create()
 	{
 		Entity ent = m_nextId++;
-		m_archetypes[0].AddEntity(ent);
-		return ent;
+		return m_archetypes[0].AddEntity(ent);
 	}
 
 	void World::Delete()
