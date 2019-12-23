@@ -22,6 +22,9 @@ set(SOURCE_FILES
 	"include/Sprite.hpp"
 	"include/Audio.hpp"
 	"src/Audio.cpp"
+	"include/Entity.hpp"
+	"include/World.hpp"
+	"src/World.cpp"
 	)
 
 function(set_feature define val)

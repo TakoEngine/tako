@@ -1,4 +1,5 @@
-#include <Tako.hpp>
+#include "Tako.hpp"
+#include "World.hpp"
 #include "Windows.h"
 
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow)
@@ -10,6 +11,10 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 		ShowWindow(hWnd, SW_SHOWNORMAL);
 	}
 #endif
+	//tako::Archetype::Create<tako::Window, tako::Bitmap>();
+	tako::World world;
+	LOG("{}", world.Create());
+	LOG("{}", world.Create<tako::Window>());
 	tako::Window window;
 	tako::GraphicsContext context(window.GetHandle(), window.GetWidth(), window.GetHeight());
 	tako::Setup();
