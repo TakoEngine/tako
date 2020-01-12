@@ -168,6 +168,12 @@ namespace tako
 
 	struct Archetype
 	{
+		U64 componentHash;
+		std::vector<std::unique_ptr<Chunk>> chunks;
+		int chunksFilled = 0;
+		std::vector<ComponenTypeInfo> componentInfo;
+		U16 chunkCapacity;
+
 		Archetype()
 		{
 			chunks.emplace_back(std::make_unique<Chunk>());
@@ -215,13 +221,7 @@ namespace tako
 			return handle;
 		}
 
-		U64 componentHash;
-		std::vector<std::unique_ptr<Chunk>> chunks;
-		int chunksFilled = 0;
-		std::vector<ComponenTypeInfo> componentInfo;
-		U16 chunkCapacity;
-	private:
-		friend class World;
+		
 
 		int AddEntityToChunk(Chunk& chunk, Entity entity)
 		{
@@ -232,11 +232,41 @@ namespace tako
 				index = chunk.header.last;
 				chunk.header.last++;
 
-				Entity* entities = reinterpret_cast<Entity*>(&chunk.data[0]);
+				Entity* entities = GetEntityArray(chunk);
 				entities[index] = entity;
 			}
 
 			return index;
+		}
+
+		Entity* GetEntityArray(Chunk& chunk)
+		{
+			return reinterpret_cast<Entity*>(&chunk.data[0]);
+		}
+
+		void* GetComponentArray(Chunk& chunk, U8 componentID)
+		{
+			auto info = std::find_if(componentInfo.begin(), componentInfo.end(), [&](ComponenTypeInfo c)
+			{
+				return c.id == componentID;
+			});
+
+			ASSERT(info != componentInfo.end());
+
+			return &chunk.data[info->offset];
+		}
+
+		template<typename T>
+		auto GetArray(Chunk& chunk)
+		{
+			if constexpr (std::is_same<T, Entity>::value)
+			{
+				return GetEntityArray(chunk);
+			}
+			else
+			{
+				return GetComponentArray(chunk, ComponentIDGenerator::GetID<T>());
+			}
 		}
 
 		template<typename T>

@@ -32,8 +32,8 @@ namespace tako
 			return handle.archeType->GetComponent<T>(*handle.chunk, handle.indexChunk);
 		}
 
-		template<typename... Cs>
-		void Iterate(std::function<void(EntityHandle)> callback)
+		template<typename... Cs, typename Cb>
+		void Iterate(Cb callback)
 		{
 			auto hash = GetArchetypeHash<Cs...>();
 			EntityHandle handle;
@@ -46,7 +46,7 @@ namespace tako
 					for (int ch = 0; ch < pair.second.chunks.size(); ch++)
 					{
 						auto& chunk = *pair.second.chunks[ch];
-						Entity* entities = reinterpret_cast<Entity*>(&chunk.data[0]);
+						Entity* entities = handle.archeType->GetArray<Entity>(chunk);
 						handle.chunk = &chunk;
 						for (int i = 0; i < chunk.header.last; i++)
 						{
@@ -55,6 +55,31 @@ namespace tako
 							callback(handle);
 						}
 					}
+				}
+			}
+		}
+
+		template<typename C, typename Cb>
+		void IterateComp(Cb callback)
+		{
+			auto componentID = ComponentIDGenerator::GetID<C>();
+			auto hash = GetArchetypeHash<C>();
+			for (auto& pair : m_archetypes)
+			{
+				U64 archHash = pair.first;
+				if ((archHash & hash) == hash)
+				{
+					for (int ch = 0; ch < pair.second.chunks.size(); ch++)
+					{
+						Chunk& chunk = *pair.second.chunks[ch];
+						C* comps = (C*) pair.second.GetComponentArray(chunk, componentID);
+						for (int i = 0; i < chunk.header.last; i++)
+						{
+							callback(comps[i]);
+						}
+					}
+					
+
 				}
 			}
 		}

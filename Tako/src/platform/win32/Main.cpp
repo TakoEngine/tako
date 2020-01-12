@@ -42,12 +42,22 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 		pos.pos.y = 42;
 	});
 
+	LOG("Iter2:");
+
 	world.Iterate<Position>([&](tako::EntityHandle handle)
 	{
 		Position& pos = world.GetComponent<Position>(handle);
 		LOG("Iter id: {} x: {} y: {}", handle.id, pos.pos.x, pos.pos.y);
 	});
 
+	LOG("Iter Comp:");
+
+	world.IterateComp<Position>([&](Position& pos)
+	{
+		LOG("Iter x: {} y: {}", pos.pos.x, pos.pos.y);
+	});
+
+	return 0;
 	tako::Window window;
 	tako::GraphicsContext context(window.GetHandle(), window.GetWidth(), window.GetHeight());
 	tako::Setup();
