@@ -6,6 +6,9 @@
 
 namespace tako
 {
+	template<typename T>
+	class ComponentIterator;
+
 	class World
 	{
 	public:
@@ -30,6 +33,12 @@ namespace tako
 		T& GetComponent(EntityHandle handle)
 		{
 			return handle.archeType->GetComponent<T>(*handle.chunk, handle.indexChunk);
+		}
+
+		template<typename C>
+		ComponentIterator<C> Iter()
+		{
+			return ComponentIterator<C>(m_archetypes.begin(), m_archetypes.end());
 		}
 
 		template<typename... Cs, typename Cb>
@@ -88,5 +97,100 @@ namespace tako
 	private:
 		U32 m_nextId = 0;
 		std::unordered_map<U64, Archetype> m_archetypes;
+	};
+
+	template<typename C>
+	class ComponentIterator
+	{
+	public:
+		ComponentIterator(std::unordered_map<U64, Archetype>::const_iterator begin, std::unordered_map<U64, Archetype>::const_iterator end)
+		{
+			m_archetypesIter = begin;
+			m_archetypesEnd = end;
+			SetupArcheType();
+		}
+
+		ComponentIterator& operator++()
+		{
+			if (m_indexComponentArray + 1 < m_componentArraySize)
+			{
+				++m_indexComponentArray;
+				return *this;
+			}
+
+			if (m_indexChunks + 1 < m_chunksSize)
+			{
+				++m_indexChunks;
+				SetupChunk();
+				return *this;
+			}
+
+			
+			m_archetypesIter++;
+			SetupArcheType();
+
+			return *this;
+		}
+		class IteratorSentinel {};
+		bool operator!=(IteratorSentinel)
+		{
+			return m_archetypesIter != m_archetypesEnd;
+		}
+
+		C& operator*() const
+		{
+			return m_componentArray[m_indexComponentArray];
+		}
+
+		
+		ComponentIterator begin() const
+		{
+			return *this;
+		}
+		IteratorSentinel end() const
+		{
+			return {};
+		}
+
+		
+
+	private:
+		int m_indexComponentArray;
+		int m_componentArraySize;
+		int m_indexChunks;
+		int m_chunksSize;
+		C* m_componentArray;
+		std::unordered_map<U64, Archetype>::const_iterator m_archetypesIter;
+		std::unordered_map<U64, Archetype>::const_iterator m_archetypesEnd;
+
+		void SetupChunk()
+		{
+			auto componentID = ComponentIDGenerator::GetID<C>();
+			auto& pair = *m_archetypesIter;
+			Chunk& chunk = *pair.second.chunks[m_indexChunks];
+			m_componentArray = (C*) pair.second.GetComponentArray(chunk, componentID);
+			m_indexComponentArray = 0;
+			m_componentArraySize = chunk.header.last;
+			//TODO: what if array is empty?
+		}
+
+		void SetupArcheType()
+		{
+			auto hash = GetArchetypeHash<C>();
+			while (m_archetypesIter != m_archetypesEnd)
+			{				
+				auto& pair = *m_archetypesIter;
+				if ((pair.first & hash) != hash)
+				{
+					++m_archetypesIter;
+					continue;
+				}
+
+				m_chunksSize = pair.second.chunks.size();
+				m_indexChunks = 0;
+				SetupChunk();
+				break;
+			}
+		}
 	};
 }

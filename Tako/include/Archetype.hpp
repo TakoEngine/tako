@@ -244,7 +244,7 @@ namespace tako
 			return reinterpret_cast<Entity*>(&chunk.data[0]);
 		}
 
-		void* GetComponentArray(Chunk& chunk, U8 componentID)
+		void* GetComponentArray(Chunk& chunk, U8 componentID) const
 		{
 			auto info = std::find_if(componentInfo.begin(), componentInfo.end(), [&](ComponenTypeInfo c)
 			{

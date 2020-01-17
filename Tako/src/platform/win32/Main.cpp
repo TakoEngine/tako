@@ -51,11 +51,16 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 	});
 
 	LOG("Iter Comp:");
-
 	world.IterateComp<Position>([&](Position& pos)
 	{
 		LOG("Iter x: {} y: {}", pos.pos.x, pos.pos.y);
 	});
+
+	LOG("iter created!");
+	for (auto& pos : world.Iter<Position>())
+	{
+		LOG("Iter x: {} y: {}", pos.pos.x, pos.pos.y);
+	}
 
 	return 0;
 	tako::Window window;
