@@ -8,7 +8,7 @@
 
 #include "Log.hpp"
 
-#ifndef NDEBUG
+#ifdef NDEBUG
 
 #define LOG(format, ...)        ::tako::Log(tako::LogLevel::Info, format, ##__VA_ARGS__);
 #define LOG_WARN(format, ...)   ::tako::Log(tako::LogLevel::Warning, format, ##__VA_ARGS__);

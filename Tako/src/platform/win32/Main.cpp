@@ -1,6 +1,7 @@
 #include "Tako.hpp"
 #include "World.hpp"
 #include "Windows.h"
+#include <chrono>
 
 struct Position
 {
@@ -14,7 +15,7 @@ struct Velocity
 
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow)
 {
-#ifndef NDEBUG
+#ifdef NDEBUG
 	{
 		AllocConsole();
 		HWND hWnd = GetConsoleWindow();
@@ -29,6 +30,12 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 	LOG("{}", world.Create<Position, Velocity>().id);
 	LOG("{}", world.Create<Position>().id);
 
+	for (int i = 0; i < 1000; i++)
+	{
+		world.Create<Position, Velocity>();
+	}
+	
+
 	auto entity = world.Create<Position>();
 	auto& pos = world.GetComponent<Position>(entity);
 	pos.pos = { 4, 2 };
@@ -38,7 +45,7 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 	world.Iterate<Position>([&](tako::EntityHandle handle)
 	{
 		Position& pos = world.GetComponent<Position>(handle);
-		LOG("Iter id: {} x: {} y: {}", handle.id, pos.pos.x, pos.pos.y);
+		//LOG("Iter id: {} x: {} y: {}", handle.id, pos.pos.x, pos.pos.y);
 		pos.pos.y = 42;
 	});
 
@@ -47,21 +54,37 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 	world.Iterate<Position>([&](tako::EntityHandle handle)
 	{
 		Position& pos = world.GetComponent<Position>(handle);
-		LOG("Iter id: {} x: {} y: {}", handle.id, pos.pos.x, pos.pos.y);
+		//LOG("Iter id: {} x: {} y: {}", handle.id, pos.pos.x, pos.pos.y);
 	});
 
 	LOG("Iter Comp:");
+	auto t1 = std::chrono::system_clock::now();
+
 	world.IterateComp<Position>([&](Position& pos)
-	{
-		LOG("Iter x: {} y: {}", pos.pos.x, pos.pos.y);
-	});
+		{
+			//LOG("Iter x: {} y: {}", pos.pos.x, pos.pos.y);
+			pos.pos.x *= 2;
+		});
+	auto t2 = std::chrono::system_clock::now();
+	LOG("Ticks1: {}", (t2 - t1).count());
+	
+	world.IterateComp<Position>([&](Position& pos)
+		{
+			//LOG("Iter x: {} y: {}", pos.pos.x, pos.pos.y);
+			pos.pos.x = 4;
+		});
 
 	LOG("iter created!");
+	t1 = std::chrono::system_clock::now();
+	
 	for (auto& pos : world.Iter<Position>())
 	{
-		LOG("Iter x: {} y: {}", pos.pos.x, pos.pos.y);
+		//LOG("Iter x: {} y: {}", pos.pos.x, pos.pos.y);
+		pos.pos.x *= 2;
 	}
-
+	t2 = std::chrono::system_clock::now();
+	LOG("Ticks2: {}", (t2 - t1).count());
+	for (;;) {}
 	return 0;
 	tako::Window window;
 	tako::GraphicsContext context(window.GetHandle(), window.GetWidth(), window.GetHeight());

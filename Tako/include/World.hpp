@@ -78,11 +78,13 @@ namespace tako
 				U64 archHash = pair.first;
 				if ((archHash & hash) == hash)
 				{
-					for (int ch = 0; ch < pair.second.chunks.size(); ch++)
+					auto chunkSize = pair.second.chunks.size();
+					for (int ch = 0; ch < chunkSize; ++ch)
 					{
 						Chunk& chunk = *pair.second.chunks[ch];
 						C* comps = (C*) pair.second.GetComponentArray(chunk, componentID);
-						for (int i = 0; i < chunk.header.last; i++)
+						auto arraySize = chunk.header.last;
+						for (int i = 0; i < arraySize; ++i)
 						{
 							callback(comps[i]);
 						}
@@ -108,6 +110,8 @@ namespace tako
 			m_archetypesIter = begin;
 			m_archetypesEnd = end;
 			SetupArcheType();
+			hash = GetArchetypeHash<C>();
+			componentID = ComponentIDGenerator::GetID<C>();
 		}
 
 		ComponentIterator& operator++()
@@ -126,7 +130,7 @@ namespace tako
 			}
 
 			
-			m_archetypesIter++;
+			++m_archetypesIter;
 			SetupArcheType();
 
 			return *this;
@@ -162,10 +166,11 @@ namespace tako
 		C* m_componentArray;
 		std::unordered_map<U64, Archetype>::const_iterator m_archetypesIter;
 		std::unordered_map<U64, Archetype>::const_iterator m_archetypesEnd;
+		U64 hash;
+		U8 componentID;
 
-		void SetupChunk()
+		inline void SetupChunk()
 		{
-			auto componentID = ComponentIDGenerator::GetID<C>();
 			auto& pair = *m_archetypesIter;
 			Chunk& chunk = *pair.second.chunks[m_indexChunks];
 			m_componentArray = (C*) pair.second.GetComponentArray(chunk, componentID);
@@ -174,9 +179,9 @@ namespace tako
 			//TODO: what if array is empty?
 		}
 
-		void SetupArcheType()
+		inline void SetupArcheType()
 		{
-			auto hash = GetArchetypeHash<C>();
+			
 			while (m_archetypesIter != m_archetypesEnd)
 			{				
 				auto& pair = *m_archetypesIter;
