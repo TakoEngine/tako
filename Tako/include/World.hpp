@@ -3,10 +3,11 @@
 #include "Archetype.hpp"
 #include <unordered_map>
 #include <functional>
+#include <tuple>
 
 namespace tako
 {
-	template<typename T>
+	template<typename... Cs>
 	class ComponentIterator;
 
 	class World
@@ -35,10 +36,10 @@ namespace tako
 			return handle.archeType->GetComponent<T>(*handle.chunk, handle.indexChunk);
 		}
 
-		template<typename C>
-		ComponentIterator<C> Iter()
+		template<typename... Cs>
+		ComponentIterator<Cs...> Iter()
 		{
-			return ComponentIterator<C>(m_archetypes.begin(), m_archetypes.end());
+			return ComponentIterator<Cs...>(m_archetypes.begin(), m_archetypes.end());
 		}
 
 		template<typename... Cs, typename Cb>
@@ -101,7 +102,7 @@ namespace tako
 		std::unordered_map<U64, Archetype> m_archetypes;
 	};
 
-	template<typename C>
+	template<typename... Cs>
 	class ComponentIterator
 	{
 	public:
@@ -109,9 +110,9 @@ namespace tako
 		{
 			m_archetypesIter = begin;
 			m_archetypesEnd = end;
+			hash = GetArchetypeHash<Cs...>();
+			componentID = { {ComponentIDGenerator::GetID<Cs>()...} }; //ComponentIDGenerator::GetID<C>();
 			SetupArcheType();
-			hash = GetArchetypeHash<C>();
-			componentID = ComponentIDGenerator::GetID<C>();
 		}
 
 		ComponentIterator& operator++()
@@ -141,11 +142,16 @@ namespace tako
 			return m_archetypesIter != m_archetypesEnd;
 		}
 
-		C& operator*() const
+		std::tuple<Cs&...> operator*() const
 		{
-			return m_componentArray[m_indexComponentArray];
+			return CreateTuple(std::index_sequence_for<Cs*...>{});
 		}
 
+		template<std::size_t... I>
+		std::tuple<Cs&...> CreateTuple(std::index_sequence<I...>) const
+		{
+			return std::make_tuple(std::ref(std::get<I>(m_componentArray)[m_indexComponentArray])...);
+		}
 		
 		ComponentIterator begin() const
 		{
@@ -163,27 +169,41 @@ namespace tako
 		int m_componentArraySize;
 		int m_indexChunks;
 		int m_chunksSize;
-		C* m_componentArray;
+		std::tuple<Cs*...> m_componentArray;
 		std::unordered_map<U64, Archetype>::const_iterator m_archetypesIter;
 		std::unordered_map<U64, Archetype>::const_iterator m_archetypesEnd;
 		U64 hash;
-		U8 componentID;
+		std::array<U8,sizeof...(Cs)> componentID;
 
 		inline void SetupChunk()
 		{
 			auto& pair = *m_archetypesIter;
 			Chunk& chunk = *pair.second.chunks[m_indexChunks];
-			m_componentArray = (C*) pair.second.GetComponentArray(chunk, componentID);
+			m_componentArray = GetComponentArrays(pair.second, chunk, std::index_sequence_for<Cs...>{});
 			m_indexComponentArray = 0;
 			m_componentArraySize = chunk.header.last;
 			//TODO: what if array is empty?
+		}
+
+		template <class... Args>
+		struct type_list
+		{
+			template <std::size_t N>
+			using type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+		};
+
+		template<std::size_t... I>
+		auto GetComponentArrays(const Archetype& arch, Chunk& chunk, std::index_sequence<I...>)
+		{
+			return std::make_tuple((type_list<Cs*...>::type<I>) (arch.GetComponentArray(chunk, std::get<I>(componentID)))...);
 		}
 
 		inline void SetupArcheType()
 		{
 			
 			while (m_archetypesIter != m_archetypesEnd)
-			{				
+			{
+				
 				auto& pair = *m_archetypesIter;
 				if ((pair.first & hash) != hash)
 				{

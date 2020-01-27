@@ -30,7 +30,7 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 	LOG("{}", world.Create<Position, Velocity>().id);
 	LOG("{}", world.Create<Position>().id);
 
-	for (int i = 0; i < 1000; i++)
+	for (int i = 0; i < 1000000000; i++)
 	{
 		world.Create<Position, Velocity>();
 	}
@@ -42,47 +42,38 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 
 	LOG("{}", world.Create<Position, tako::Window>().id);
 
-	world.Iterate<Position>([&](tako::EntityHandle handle)
+	LOG("Iter Handle");
+	auto t1 = std::chrono::high_resolution_clock::now();
+	world.Iterate<Position, Velocity>([&](tako::EntityHandle handle)
 	{
 		Position& pos = world.GetComponent<Position>(handle);
 		//LOG("Iter id: {} x: {} y: {}", handle.id, pos.pos.x, pos.pos.y);
-		pos.pos.y = 42;
+		pos.pos.x++;
+		Velocity& vel = world.GetComponent<Velocity>(handle);
+		vel.vel.x++;
 	});
-
-	LOG("Iter2:");
-
-	world.Iterate<Position>([&](tako::EntityHandle handle)
-	{
-		Position& pos = world.GetComponent<Position>(handle);
-		//LOG("Iter id: {} x: {} y: {}", handle.id, pos.pos.x, pos.pos.y);
-	});
+	auto t2 = std::chrono::high_resolution_clock::now();
+	LOG("Ticks: {}", (t2 - t1).count());
 
 	LOG("Iter Comp:");
-	auto t1 = std::chrono::system_clock::now();
-
+	t1 = std::chrono::high_resolution_clock::now();
 	world.IterateComp<Position>([&](Position& pos)
-		{
-			//LOG("Iter x: {} y: {}", pos.pos.x, pos.pos.y);
-			pos.pos.x *= 2;
-		});
-	auto t2 = std::chrono::system_clock::now();
-	LOG("Ticks1: {}", (t2 - t1).count());
-	
-	world.IterateComp<Position>([&](Position& pos)
-		{
-			//LOG("Iter x: {} y: {}", pos.pos.x, pos.pos.y);
-			pos.pos.x = 4;
-		});
-
-	LOG("iter created!");
-	t1 = std::chrono::system_clock::now();
-	
-	for (auto& pos : world.Iter<Position>())
 	{
 		//LOG("Iter x: {} y: {}", pos.pos.x, pos.pos.y);
-		pos.pos.x *= 2;
+		pos.pos.x++;
+	});
+	t2 = std::chrono::high_resolution_clock::now();
+	LOG("Ticks1: {}", (t2 - t1).count());
+
+	LOG("iter created!");
+	t1 = std::chrono::high_resolution_clock::now();
+	for (auto [pos] : world.Iter<Position>())
+	{
+		//LOG("Iter x: {} y: {}", pos.pos.x, pos.pos.y);
+		pos.pos.x++;
+		//vel.vel.x++;
 	}
-	t2 = std::chrono::system_clock::now();
+	t2 = std::chrono::high_resolution_clock::now();
 	LOG("Ticks2: {}", (t2 - t1).count());
 	for (;;) {}
 	return 0;
