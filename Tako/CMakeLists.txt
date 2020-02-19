@@ -55,14 +55,15 @@ set(SOURCE_FILES ${SOURCE_FILES}
 	"include/WinUtility.hpp"
 	"src/platform/win32/WinUtility.cpp"
 )
-ENDIF(WIN32)
-
-if (EMSCRIPTEN)
+elseif (EMSCRIPTEN)
 set(SOURCE_FILES ${SOURCE_FILES}
 	"src/platform/web/Window.cpp"
 	"src/platform/web/Log.cpp"
 	"src/platform/web/FileSystem.cpp")
-ENDIF(EMSCRIPTEN)
+else()
+set(SOURCE_FILES ${SOURCE_FILES}
+		"src/platform/default/Log.cpp")
+endif()
 
 if (TAKO_OPENGL)
 set (SOURCE_FILES ${SOURCE_FILES}
@@ -131,3 +132,6 @@ endif(TAKO_OPENAL)
 
 
 target_link_libraries(${TAKO_DLL} PUBLIC fmt)
+
+add_executable(ECSBench "test/ECSBench.cpp")
+target_link_libraries(ECSBench PRIVATE tako)

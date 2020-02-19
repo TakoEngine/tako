@@ -7,6 +7,35 @@
 
 namespace tako
 {
+    namespace {
+
+        template <class... Args>
+        struct type_list
+        {
+            template <std::size_t N>
+            using type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+        };
+
+        template<typename... Cs>
+        class TupleHelper
+        {
+        public:
+            template<std::size_t... I>
+            static inline auto GetComponentArrays(const Archetype& arch, Chunk& chunk, const std::array<U8,sizeof...(Cs)>& componentID, std::index_sequence<I...>)
+            {
+                return std::make_tuple((static_cast<typename type_list<Cs*...>::template type<I>>(arch.GetComponentArray(chunk, std::get<I>(componentID))))...);
+            }
+
+
+            template<std::size_t... I>
+            static inline std::tuple<Cs&...> CreateTuple(const std::tuple<Cs*...>& componentArray, int index, std::index_sequence<I...>)
+            {
+                return std::make_tuple(std::ref(std::get<I>(componentArray)[index])...);
+            }
+        };
+
+
+    }
 	template<typename... Cs>
 	class ComponentIterator;
 
@@ -79,11 +108,12 @@ namespace tako
 				U64 archHash = pair.first;
 				if ((archHash & hash) == hash)
 				{
-					auto chunkSize = pair.second.chunks.size();
+                    auto& arch = pair.second;
+					auto chunkSize = arch.chunks.size();
 					for (int ch = 0; ch < chunkSize; ++ch)
 					{
-						Chunk& chunk = *pair.second.chunks[ch];
-						C* comps = (C*) pair.second.GetComponentArray(chunk, componentID);
+						Chunk& chunk = *arch.chunks[ch];
+						C* comps = (C*) arch.GetComponentArray(chunk, componentID);
 						auto arraySize = chunk.header.last;
 						for (int i = 0; i < arraySize; ++i)
 						{
@@ -95,6 +125,33 @@ namespace tako
 				}
 			}
 		}
+
+        template<typename... Cs, typename Cb, typename=void>
+        void IterateComps(Cb callback)
+        {
+            std::array<U8, sizeof...(Cs)> componentID = { { ComponentIDGenerator::GetID<Cs>()... } };
+            auto indexSequence = std::index_sequence_for<Cs...>{};
+            auto hash = GetArchetypeHash<Cs...>();
+            for (auto& pair : m_archetypes)
+            {
+                U64 archHash = pair.first;
+                if ((archHash & hash) == hash)
+                {
+                    auto& arch = pair.second;
+                    auto chunkSize = arch.chunks.size();
+                    for (int ch = 0; ch < chunkSize; ++ch)
+                    {
+                        Chunk& chunk = *arch.chunks[ch];
+                        std::tuple<Cs*...> comps = TupleHelper<Cs...>::GetComponentArrays(arch, chunk, componentID, indexSequence);
+                        auto arraySize = chunk.header.last;
+                        for (int i = 0; i < arraySize; ++i)
+                        {
+                            callback(TupleHelper<Cs...>::CreateTuple(comps, i, indexSequence));
+                        }
+                    }
+                }
+            }
+        }
 
 		void Delete();
 	private:
@@ -195,7 +252,7 @@ namespace tako
 		template<std::size_t... I>
 		auto GetComponentArrays(const Archetype& arch, Chunk& chunk, std::index_sequence<I...>)
 		{
-			return std::make_tuple((type_list<Cs*...>::type<I>) (arch.GetComponentArray(chunk, std::get<I>(componentID)))...);
+			return std::make_tuple((static_cast<typename type_list<Cs*...>::template type<I>>(arch.GetComponentArray(chunk, std::get<I>(componentID))))...);
 		}
 
 		inline void SetupArcheType()
