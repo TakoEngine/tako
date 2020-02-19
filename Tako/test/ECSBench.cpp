@@ -36,13 +36,12 @@ int main()
 
     LOG("Iter Handle");
     auto t1 = std::chrono::high_resolution_clock::now();
-    world.Iterate<Position, Velocity>([&](tako::EntityHandle handle)
-    {
-      Position& pos = world.GetComponent<Position>(handle);
-      //LOG("Iter id: {} x: {} y: {}", handle.id, pos.pos.x, pos.pos.y);
-      pos.pos.x++;
-      Velocity& vel = world.GetComponent<Velocity>(handle);
-      vel.vel.x++;
+    world.IterateHandle<Position, Velocity>([&](tako::EntityHandle handle) {
+        Position &pos = world.GetComponent<Position>(handle);
+        //LOG("Iter id: {} x: {} y: {}", handle.id, pos.pos.x, pos.pos.y);
+        pos.pos.x++;
+        Velocity &vel = world.GetComponent<Velocity>(handle);
+        vel.vel.x++;
     });
     auto t2 = std::chrono::high_resolution_clock::now();
     LOG("Ticks: {}", (t2 - t1).count());
@@ -59,11 +58,11 @@ int main()
 
     LOG("iter created!");
     t1 = std::chrono::high_resolution_clock::now();
-    for (auto [pos] : world.Iter<Position>())
+    for (auto [pos, vel] : world.Iter<Position, Velocity>())
     {
         //LOG("Iter x: {} y: {}", pos.pos.x, pos.pos.y);
         pos.pos.x++;
-        //vel.vel.x++;
+        vel.vel.x++;
     }
     t2 = std::chrono::high_resolution_clock::now();
     LOG("Ticks2: {}", (t2 - t1).count());
@@ -77,12 +76,12 @@ int main()
 
     LOG("Iter Comps:");
     t1 = std::chrono::high_resolution_clock::now();
-    world.IterateComps<Position>([&](auto tup)
+    world.IterateComps<Position, Velocity>([&](Position& pos, Velocity& vel)
     {
-        auto [pos] = tup;
+        //auto [pos] = tup;
         //LOG("Iter x: {} y: {}", pos.pos.x, pos.pos.y);
         pos.pos.x++;
-
+        vel.vel.x++;
     });
     t2 = std::chrono::high_resolution_clock::now();
     LOG("Ticks3: {}", (t2 - t1).count());

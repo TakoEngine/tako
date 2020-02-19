@@ -32,6 +32,12 @@ namespace tako
             {
                 return std::make_tuple(std::ref(std::get<I>(componentArray)[index])...);
             }
+
+            template<typename Cb, std::size_t... I>
+            static inline void CallbackTuple(const std::tuple<Cs*...>& componentArray, int index, Cb callback, std::index_sequence<I...>)
+            {
+                callback(std::ref(std::get<I>(componentArray)[index])...);
+            }
         };
 
 
@@ -72,7 +78,7 @@ namespace tako
 		}
 
 		template<typename... Cs, typename Cb>
-		void Iterate(Cb callback)
+		void IterateHandle(Cb callback)
 		{
 			auto hash = GetArchetypeHash<Cs...>();
 			EntityHandle handle;
@@ -146,7 +152,7 @@ namespace tako
                         auto arraySize = chunk.header.last;
                         for (int i = 0; i < arraySize; ++i)
                         {
-                            callback(TupleHelper<Cs...>::CreateTuple(comps, i, indexSequence));
+                            TupleHelper<Cs...>::CallbackTuple(comps, i, callback, indexSequence);
                         }
                     }
                 }
