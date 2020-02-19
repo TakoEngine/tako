@@ -5,6 +5,7 @@
 #include <memory>
 #include <array>
 #include <vector>
+#include <map>
 #include <algorithm>
 
 namespace tako
@@ -125,7 +126,7 @@ namespace tako
 	//};
 
 	template<class... Cs>
-	U16 FillComponentTypeInfo(std::vector<ComponenTypeInfo>& infos)
+	U16 FillComponentTypeInfo(std::map<U8, ComponenTypeInfo>& infos)
 	{
 		if constexpr (sizeof...(Cs) == 0)
 		{
@@ -143,7 +144,7 @@ namespace tako
 				compInfo.id = info.id;
 				compInfo.size = info.size;
 				compInfo.offset = offset;
-				infos.push_back(compInfo);
+				infos.emplace(info.id, compInfo);
 				LOG("Offset {} {}", info.id, offset);
 				offset += info.size * capacity;
 			}
@@ -171,7 +172,8 @@ namespace tako
 		U64 componentHash;
 		std::vector<std::unique_ptr<Chunk>> chunks;
 		int chunksFilled = 0;
-		std::vector<ComponenTypeInfo> componentInfo;
+		//std::vector<ComponenTypeInfo> componentInfo;
+		std::map<U8, ComponenTypeInfo> componentInfo;
 		U16 chunkCapacity;
 
 		Archetype()
@@ -246,14 +248,10 @@ namespace tako
 
 		void* GetComponentArray(Chunk& chunk, U8 componentID) const
 		{
-			auto info = std::find_if(componentInfo.begin(), componentInfo.end(), [&](ComponenTypeInfo c)
-			{
-				return c.id == componentID;
-			});
+            auto info = componentInfo.at(componentID);
+            //ASSERT(info != componentInfo.end());
 
-			ASSERT(info != componentInfo.end());
-
-			return &chunk.data[info->offset];
+			return &chunk.data[info.offset];
 		}
 
 		template<typename T>
@@ -275,14 +273,10 @@ namespace tako
 			ASSERT(index < chunkCapacity);
 			ASSERT(index < chunk.header.last);
 			U8 compID = ComponentIDGenerator::GetID<T>();
-			auto info = std::find_if(componentInfo.begin(), componentInfo.end(), [&](ComponenTypeInfo c)
-			{
-				return c.id == compID;
-			});
+			auto info = componentInfo.at(compID);
+			//ASSERT(info != componentInfo.end());
 
-			ASSERT(info != componentInfo.end());
-
-			T* arr = reinterpret_cast<T*>(&chunk.data[info->offset]);
+			T* arr = reinterpret_cast<T*>(&chunk.data[info.offset]);
 			return arr[index];
 		}
 	};
