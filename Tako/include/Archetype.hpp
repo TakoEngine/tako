@@ -145,7 +145,7 @@ namespace tako
 				compInfo.size = info.size;
 				compInfo.offset = offset;
 				infos.emplace(info.id, compInfo);
-				LOG("Offset {} {}", info.id, offset);
+				//LOG("Offset {} {}", info.id, offset);
 				offset += info.size * capacity;
 			}
 
@@ -240,6 +240,46 @@ namespace tako
 
 			return index;
 		}
+
+		void DeleteEntityFromChunk(Chunk& chunk, Entity entity, int index)
+        {
+            ASSERT(GetEntityArray(chunk)[index] == entity);
+            bool wasFull = chunk.header.last >= chunkCapacity;
+
+            chunk.header.last--;
+            if (chunk.header.last == index)
+            {
+            }
+            else
+            {
+                Entity* entities = GetEntityArray(chunk);
+                entities[index] = entities[chunk.header.last];
+                for (auto [id, info] : componentInfo)
+                {
+                    //auto arr = ch
+                    U8* compArray = &chunk.data[info.offset];
+                    std::memcpy(compArray + info.size * index, compArray + info.size * chunk.header.last, info.size);
+                }
+            }
+
+
+            if (wasFull)
+            {
+                chunksFilled--;
+                auto ptr = &chunk;
+                for (int i = 0; i < chunks.size(); i++)
+                {
+                    if (ptr == chunks[i].get())
+                    {
+                        if (i < chunksFilled)
+                        {
+                            std::swap(chunks[i], chunks[chunksFilled]);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
 
 		Entity* GetEntityArray(Chunk& chunk)
 		{

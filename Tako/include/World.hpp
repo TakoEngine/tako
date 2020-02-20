@@ -158,7 +158,7 @@ namespace tako
             }
         }
 
-		void Delete();
+		void Delete(EntityHandle handle);
 	private:
 		U32 m_nextId = 0;
 		std::unordered_map<U64, Archetype> m_archetypes;

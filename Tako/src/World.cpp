@@ -13,7 +13,8 @@ namespace tako
 		return m_archetypes[0].AddEntity(ent);
 	}
 
-	void World::Delete()
+	void World::Delete(EntityHandle handle)
 	{
+	    handle.archeType->DeleteEntityFromChunk(*handle.chunk,handle.id, handle.indexChunk);
 	}
 }

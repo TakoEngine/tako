@@ -22,25 +22,50 @@ int main()
     LOG("{}", world.Create<Position, Velocity>().id);
     LOG("{}", world.Create<Position>().id);
 
+    world.IterateHandle<Position>([&](auto handle)
+    {
+        auto& pos = world.GetComponent<Position>(handle);
+        pos.pos.x = handle.id * 2;
+        pos.pos.y = handle.id * 4;
+    });
+
+    auto entity = world.Create<Position>();
+    auto& pos = world.GetComponent<Position>(entity);
+    pos.pos = { 4, 2 };
+
+    tako::EntityHandle toDelete;
+    world.IterateHandle<Position>([&](auto handle)
+    {
+        auto& pos = world.GetComponent<Position>(handle);
+        LOG("id: {} x: {} y: {}", handle.id, pos.pos.x, pos.pos.y);
+        if (handle.id == 2)
+        {
+            toDelete = handle;
+        }
+    });
+    world.Delete(toDelete);
+    LOG("---");
+    world.IterateHandle<Position>([&](auto handle)
+    {
+        auto& pos = world.GetComponent<Position>(handle);
+        LOG("id: {} x: {} y: {}", handle.id, pos.pos.x, pos.pos.y);
+    });
+
     for (int i = 0; i < 10000000; i++)
     {
         world.Create<Position, Velocity>();
     }
 
 
-    auto entity = world.Create<Position>();
-    auto& pos = world.GetComponent<Position>(entity);
-    pos.pos = { 4, 2 };
-
     //LOG("{}", world.Create<Position, tako::Window>().id);
 
     LOG("Iter Handle");
     auto t1 = std::chrono::high_resolution_clock::now();
     world.IterateHandle<Position, Velocity>([&](tako::EntityHandle handle) {
-        Position &pos = world.GetComponent<Position>(handle);
+        Position& pos = world.GetComponent<Position>(handle);
         //LOG("Iter id: {} x: {} y: {}", handle.id, pos.pos.x, pos.pos.y);
         pos.pos.x++;
-        Velocity &vel = world.GetComponent<Velocity>(handle);
+        Velocity& vel = world.GetComponent<Velocity>(handle);
         vel.vel.x++;
     });
     auto t2 = std::chrono::high_resolution_clock::now();
