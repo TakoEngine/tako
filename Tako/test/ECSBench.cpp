@@ -16,15 +16,15 @@ struct Velocity
 int main()
 {
     tako::World world;
-    LOG("{}", world.Create().id);
-    LOG("{}", world.Create<Velocity>().id);
-    LOG("{}", world.Create<Position>().id);
-    LOG("{}", world.Create<Position, Velocity>().id);
-    LOG("{}", world.Create<Position>().id);
+    LOG("{}", world.Create());
+    LOG("{}", world.Create<Velocity>());
+    LOG("{}", world.Create<Position>());
+    LOG("{}", world.Create<Position, Velocity>());
+    LOG("{}", world.Create<Position>());
 
     world.IterateHandle<Position>([&](auto handle)
     {
-        auto& pos = world.GetComponent<Position>(handle);
+        auto& pos = world.GetComponent<Position>(handle.id);
         pos.pos.x = handle.id * 2;
         pos.pos.y = handle.id * 4;
     });
@@ -36,20 +36,30 @@ int main()
     tako::EntityHandle toDelete;
     world.IterateHandle<Position>([&](auto handle)
     {
-        auto& pos = world.GetComponent<Position>(handle);
+        auto& pos = world.GetComponent<Position>(handle.id);
         LOG("id: {} x: {} y: {}", handle.id, pos.pos.x, pos.pos.y);
         if (handle.id == 2)
         {
             toDelete = handle;
         }
     });
-    world.Delete(toDelete);
+    world.Delete(2);
     LOG("---");
     world.IterateHandle<Position>([&](auto handle)
     {
-        auto& pos = world.GetComponent<Position>(handle);
+        auto& pos = world.GetComponent<Position>(handle.id);
         LOG("id: {} x: {} y: {}", handle.id, pos.pos.x, pos.pos.y);
     });
+    LOG("Create: {}", world.Create<Position>());
+    world.Delete(4);
+    LOG("---");
+    world.IterateHandle<Position>([&](auto handle)
+    {
+      auto& pos = world.GetComponent<Position>(handle.id);
+      LOG("id: {} x: {} y: {}", handle.id, pos.pos.x, pos.pos.y);
+    });
+
+    return 0;
 
     for (int i = 0; i < 10000000; i++)
     {
@@ -61,11 +71,12 @@ int main()
 
     LOG("Iter Handle");
     auto t1 = std::chrono::high_resolution_clock::now();
-    world.IterateHandle<Position, Velocity>([&](tako::EntityHandle handle) {
-        Position& pos = world.GetComponent<Position>(handle);
+    world.IterateHandle<Position, Velocity>([&](tako::EntityHandle handle)
+    {
+        Position& pos = world.GetComponent<Position>(handle.id);
         //LOG("Iter id: {} x: {} y: {}", handle.id, pos.pos.x, pos.pos.y);
         pos.pos.x++;
-        Velocity& vel = world.GetComponent<Velocity>(handle);
+        Velocity& vel = world.GetComponent<Velocity>(handle.id);
         vel.vel.x++;
     });
     auto t2 = std::chrono::high_resolution_clock::now();

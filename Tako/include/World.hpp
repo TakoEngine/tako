@@ -49,9 +49,9 @@ namespace tako
 	public:
 		World();
 
-		EntityHandle Create();
+		Entity Create();
 		template<typename... Cs, typename = std::enable_if<(sizeof...(Cs) > 0)>>
-		EntityHandle Create()
+		Entity Create()
 		{
 			auto hash = GetArchetypeHash<Cs...>();
 			auto iter = m_archetypes.find(hash);
@@ -60,13 +60,13 @@ namespace tako
 				m_archetypes[hash] = Archetype::Create<Cs...>();
 			}
 			Archetype& arch = m_archetypes[hash];
-			U32 ent = m_nextId++;
-			return arch.AddEntity(ent);
+			return CreateEntityInArchetype(arch);
 		}
 
 		template<typename T>
-		T& GetComponent(EntityHandle handle)
+		T& GetComponent(Entity entity)
 		{
+		    auto handle = m_entities[entity];
 			return handle.archeType->GetComponent<T>(*handle.chunk, handle.indexChunk);
 		}
 
@@ -158,10 +158,14 @@ namespace tako
             }
         }
 
-		void Delete(EntityHandle handle);
+		void Delete(Entity entity);
 	private:
-		U32 m_nextId = 0;
+		std::vector<EntityHandle> m_entities;
+        U32 m_nextDeleted = 0;
+        std::size_t m_deletedCount = 0;
 		std::unordered_map<U64, Archetype> m_archetypes;
+
+		Entity CreateEntityInArchetype(Archetype& arch);
 	};
 
 	template<typename... Cs>

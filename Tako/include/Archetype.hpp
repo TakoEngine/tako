@@ -7,6 +7,7 @@
 #include <vector>
 #include <map>
 #include <algorithm>
+#include <optional>
 
 namespace tako
 {
@@ -241,19 +242,17 @@ namespace tako
 			return index;
 		}
 
-		void DeleteEntityFromChunk(Chunk& chunk, Entity entity, int index)
+		std::optional<Entity> DeleteEntityFromChunk(Chunk& chunk, Entity entity, int index)
         {
             ASSERT(GetEntityArray(chunk)[index] == entity);
             bool wasFull = chunk.header.last >= chunkCapacity;
+            std::optional<Entity> swapped;
 
             chunk.header.last--;
-            if (chunk.header.last == index)
-            {
-            }
-            else
+            if (index < chunk.header.last)
             {
                 Entity* entities = GetEntityArray(chunk);
-                entities[index] = entities[chunk.header.last];
+                swapped = entities[index] = entities[chunk.header.last];
                 for (auto [id, info] : componentInfo)
                 {
                     //auto arr = ch
@@ -279,6 +278,8 @@ namespace tako
                     }
                 }
             }
+
+            return swapped;
         }
 
 		Entity* GetEntityArray(Chunk& chunk)
