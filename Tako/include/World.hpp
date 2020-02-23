@@ -70,6 +70,38 @@ namespace tako
 			return handle.archeType->GetComponent<T>(*handle.chunk, handle.indexChunk);
 		}
 
+		template<typename T>
+		void AddComponent(Entity entity)
+        {
+		    auto compID = ComponentIDGenerator::GetID<T>();
+		    auto handle = m_entities[entity];
+		    auto hash = handle.archeType->componentHash;
+		    auto newHash = hash | (1 << static_cast<U64>(compID));
+		    if (hash == newHash)
+            {
+		        LOG("same hash");
+		        return;
+            }
+
+            MoveEntityArchetype(handle, newHash);
+        }
+
+        template<typename T>
+        void RemoveComponent(Entity entity)
+        {
+            auto compID = ComponentIDGenerator::GetID<T>();
+            auto handle = m_entities[entity];
+            auto hash = handle.archeType->componentHash;
+            auto newHash = hash & (~(1 << static_cast<U64>(compID)));
+            if (hash == newHash)
+            {
+                LOG("same hash");
+                return;
+            }
+
+            MoveEntityArchetype(handle, newHash);
+        }
+
 		template<typename... Cs>
 		ComponentIterator<Cs...> Iter()
 		{
@@ -166,6 +198,8 @@ namespace tako
 		std::unordered_map<U64, Archetype> m_archetypes;
 
 		Entity CreateEntityInArchetype(Archetype& arch);
+		void RemoveEntityFromArchetype(EntityHandle handle);
+		void MoveEntityArchetype(EntityHandle handle, U64 targetHash);
 	};
 
 	template<typename... Cs>

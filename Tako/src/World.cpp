@@ -16,13 +16,9 @@ namespace tako
 	{
 	    auto& handle = m_entities[entity];
 	    ASSERT(handle.id == entity);
-	    auto swapped = handle.archeType->DeleteEntityFromChunk(*handle.chunk, entity, handle.indexChunk);
-	    if (swapped)
-        {
-	        m_entities[swapped.value()].indexChunk = handle.indexChunk;
-        }
-	    std::swap(m_nextDeleted, handle.id);
+	    RemoveEntityFromArchetype(handle);
 
+	    std::swap(m_nextDeleted, handle.id);
 	    m_deletedCount++;
 	}
 
@@ -53,5 +49,31 @@ namespace tako
         }
 
         return ent;
+    }
+
+    void World::RemoveEntityFromArchetype(EntityHandle handle)
+    {
+        auto swapped = handle.archeType->DeleteEntityFromChunk(*handle.chunk, handle.id, handle.indexChunk);
+        if (swapped)
+        {
+            m_entities[swapped.value()].indexChunk = handle.indexChunk;
+        }
+    }
+
+    void World::MoveEntityArchetype(EntityHandle handle, U64 targetHash)
+    {
+        auto iter = m_archetypes.find(targetHash);
+        if (iter == m_archetypes.end())
+        {
+            //TODO: Create new Archetype
+            LOG_ERR("Cant create new Archetype (NOT IMPLEMENTED)")
+            return;
+        }
+
+        auto& targetArch = iter->second;
+        auto targetHandle = targetArch.AddEntity(handle.id);
+        targetArch.CopyComponentData(handle, *targetHandle.chunk, handle.id, targetHandle.indexChunk);
+        RemoveEntityFromArchetype(handle);
+        m_entities[handle.id] = targetHandle;
     }
 }

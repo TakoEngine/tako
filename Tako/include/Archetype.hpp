@@ -224,6 +224,23 @@ namespace tako
 			return handle;
 		}
 
+		void CopyComponentData(EntityHandle src, Chunk& chunk, Entity entity, int index)
+        {
+            ASSERT(GetEntityArray(chunk)[index] == entity);
+
+            for (auto [id, info] : componentInfo)
+            {
+                //auto arr = ch
+                auto& srcComponentInfo = src.archeType->componentInfo;
+                if (srcComponentInfo.find(id) != srcComponentInfo.end())
+                {
+                    U8* srcArray = &src.chunk->data[srcComponentInfo[id].offset];
+                    U8* compArray = &chunk.data[info.offset];
+                    std::memcpy(compArray + info.size * index, srcArray + info.size * src.indexChunk, info.size);
+                }
+
+            }
+        }
 		
 
 		int AddEntityToChunk(Chunk& chunk, Entity entity)

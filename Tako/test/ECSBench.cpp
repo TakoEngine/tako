@@ -16,9 +16,11 @@ struct Velocity
 int main()
 {
     tako::World world;
+
     LOG("{}", world.Create());
     LOG("{}", world.Create<Velocity>());
     LOG("{}", world.Create<Position>());
+    world.AddComponent<Position>(0);
     LOG("{}", world.Create<Position, Velocity>());
     LOG("{}", world.Create<Position>());
 
@@ -33,17 +35,14 @@ int main()
     auto& pos = world.GetComponent<Position>(entity);
     pos.pos = { 4, 2 };
 
-    tako::EntityHandle toDelete;
     world.IterateHandle<Position>([&](auto handle)
     {
         auto& pos = world.GetComponent<Position>(handle.id);
         LOG("id: {} x: {} y: {}", handle.id, pos.pos.x, pos.pos.y);
-        if (handle.id == 2)
-        {
-            toDelete = handle;
-        }
     });
+    world.GetComponent<Position>(5).pos.y = 99;
     world.Delete(2);
+    world.GetComponent<Position>(5).pos.x = 42;
     LOG("---");
     world.IterateHandle<Position>([&](auto handle)
     {
@@ -51,7 +50,10 @@ int main()
         LOG("id: {} x: {} y: {}", handle.id, pos.pos.x, pos.pos.y);
     });
     LOG("Create: {}", world.Create<Position>());
+    world.GetComponent<Position>(2).pos.x = 1337;
     world.Delete(4);
+    world.RemoveComponent<Position>(0);
+
     LOG("---");
     world.IterateHandle<Position>([&](auto handle)
     {
