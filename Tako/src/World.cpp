@@ -63,17 +63,22 @@ namespace tako
     void World::MoveEntityArchetype(EntityHandle handle, U64 targetHash)
     {
         auto iter = m_archetypes.find(targetHash);
+        Archetype* targetArch;
         if (iter == m_archetypes.end())
         {
-            //TODO: Create new Archetype
-            LOG_ERR("Cant create new Archetype (NOT IMPLEMENTED)")
-            return;
+           m_archetypes[targetHash] = Archetype::Create(targetHash);
+           targetArch = &m_archetypes[targetHash];
+        }
+        else
+        {
+            targetArch = &iter->second;
         }
 
-        auto& targetArch = iter->second;
-        auto targetHandle = targetArch.AddEntity(handle.id);
-        targetArch.CopyComponentData(handle, *targetHandle.chunk, handle.id, targetHandle.indexChunk);
+        auto targetHandle = targetArch->AddEntity(handle.id);
+        targetArch->CopyComponentData(handle, *targetHandle.chunk, handle.id, targetHandle.indexChunk);
         RemoveEntityFromArchetype(handle);
         m_entities[handle.id] = targetHandle;
     }
+
+    std::map<U8, std::size_t> ComponentIDGenerator::m_componentSizes = {}; //TODO: move to archetype.cpp
 }

@@ -11,24 +11,38 @@
 
 namespace tako
 {
-	namespace
-	{
-		class ComponentIDGenerator
-		{
-			static U8 Identifier()
-			{
-				static U8 value = 0;
-				return value++;
-			}
-		public:
-			template<typename>
-			static U8 GetID()
-			{
-				static const U8 value = Identifier();
-				return value;
-			}
-		};
 
+
+    class ComponentIDGenerator
+    {
+        static U8 Identifier(std::size_t size)
+        {
+            static U8 value = 0;
+            auto id = value++;
+            m_componentSizes[id] = size;
+            return id;
+        }
+
+        static std::map<U8, std::size_t> m_componentSizes;
+    public:
+        template<typename C>
+        static U8 GetID()
+        {
+            static const U8 value = Identifier(sizeof(C));
+            return value;
+        }
+
+        static std::size_t GetComponentSize(U8 id)
+        {
+            auto size = m_componentSizes.at(id);
+            return size;
+        }
+    };
+
+
+
+    namespace
+    {
 		template<typename C, typename... Cs>
 		U64 GetArchetypeHash()
 		{
@@ -43,11 +57,11 @@ namespace tako
 			}
 		}
 
-		struct CompInfo
-		{
-			U8 id;
-			std::size_t size;
-		};
+        struct CompInfo
+        {
+            U8 id;
+            std::size_t size;
+        };
 
 		template<std::size_t index, std::size_t size, typename C, typename... Cs>
 		void FillIDArray(std::array<CompInfo, size>& arr)
@@ -120,13 +134,34 @@ namespace tako
 		std::size_t offset;
 	};
 
+    U16 FillComponentTypeInfo(std::map<U8, ComponenTypeInfo>& infos, const CompInfo* compInfos, std::size_t infoCount, std::size_t elementSize)
+    {
+        if (infoCount == 0)
+        {
+            return (CHUNK_SIZE - sizeof(ChunkHeader)) / sizeof(Entity);
+        }
+        else
+        {
+            U16 capacity = (CHUNK_SIZE - sizeof(ChunkHeader)) / elementSize;
+            std::size_t offset = sizeof(Entity) * capacity;
+            for (int i = 0; i < infoCount; i++)
+            {
+                auto info = compInfos[i];
+                ComponenTypeInfo compInfo;
+                compInfo.id = info.id;
+                compInfo.size = info.size;
+                compInfo.offset = offset;
+                infos.emplace(info.id, compInfo);
+                //LOG("Offset {} {}", info.id, offset);
+                offset += info.size * capacity;
+            }
 
-	//struct ComponentLayout
-	//{
-	//	std::unordered_map<U8, U32> offset;
-	//};
+            return capacity;
+        }
+    }
 
-	template<class... Cs>
+
+    template<class... Cs>
 	U16 FillComponentTypeInfo(std::map<U8, ComponenTypeInfo>& infos)
 	{
 		if constexpr (sizeof...(Cs) == 0)
@@ -135,24 +170,21 @@ namespace tako
 		}
 		else
 		{
-			std::size_t elementSize = CalculateEntitySize<Cs...>();
-			U16 capacity = (CHUNK_SIZE - sizeof(ChunkHeader)) / elementSize;
-			std::size_t offset = sizeof(Entity) * capacity;
-			auto compInfoArray = GetIDArray<Cs...>();
-			for (auto info : compInfoArray)
-			{
-				ComponenTypeInfo compInfo;
-				compInfo.id = info.id;
-				compInfo.size = info.size;
-				compInfo.offset = offset;
-				infos.emplace(info.id, compInfo);
-				//LOG("Offset {} {}", info.id, offset);
-				offset += info.size * capacity;
-			}
-
-			return capacity;
+            auto compInfoArray = GetIDArray<Cs...>();
+		    return FillComponentTypeInfo(infos, compInfoArray.data(), compInfoArray.size(), CalculateEntitySize<Cs...>());
 		}
 	}
+
+    U16 FillComponentTypeInfo(std::map<U8, ComponenTypeInfo>& infos, const CompInfo* compInfos, std::size_t infoCount)
+    {
+        std::size_t elementSize = sizeof(Entity);
+        for (int i = 0; i < infoCount; i++)
+        {
+            elementSize += compInfos[i].size;
+        }
+
+        return FillComponentTypeInfo(infos, compInfos, infoCount, elementSize);
+    }
 
 	struct Archetype;
 
@@ -200,6 +232,29 @@ namespace tako
 			arch.chunkCapacity = FillComponentTypeInfo<Cs...>(arch.componentInfo);
 			return arch;
 		}
+
+        static Archetype Create(U64 hash)
+        {
+		    std::array<CompInfo, 64> componentInfos;
+		    std::size_t componentInfoCount = 0;
+
+		    U64 tempHash = hash;
+		    for (U64 i = 0; tempHash > 0; i++)
+            {
+		        if (tempHash & (static_cast<U64>(1) << i))
+                {
+		            componentInfos[componentInfoCount].id = i;
+                    componentInfos[componentInfoCount].size = ComponentIDGenerator::GetComponentSize(i);
+                    componentInfoCount++;
+                    tempHash &= ~(static_cast<U64>(1) << i);
+                }
+            }
+
+            Archetype arch;
+            arch.componentHash = hash;
+            arch.chunkCapacity = FillComponentTypeInfo(arch.componentInfo, componentInfos.data(), componentInfoCount);
+            return arch;
+        }
 
 		EntityHandle AddEntity(Entity entity)
 		{

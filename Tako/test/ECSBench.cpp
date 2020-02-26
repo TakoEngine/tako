@@ -18,9 +18,9 @@ int main()
     tako::World world;
 
     LOG("{}", world.Create());
+    world.AddComponent<Position>(0);
     LOG("{}", world.Create<Velocity>());
     LOG("{}", world.Create<Position>());
-    world.AddComponent<Position>(0);
     LOG("{}", world.Create<Position, Velocity>());
     LOG("{}", world.Create<Position>());
 
@@ -30,6 +30,10 @@ int main()
         pos.pos.x = handle.id * 2;
         pos.pos.y = handle.id * 4;
     });
+
+    auto& posZero = world.GetComponent<Position>(0);
+    posZero.pos.y = 666;
+    world.AddComponent<Velocity>(0);
 
     auto entity = world.Create<Position>();
     auto& pos = world.GetComponent<Position>(entity);
