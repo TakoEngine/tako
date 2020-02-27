@@ -1,7 +1,6 @@
 include(tako)
 set(TAKO_DLL "tako")
-
-set(SOURCE_FILES
+add_library(${TAKO_DLL}
 	"include/Window.hpp"
 	"include/Log.hpp"
 	"include/Utility.hpp"
@@ -30,7 +29,9 @@ set(SOURCE_FILES
 function(set_feature define val)
 	set(${define} ${val} PARENT_SCOPE)
 	if(val)
-		add_compile_definitions(${define})
+		#add_compile_definitions(${define})
+		#add_definitions(-D${define})
+		target_compile_definitions(${TAKO_DLL} PUBLIC ${define})
 	endif()
 endfunction()
 
@@ -46,8 +47,15 @@ set_feature(TAKO_VULKAN false)
 set_feature(TAKO_OPENAL true)
 endif(EMSCRIPTEN)
 
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+set_feature(TAKO_OPENGL false)
+set_feature(TAKO_VULKAN false)
+set_feature(TAKO_OPENAL false)
+set_feature(TAKO_GLFW true)
+endif()
+
 if (WIN32)
-set(SOURCE_FILES ${SOURCE_FILES}
+target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/win32/Main.cpp"
 	"src/platform/win32/Window.cpp"
 	"src/platform/win32/Log.cpp"
@@ -56,17 +64,20 @@ set(SOURCE_FILES ${SOURCE_FILES}
 	"src/platform/win32/WinUtility.cpp"
 )
 elseif (EMSCRIPTEN)
-set(SOURCE_FILES ${SOURCE_FILES}
+target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/web/Window.cpp"
 	"src/platform/web/Log.cpp"
 	"src/platform/web/FileSystem.cpp")
+elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+target_sources(${TAKO_DLL} PRIVATE
+		"src/platform/default/Log.cpp")
 else()
-set(SOURCE_FILES ${SOURCE_FILES}
+target_sources(${TAKO_DLL} PRIVATE
 		"src/platform/default/Log.cpp")
 endif()
 
 if (TAKO_OPENGL)
-set (SOURCE_FILES ${SOURCE_FILES}
+target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/opengl/OpenGLPixelArtDrawer.hpp"
 	"src/platform/opengl/OpenGLPixelArtDrawer.cpp"
 	"src/platform/opengl/OpenGLTexture.hpp"
@@ -75,6 +86,12 @@ set (SOURCE_FILES ${SOURCE_FILES}
 	"src/platform/opengl/OpenGLSprite.cpp"
     "src/platform/opengl/OpenGLContext.cpp"
 )
+
+if (TAKO_GLFW)
+set (SOURCE_FILES ${SOURCE_FILES}
+	"src/platform/glfw/Window.cpp"
+)
+endif()
 
 function(add_shader filename)
 	SET(SHADER_IN ${CMAKE_SOURCE_DIR}/Tako/shaders/${filename})
@@ -86,7 +103,7 @@ function(add_shader filename)
 		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 		COMMENT "Preprocessing ${filename}"
 	)
-	set(SOURCE_FILES ${SOURCE_FILES} ${SHADER_OUT} PARENT_SCOPE)
+	target_sources(${TAKO_DLL} PRIVATE ${SHADER_OUT})
 endfunction()
 
 # add_shader("quad.vert.glsl")
@@ -97,7 +114,7 @@ endfunction()
 endif(TAKO_OPENGL)
 
 if (TAKO_VULKAN)
-set(SOURCE_FILES ${SOURCE_FILES}
+target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/vulkan/VulkanContext.cpp"
 )
 #configure_file("shaders/shader.vert.spv" ${CMAKE_BINARY_DIR}/shaders/shader.vert.spv COPYONLY)
@@ -105,11 +122,15 @@ set(SOURCE_FILES ${SOURCE_FILES}
 endif(TAKO_VULKAN)
 
 
-add_library(${TAKO_DLL} ${SOURCE_FILES})
+#add_library(${TAKO_DLL} ${SOURCE_FILES})
 target_include_directories(${TAKO_DLL} PUBLIC "include")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/stb")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/dr_libs")
 target_include_directories(${TAKO_DLL} PUBLIC "${CMAKE_BINARY_DIR}/shader")
+
+if (TAKO_GLFW)
+target_link_libraries(${TAKO_DLL} PUBLIC glfw)
+endif()
 
 if (TAKO_VULKAN)
 find_package(vulkan REQUIRED)
