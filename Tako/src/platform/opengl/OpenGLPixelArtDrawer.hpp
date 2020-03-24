@@ -3,7 +3,7 @@
 #include "PixelArtDrawer.hpp"
 #include "OpenGLTexture.hpp"
 #include "OpenGLSprite.hpp"
-#include <GLES2/gl2.h>
+#include "OpenGL.hpp"
 
 namespace tako
 {

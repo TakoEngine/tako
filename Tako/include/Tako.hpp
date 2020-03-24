@@ -12,9 +12,9 @@
 
 namespace tako
 {
-	extern void Setup();
+	extern void Setup(PixelArtDrawer* drawer);
 	extern void Update(Input* input, float dt);
-	extern void Draw();
+	extern void Draw(PixelArtDrawer* drawer);
 
 #ifdef TAKO_OPENGL
 	static tako::PixelArtDrawer* Graphics;

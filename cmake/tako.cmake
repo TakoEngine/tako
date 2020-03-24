@@ -9,7 +9,7 @@ function(tako_assets_dir dir)
     #configure_file(${file} ${file} COPYONLY)
     message(${dir})
     if (DEFINED EMSCRIPTEN)
-        set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "--embed-file ${dir}" PARENT_SCOPE)
+        set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "--embed-file ${dir}@" PARENT_SCOPE)
     endif()
 
 endfunction()

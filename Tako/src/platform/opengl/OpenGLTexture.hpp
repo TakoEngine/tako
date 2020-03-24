@@ -1,7 +1,7 @@
 #pragma once
 #include "Texture.hpp"
 #include "Bitmap.hpp"
-#include <GLES2/gl2.h>
+#include "OpenGL.hpp"
 
 namespace tako
 {

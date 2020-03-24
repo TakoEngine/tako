@@ -24,6 +24,8 @@ add_library(${TAKO_DLL}
 	"include/Entity.hpp"
 	"include/World.hpp"
 	"src/World.cpp"
+	"include/EntryPoint.hpp"
+	"src/EntryPoint.cpp"
 	)
 
 function(set_feature define val)
@@ -48,10 +50,11 @@ set_feature(TAKO_OPENAL true)
 endif(EMSCRIPTEN)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-set_feature(TAKO_OPENGL false)
+set_feature(TAKO_OPENGL true)
 set_feature(TAKO_VULKAN false)
 set_feature(TAKO_OPENAL false)
 set_feature(TAKO_GLFW true)
+set_feature(TAKO_GLAD true)
 endif()
 
 if (WIN32)
@@ -70,9 +73,9 @@ target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/web/FileSystem.cpp")
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 target_sources(${TAKO_DLL} PRIVATE
-		"src/platform/default/Log.cpp")
-else()
-target_sources(${TAKO_DLL} PRIVATE
+		#"src/platform/default/FileSystem.cpp"
+		"src/platform/web/FileSystem.cpp"
+		"src/platform/default/Main.cpp"
 		"src/platform/default/Log.cpp")
 endif()
 
@@ -87,12 +90,6 @@ target_sources(${TAKO_DLL} PRIVATE
     "src/platform/opengl/OpenGLContext.cpp"
 )
 
-if (TAKO_GLFW)
-set (SOURCE_FILES ${SOURCE_FILES}
-	"src/platform/glfw/Window.cpp"
-)
-endif()
-
 function(add_shader filename)
 	SET(SHADER_IN ${CMAKE_SOURCE_DIR}/Tako/shaders/${filename})
 	SET(SHADER_OUT ${CMAKE_BINARY_DIR}/shader/${filename})
@@ -106,11 +103,14 @@ function(add_shader filename)
 	target_sources(${TAKO_DLL} PRIVATE ${SHADER_OUT})
 endfunction()
 
-# add_shader("quad.vert.glsl")
-# add_shader("quad.frag.glsl")
-# add_shader("image.vert.glsl")
-# add_shader("image.frag.glsl")
+add_shader("quad.vert.glsl")
+add_shader("quad.frag.glsl")
+add_shader("image.vert.glsl")
+add_shader("image.frag.glsl")
 
+	if (EMSCRIPTEN)
+		target_link_libraries(${TAKO_DLL} PRIVATE GLESv2)
+	endif()
 endif(TAKO_OPENGL)
 
 if (TAKO_VULKAN)
@@ -120,6 +120,17 @@ target_sources(${TAKO_DLL} PRIVATE
 #configure_file("shaders/shader.vert.spv" ${CMAKE_BINARY_DIR}/shaders/shader.vert.spv COPYONLY)
 #configure_file("shaders/shader.frag.spv" ${CMAKE_BINARY_DIR}/shaders/shader.frag.spv COPYONLY)
 endif(TAKO_VULKAN)
+
+if (TAKO_GLFW)
+target_sources(${TAKO_DLL} PRIVATE
+		"src/platform/glfw/Window.cpp"
+		"src/platform/glfw/glad.c"
+		"src/platform/glfw/glad/glad.h"
+		"src/platform/glfw/KHR/khrplatform.h"
+		)
+target_include_directories(${TAKO_DLL} PUBLIC "src/platform/glfw")
+target_compile_definitions(${TAKO_DLL} PUBLIC GLFW_INCLUDE_NONE)
+endif()
 
 
 #add_library(${TAKO_DLL} ${SOURCE_FILES})
@@ -138,13 +149,6 @@ target_include_directories(${TAKO_DLL} PUBLIC ${Vulkan_INCLUDE_DIRS})
 target_compile_definitions(${TAKO_DLL} PRIVATE "VK_USE_PLATFORM_WIN32_KHR")
 target_link_libraries(${TAKO_DLL} PRIVATE ${Vulkan_LIBRARIES})
 endif(TAKO_VULKAN)
-
-#find_package(glbinding REQUIRED)
-#configure_file(${glbinding_DIR}/glbinding.dll "glbinding.dll" COPYONLY)
-#target_link_libraries(${TAKO_DLL} PRIVATE glbinding::glbinding)
-if (TAKO_OPENGL)
-target_link_libraries(${TAKO_DLL} PRIVATE GLESv2)
-endif(TAKO_OPENGL)
 
 if (TAKO_OPENAL)
 target_link_libraries(${TAKO_DLL} PRIVATE openal)

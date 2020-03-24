@@ -9,15 +9,13 @@ static float delta = 0;
 static tako::AudioClip* clipBump;
 static tako::AudioClip* clipMiss;
 
-void tako::Setup()
+void tako::Setup(tako::PixelArtDrawer* drawer)
 {
 	LOG("SANDBOX SETUP");
-	/*
-	clipBump = new AudioClip("/Bump.wav");
-	clipMiss = new AudioClip("/Miss.wav");
+	//clipBump = new AudioClip("/Bump.wav");
+	//clipMiss = new AudioClip("/Miss.wav");
 	auto bitmap = tako::Bitmap::FromFile("./tree.png");
 	tree = drawer->CreateTexture(bitmap);
-	*/
 }
 
 int PingPong(int val, int max)
@@ -36,7 +34,7 @@ void tako::Update(tako::Input* input, float dt)
 {
 	delta += dt;
 	if (delta > 1) {
-		Audio::Play(*clipMiss);
+		//Audio::Play(*clipMiss);
 		delta = 0;
 	}
     float speed = 5;
@@ -67,9 +65,8 @@ void tako::Update(tako::Input* input, float dt)
 	*/
 }
 
-void tako::Draw()
+void tako::Draw(tako::PixelArtDrawer* drawer)
 {
-	/*
     auto alpha = static_cast<tako::U8>(PingPong(a, 255));
     drawer->Clear();
     drawer->DrawRectangle(0, 0, 100, 100, {100, 0, 255, alpha});
@@ -78,5 +75,4 @@ void tako::Draw()
     drawer->DrawImage(75 + PingPong(x, 150), 275 + PingPong(y, 25), 100, 100, tree);
 
     drawer->DrawRectangle(pos.x, pos.y, 64, 64, {255, 0, 0, 255});
-	*/
 }

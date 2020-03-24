@@ -11,7 +11,7 @@ using namespace gl20;
 
 #pragma comment(lib, "opengl32.lib")
 #endif
-#include <GLES2/gl2.h>
+#include "OpenGL.hpp"
 
 namespace tako
 {
