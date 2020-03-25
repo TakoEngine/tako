@@ -13,8 +13,8 @@ namespace tako
         bool GetKeyDown(Key key);
         bool GetKeyUp(Key key);
     private:
-        std::array<KeyStatus, static_cast<size_t>(Key::Unknown)> activeKeys;
-        std::array<KeyStatus, static_cast<size_t>(Key::Unknown)> keys;
-        std::array<KeyStatus, static_cast<size_t>(Key::Unknown)> prevKeys;
+        std::array<KeyStatus, static_cast<size_t>(Key::Unknown)> activeKeys = {KeyStatus::Up};
+        std::array<KeyStatus, static_cast<size_t>(Key::Unknown)> keys = {KeyStatus::Up};
+        std::array<KeyStatus, static_cast<size_t>(Key::Unknown)> prevKeys = {KeyStatus::Up};
     };
 }

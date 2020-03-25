@@ -41,7 +41,7 @@ void tako::Update(tako::Input* input, float dt)
     x = (x + 1) % 300;
     y = (y + 1) % 50;
     a = (a + 1) % 512;
-	/*
+
     if (input->GetKey(tako::Key::W))
     {
         pos.y -= speed * dt;
@@ -60,9 +60,8 @@ void tako::Update(tako::Input* input, float dt)
     }
 	if (input->GetKeyDown(tako::Key::Space))
 	{
-		Audio::Play(*clipBump);
+		//Audio::Play(*clipBump);
 	}
-	*/
 }
 
 void tako::Draw(tako::PixelArtDrawer* drawer)

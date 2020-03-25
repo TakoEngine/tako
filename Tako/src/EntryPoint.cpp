@@ -7,6 +7,7 @@ namespace tako
     int RunGameLoop()
     {
         tako::Window window;
+        tako::Input input;
         tako::GraphicsContext context(window.GetHandle(), window.GetWidth(), window.GetHeight());
         auto drawer = context.CreatePixelArtDrawer();
         tako::Setup(drawer);
@@ -35,6 +36,7 @@ namespace tako
 
         broadcaster.Register(&onEvent);
         broadcaster.Register(&context);
+        broadcaster.Register(&input);
 
         window.SetEventCallback([&](tako::Event& evt)
         {
@@ -45,7 +47,8 @@ namespace tako
         while (!window.ShouldExit())
         {
             window.Poll();
-            tako::Update(nullptr, 0.16f);
+            input.Update();
+            tako::Update(&input, 0.16f);
             tako::Draw(drawer);
             context.Present();
             //Sleep(16);
