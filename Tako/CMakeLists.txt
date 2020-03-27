@@ -26,6 +26,7 @@ add_library(${TAKO_DLL}
 	"src/World.cpp"
 	"include/EntryPoint.hpp"
 	"src/EntryPoint.cpp"
+	"include/Font.hpp"
 	)
 
 function(set_feature define val)
@@ -70,7 +71,8 @@ elseif (EMSCRIPTEN)
 target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/web/Window.cpp"
 	"src/platform/web/Log.cpp"
-	"src/platform/web/FileSystem.cpp")
+	"src/platform/web/FileSystem.cpp"
+	"src/platform/default/Main.cpp")
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 target_sources(${TAKO_DLL} PRIVATE
 		#"src/platform/default/FileSystem.cpp"
@@ -122,6 +124,7 @@ target_sources(${TAKO_DLL} PRIVATE
 endif(TAKO_VULKAN)
 
 if (TAKO_GLFW)
+	message(ass)
 target_sources(${TAKO_DLL} PRIVATE
 		"src/platform/glfw/Window.cpp"
 		"src/platform/glfw/glad.c"

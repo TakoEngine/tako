@@ -1,11 +1,31 @@
 #include "EntryPoint.hpp"
 #include "Tako.hpp"
 #include "World.hpp"
+#include <emscripten.h>
 
 namespace tako
 {
+    struct TickStruct
+    {
+        tako::Window& window;
+        tako::GraphicsContext& context;
+        tako::PixelArtDrawer* drawer;
+        tako::Input& input;
+    };
+
+    void Tick(void* p)
+    {
+        TickStruct* data = reinterpret_cast<TickStruct*>(p);
+        data->window.Poll();
+        data->input.Update();
+        tako::Update(&data->input, 0.16f);
+        tako::Draw(data->drawer);
+        data->context.Present();
+    }
+
     int RunGameLoop()
     {
+        LOG("Init!");
         tako::Window window;
         tako::Input input;
         tako::GraphicsContext context(window.GetHandle(), window.GetWidth(), window.GetHeight());
@@ -44,6 +64,7 @@ namespace tako
         });
 
 
+        /*
         while (!window.ShouldExit())
         {
             window.Poll();
@@ -53,8 +74,19 @@ namespace tako
             context.Present();
             //Sleep(16);
         }
+        */
 
-        LOG("terminating")
+        TickStruct data
+        {
+            window,
+            context,
+            drawer,
+            input
+        };
+
+        emscripten_set_main_loop_arg(Tick, &data, 0, 1);
+
+        LOG("terminating");
         return 0;
     }
 }
