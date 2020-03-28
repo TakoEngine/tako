@@ -70,6 +70,13 @@ namespace tako
 			return handle.archeType->GetComponent<T>(*handle.chunk, handle.indexChunk);
 		}
 
+        template<typename T>
+        bool HasComponent(Entity entity)
+        {
+            auto handle = m_entities[entity];
+            return handle.archeType->HasComponent<T>(*handle.chunk, handle.indexChunk);
+        }
+
 		template<typename T>
 		void AddComponent(Entity entity)
         {

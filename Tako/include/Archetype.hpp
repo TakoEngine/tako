@@ -392,5 +392,15 @@ namespace tako
 			T* arr = reinterpret_cast<T*>(&chunk.data[info.offset]);
 			return arr[index];
 		}
+
+        template<typename T>
+        bool HasComponent(Chunk& chunk, U16 index)
+        {
+            ASSERT(index < chunkCapacity);
+            ASSERT(index < chunk.header.last);
+            U8 compID = ComponentIDGenerator::GetID<T>();
+            auto info = componentInfo.find(compID);
+            return info != componentInfo.end();
+        }
 	};
 }
