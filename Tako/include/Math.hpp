@@ -12,6 +12,20 @@ namespace tako
 			return x < 0 ? -x : x;
 		}
 
+		constexpr float clamp(float value, float min, float max)
+        {
+		    if (value < min)
+            {
+		        return min;
+            }
+		    if (value > max)
+            {
+		        return max;
+            }
+
+		    return value;
+        }
+
 		//TODO: optimize
 		constexpr float sqrt(float x, float margin = 0.000001f)
 		{
