@@ -29,25 +29,27 @@ namespace tako
         {
             auto [xSize, ySize] = CalculateDimensions(text, xDistance, charsPerLine, yDistance);
             Bitmap output(xSize, ySize);
-            output.Clear({0, 0, 0, 255});
+            output.Clear({0, 0, 0, 0});
+            int xI = 0;
+            int yI = 0;
             for (int i = 0; i < text.length(); i++)
             {
+                if (text[i] == '\n' || (charsPerLine > 0 && xI == charsPerLine))
+                {
+                    yI++;
+                    xI = 0;
+                    continue;
+                }
                 auto search = m_charMap.find(text[i]);
                 if (search == m_charMap.end())
                 {
                     continue;
                 }
                 auto [xb, yb] = search->second;
-                auto xI = i;
-                auto yI = 0;
-                if (charsPerLine > 0)
-                {
-                    xI = i % charsPerLine;
-                    yI = i / charsPerLine;
-                }
                 auto x = xI * (m_width + xDistance);
                 auto y = yI * (m_height + yDistance);
                 output.DrawBitmap(x, y, xb, yb, m_width, m_height, m_source);
+                xI++;
             }
             return std::move(output);
         }
@@ -55,16 +57,32 @@ namespace tako
         std::pair<I32, I32> CalculateDimensions(std::string_view text, int xDistance, int charsPerLine = -1, int yDistance = 1)
         {
             auto len = text.length();
-            if (charsPerLine <= 0)
+            int lines = 1;
+            int maxLineChars = 0;
             {
-                return { len * (m_width + xDistance), m_height };
+                int currentLineChars = 0;
+                for (int i = 0; i < text.length(); i++)
+                {
+                    if (text[i] == '\n')
+                    {
+                        lines++;
+                        currentLineChars = 0;
+                    }
+                    else if (charsPerLine > 0 && currentLineChars >= charsPerLine)
+                    {
+                        lines++;
+                        currentLineChars = 1;
+                        maxLineChars = std::max(maxLineChars, currentLineChars);
+                    }
+                    else
+                    {
+                        currentLineChars++;
+                        maxLineChars = std::max(maxLineChars, currentLineChars);
+                    }
+                }
             }
-            else
-            {
-                auto xLen = len > charsPerLine ? charsPerLine : len;
-                auto yLen = 1 + len / charsPerLine;
-                return { xLen * (m_width + xDistance), yLen * (m_height + yDistance) };
-            }
+
+            return { maxLineChars * (m_width + xDistance) - xDistance, lines * (m_height + yDistance) - yDistance};
         }
     private:
         Bitmap m_source;
