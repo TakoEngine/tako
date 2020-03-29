@@ -62,6 +62,8 @@ namespace tako
 	    A,
 	    S,
 	    D,
+	    Q,
+	    E,
 	    Up,
 	    Down,
 	    Left,

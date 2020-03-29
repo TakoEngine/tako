@@ -26,6 +26,8 @@ namespace tako
             {"KeyA", Key::A},
             {"KeyS", Key::S},
             {"KeyD", Key::D},
+            {"KeyQ", Key::Q},
+            {"KeyE", Key::E},
             {"ArrowDown", Key::Down},
             {"ArrowLeft", Key::Left},
             {"ArrowRight", Key::Right},
