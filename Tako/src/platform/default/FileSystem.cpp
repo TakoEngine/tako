@@ -26,11 +26,15 @@ namespace tako::FileSystem
         file.read(reinterpret_cast<char*>(buffer), toRead);
         bytesRead = toRead;
         file.close();
+
+        return true;
     }
 
     size_t GetFileSize(const char* filePath)
     {
-        return std::filesystem::file_size(filePath);
+        std::string path("./Assets");
+        path.append(filePath);
+        return std::filesystem::file_size(path);
     }
 }
 

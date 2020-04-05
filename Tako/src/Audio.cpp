@@ -1,4 +1,5 @@
 #include "Audio.hpp"
+#include "FileSystem.hpp"
 #ifdef TAKO_OPENAL
 #include "NumberTypes.hpp"
 #define DR_WAV_IMPLEMENTATION
@@ -17,8 +18,12 @@ namespace tako
 	AudioClip::AudioClip(const char* file)
 	{
 #ifdef TAKO_OPENAL
+	    auto bufferSize = FileSystem::GetFileSize(file);
+        tako::U8* buffer = new tako::U8[bufferSize];
+        size_t bytesRead = 0;
+        FileSystem::ReadFile(file, buffer, bufferSize, bytesRead);
 		drwav wavFile;
-		drwav_init_file(&wavFile, file, nullptr);
+		drwav_init_memory(&wavFile, buffer, bytesRead, nullptr);
 
 		auto frames = wavFile.totalPCMFrameCount;
 		auto channels = wavFile.channels;
@@ -31,6 +36,7 @@ namespace tako
 
 		free(sampleBuffer);
 		drwav_uninit(&wavFile);
+		free(buffer);
 #endif
 	}
 
