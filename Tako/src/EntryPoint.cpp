@@ -1,7 +1,10 @@
 #include "EntryPoint.hpp"
 #include "Tako.hpp"
 #include "World.hpp"
+#include "Timer.hpp"
+#ifdef EMSCRIPTEN
 #include <emscripten.h>
+#endif
 
 namespace tako
 {
@@ -16,15 +19,13 @@ namespace tako
     void Tick(void* p)
     {
         TickStruct* data = reinterpret_cast<TickStruct*>(p);
-        static double lastFrame = emscripten_get_now();
-        double time = emscripten_get_now();
-        float dt = (time - lastFrame) / 1000;
+        static tako::Timer timer;
+        float dt = timer.GetDeltaTime();
         data->window.Poll();
         data->input.Update();
         tako::Update(&data->input, dt);
         tako::Draw(data->drawer);
         data->context.Present();
-        lastFrame = time;
     }
 
     int RunGameLoop()
@@ -67,19 +68,6 @@ namespace tako
             broadcaster.Broadcast(evt);
         });
 
-
-        /*
-        while (!window.ShouldExit())
-        {
-            window.Poll();
-            input.Update();
-            tako::Update(&input, 0.16f);
-            tako::Draw(drawer);
-            context.Present();
-            //Sleep(16);
-        }
-        */
-
         TickStruct data
         {
             window,
@@ -88,7 +76,15 @@ namespace tako
             input
         };
 
+#ifndef EMSCRIPTEN
+        while (!window.ShouldExit() && keepRunning)
+        {
+            Tick(&data);
+        }
+#else
         emscripten_set_main_loop_arg(Tick, &data, 0, 1);
+#endif
+
 
         LOG("terminating");
         return 0;

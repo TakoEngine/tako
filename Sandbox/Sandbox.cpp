@@ -20,7 +20,7 @@ void tako::Setup(tako::PixelArtDrawer* drawer)
 	LOG("SANDBOX SETUP");
 	//clipBump = new AudioClip("/Bump.wav");
 	//clipMiss = new AudioClip("/Miss.wav");
-	auto bitmap = tako::Bitmap::FromFile("./tree.png");
+	auto bitmap = tako::Bitmap::FromFile("/tree.png");
 	tree = drawer->CreateTexture(bitmap);
 	font = new tako::Font("/charmap-cellphone.png", 5, 7, 1, 1, 2, 2, " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]\a_`abcdefghijklmnopqrstuvwxyz{|}~");//" !\"#$%&'()*,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]ˆ_`abcdefghijklmnopqrstuvwxyz{|}~");
     auto textBitmap = font->RenderText(exampleText, 1, 5);

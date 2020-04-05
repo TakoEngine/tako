@@ -6,10 +6,12 @@ function(tako_setup target)
 endfunction()
 
 function(tako_assets_dir dir)
-    #configure_file(${file} ${file} COPYONLY)
+
     message(${dir})
     if (DEFINED EMSCRIPTEN)
         set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "--embed-file ${dir}@" PARENT_SCOPE)
+    else()
+        execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${dir} ${CMAKE_CURRENT_BINARY_DIR}/Assets)
     endif()
 
 endfunction()

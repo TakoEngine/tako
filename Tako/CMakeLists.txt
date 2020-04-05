@@ -27,6 +27,7 @@ add_library(${TAKO_DLL}
 	"include/EntryPoint.hpp"
 	"src/EntryPoint.cpp"
 	"include/Font.hpp"
+	"include/Timer.hpp"
 	)
 
 function(set_feature define val)
@@ -72,11 +73,11 @@ target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/web/Window.cpp"
 	"src/platform/web/Log.cpp"
 	"src/platform/web/FileSystem.cpp"
+	"src/platform/web/Timer.cpp"
 	"src/platform/default/Main.cpp")
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 target_sources(${TAKO_DLL} PRIVATE
-		#"src/platform/default/FileSystem.cpp"
-		"src/platform/web/FileSystem.cpp"
+		"src/platform/default/FileSystem.cpp"
 		"src/platform/default/Main.cpp"
 		"src/platform/default/Log.cpp")
 endif()
@@ -127,6 +128,7 @@ if (TAKO_GLFW)
 	message(ass)
 target_sources(${TAKO_DLL} PRIVATE
 		"src/platform/glfw/Window.cpp"
+		"src/platform/glfw/Timer.cpp"
 		"src/platform/glfw/glad.c"
 		"src/platform/glfw/glad/glad.h"
 		"src/platform/glfw/KHR/khrplatform.h"

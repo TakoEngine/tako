@@ -15,6 +15,8 @@ namespace tako
                 {GLFW_KEY_A, Key::A},
                 {GLFW_KEY_S, Key::S},
                 {GLFW_KEY_D, Key::D},
+                {GLFW_KEY_Q, Key::Q},
+                {GLFW_KEY_E, Key::E},
                 {GLFW_KEY_DOWN, Key::Down},
                 {GLFW_KEY_LEFT, Key::Left},
                 {GLFW_KEY_RIGHT, Key::Right},
