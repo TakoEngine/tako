@@ -93,7 +93,7 @@ target_sources(${TAKO_DLL} PRIVATE
 )
 
 function(add_shader filename)
-	SET(SHADER_IN ${CMAKE_SOURCE_DIR}/Tako/shaders/${filename})
+	SET(SHADER_IN ${CMAKE_CURRENT_SOURCE_DIR}/shaders/${filename})
 	SET(SHADER_OUT ${CMAKE_BINARY_DIR}/shader/${filename})
 	add_custom_command(
 		OUTPUT ${SHADER_OUT}
@@ -105,10 +105,10 @@ function(add_shader filename)
 	target_sources(${TAKO_DLL} PRIVATE ${SHADER_OUT})
 endfunction()
 
-#add_shader("quad.vert.glsl")
-#add_shader("quad.frag.glsl")
-#add_shader("image.vert.glsl")
-#add_shader("image.frag.glsl")
+add_shader("quad.vert.glsl")
+add_shader("quad.frag.glsl")
+add_shader("image.vert.glsl")
+add_shader("image.frag.glsl")
 
 	if (EMSCRIPTEN)
 		target_link_libraries(${TAKO_DLL} PRIVATE GLESv2)
