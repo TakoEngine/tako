@@ -56,24 +56,24 @@ void tako::Update(tako::Input* input, float dt)
 		//Audio::Play(*clipMiss);
 		delta = 0;
 	}
-    float speed = 5;
+    float speed = 60;
     x = (x + 1) % 300;
     y = (y + 1) % 50;
     a = (a + 1) % 512;
 
-    if (input->GetKey(tako::Key::W))
-    {
-        pos.y -= speed * dt;
-    }
-    if (input->GetKey(tako::Key::S))
+    if (input->GetKey(tako::Key::W) || input->GetKey(tako::Key::Gamepad_Dpad_Up))
     {
         pos.y += speed * dt;
     }
-    if (input->GetKey(tako::Key::A))
+    if (input->GetKey(tako::Key::S) || input->GetKey(tako::Key::Gamepad_Dpad_Down))
+    {
+        pos.y -= speed * dt;
+    }
+    if (input->GetKey(tako::Key::A) || input->GetKey(tako::Key::Gamepad_Dpad_Left))
     {
         pos.x -= speed * dt;
     }
-    if (input->GetKey(tako::Key::D))
+    if (input->GetKey(tako::Key::D) || input->GetKey(tako::Key::Gamepad_Dpad_Right))
     {
         pos.x += speed * dt;
     }

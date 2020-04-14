@@ -35,6 +35,24 @@ namespace tako
             {"Space", Key::Space},
             {"Enter", Key::Enter}
         };
+
+        std::pair<int, Key> GamepadMapping[]
+        {
+            {0, Key::Gamepad_A},
+            {1, Key::Gamepad_B},
+            {2, Key::Gamepad_X},
+            {3, Key::Gamepad_Y},
+            {4, Key::Gamepad_L},
+            {5, Key::Gamepad_R},
+            {6, Key::Gamepad_L2},
+            {7, Key::Gamepad_R2},
+            {8, Key::Gamepad_Select},
+            {9, Key::Gamepad_Start},
+            {12, Key::Gamepad_Dpad_Up},
+            {13, Key::Gamepad_Dpad_Down},
+            {14, Key::Gamepad_Dpad_Left},
+            {15, Key::Gamepad_Dpad_Right},
+        };
     }
 	class Window::WindowImpl
 	{
@@ -66,6 +84,32 @@ namespace tako
 
 		void Poll()
 		{
+		    auto status = emscripten_sample_gamepad_data();
+		    if (status == EMSCRIPTEN_RESULT_SUCCESS)
+            {
+                auto numGamepads = emscripten_get_num_gamepads();
+                EmscriptenGamepadEvent padState;
+                for (int i = 0; i < numGamepads; i++)
+                {
+                    emscripten_get_gamepad_status(i, &padState);
+                    if (padState.connected)
+                    {
+                        for (auto [index, key] : GamepadMapping)
+                        {
+                            if (index >= padState.numButtons)
+                            {
+                                continue;
+                            }
+                            KeyPress evt;
+                            evt.key = key;
+                            evt.status = padState.digitalButton[index] ? KeyStatus::Down : KeyStatus::Up;
+                            m_callback(evt);
+                        }
+
+                        break;
+                    }
+                }
+            }
 		}
 
 		bool ShouldExit()

@@ -70,6 +70,20 @@ namespace tako
 	    Right,
 	    Space,
 	    Enter,
+	    Gamepad_A,
+        Gamepad_B,
+        Gamepad_X,
+        Gamepad_Y,
+        Gamepad_Dpad_Up,
+        Gamepad_Dpad_Down,
+        Gamepad_Dpad_Left,
+        Gamepad_Dpad_Right,
+        Gamepad_Start,
+        Gamepad_Select,
+        Gamepad_L,
+        Gamepad_L2,
+        Gamepad_R,
+        Gamepad_R2,
         Unknown
     };
 
