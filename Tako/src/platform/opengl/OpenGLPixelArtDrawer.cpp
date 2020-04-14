@@ -263,12 +263,14 @@ namespace tako
         //glActiveTexture(GL_TEXTURE0);
         texture->Bind();
         //glUniform1i(m_imageTextureUniform, 0);
+        static auto posLocation = glGetAttribLocation(m_imageProgram, "position");
+        static auto texLocation = glGetAttribLocation(m_imageProgram, "texcoord");
 
         glBindBuffer(GL_ARRAY_BUFFER, buffer);
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(ImageVertex), NULL);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(ImageVertex), (void*)offsetof(ImageVertex, texcoord));
+        glVertexAttribPointer(posLocation, 2, GL_FLOAT, GL_FALSE, sizeof(ImageVertex), (void*)offsetof(ImageVertex, position));
         glEnableVertexAttribArray(1);
+        glVertexAttribPointer(texLocation, 2, GL_FLOAT, GL_FALSE, sizeof(ImageVertex), (void*)offsetof(ImageVertex, texcoord));
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }
 
