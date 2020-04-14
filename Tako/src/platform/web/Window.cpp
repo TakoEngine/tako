@@ -91,8 +91,8 @@ namespace tako
                 EmscriptenGamepadEvent padState;
                 for (int i = 0; i < numGamepads; i++)
                 {
-                    emscripten_get_gamepad_status(i, &padState);
-                    if (padState.connected)
+                    status = emscripten_get_gamepad_status(i, &padState);
+                    if (status == EMSCRIPTEN_RESULT_SUCCESS && padState.connected)
                     {
                         for (auto [index, key] : GamepadMapping)
                         {
