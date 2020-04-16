@@ -11,6 +11,7 @@ static tako::Vector2 pos(0,0);
 static float delta = 0;
 static tako::AudioClip* clipBump;
 static tako::AudioClip* clipMiss;
+static tako::AudioClip* clipMusic;
 static tako::Font* font;
 static tako::Texture* helloText;
 static int helloTextSizeX;
@@ -20,8 +21,10 @@ static std::string exampleText = "The quick brown fox jumps over the lazy dog!?"
 void tako::Setup(tako::PixelArtDrawer* drawer)
 {
 	LOG("SANDBOX SETUP");
-	//clipBump = new AudioClip("/Bump.wav");
-	//clipMiss = new AudioClip("/Miss.wav");
+	clipBump = new AudioClip("/Bump.wav");
+	clipMiss = new AudioClip("/Miss.wav");
+	clipMusic = new AudioClip("/garden-of-kittens.mp3");
+	tako::Audio::Play(*clipMusic, true);
     {
         auto bitmap = tako::Bitmap::FromFile("/tree.png");
         tree = drawer->CreateTexture(bitmap);
@@ -53,7 +56,7 @@ void tako::Update(tako::Input* input, float dt)
 {
 	delta += dt;
 	if (delta > 1) {
-		//Audio::Play(*clipMiss);
+		Audio::Play(*clipMiss);
 		delta = 0;
 	}
     float speed = 60;
@@ -79,7 +82,7 @@ void tako::Update(tako::Input* input, float dt)
     }
 	if (input->GetKeyDown(tako::Key::Space))
 	{
-		//Audio::Play(*clipBump);
+		Audio::Play(*clipBump);
 	}
 }
 

@@ -19,7 +19,7 @@ namespace tako
 	{
 	public:
 		AudioClip(const char* file);
-	private:
+    private:
 #ifdef TAKO_OPENAL
 		ALuint m_buffer;
 #endif
@@ -31,7 +31,7 @@ namespace tako
 	public:
 		Audio();
 		void Init();
-		static void Play(AudioClip& clip);
+		static void Play(AudioClip& clip, bool looping = false);
 	private:
 #ifdef TAKO_OPENAL
 		ALCdevice* m_device;

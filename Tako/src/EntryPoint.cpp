@@ -35,6 +35,8 @@ namespace tako
         tako::Input input;
         tako::GraphicsContext context(window.GetHandle(), window.GetWidth(), window.GetHeight());
         auto drawer = context.CreatePixelArtDrawer();
+        Audio audio;
+        audio.Init();
         tako::Setup(drawer);
         tako::Broadcaster broadcaster;
 
