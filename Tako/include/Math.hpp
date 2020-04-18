@@ -7,6 +7,11 @@ namespace tako
 {
 	namespace mathf
 	{
+	    constexpr float sign(float x)
+        {
+	        return x < 0 ? -1 : 1;
+        }
+
 		constexpr float abs(float x)
 		{
 			return x < 0 ? -x : x;
