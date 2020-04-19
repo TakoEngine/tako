@@ -112,6 +112,11 @@ namespace tako
 
 			alSourcei(source, AL_BUFFER, clip.m_buffer);
             alSourcei(source, AL_LOOPING, looping);
+            //Hack:
+            if (looping)
+            {
+                alSourcef(source, AL_GAIN, 0.3f);
+            }
 			alSourcePlay(source);
 			return;
 		}
