@@ -28,6 +28,8 @@ namespace tako
         Texture* CreateTexture(const Bitmap& bitmap) override;
         Sprite* CreateSprite(const Texture* texture, float x, float y, float w, float h) override;
 
+        void UpdateTexture(Texture* texture, const Bitmap& bitmap) override;
+
         void Resize(int w, int h);
 
     private:

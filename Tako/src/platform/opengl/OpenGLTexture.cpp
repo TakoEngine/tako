@@ -25,4 +25,10 @@ namespace tako
     {
         glBindTexture(GL_TEXTURE_2D, m_id);
     }
+
+    void OpenGLTexture::Update(const Bitmap& bitmap)
+    {
+        Bind();
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bitmap.Width(), bitmap.Height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap.GetData());
+    }
 }

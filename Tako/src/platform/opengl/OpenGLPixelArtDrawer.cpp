@@ -213,6 +213,12 @@ namespace tako
         return new OpenGLSprite(tex, spriteVBO);
     }
 
+    void OpenGLPixelArtDrawer::UpdateTexture(Texture* texture, const Bitmap& bitmap)
+    {
+        auto tex = dynamic_cast<OpenGLTexture*>(texture);
+        tex->Update(bitmap);
+    }
+
     namespace
     {
         static GLuint CompileShader(const char* shaderSource, GLenum type)

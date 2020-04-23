@@ -11,6 +11,7 @@ namespace tako
         explicit OpenGLTexture(const Bitmap& bitmap);
         ~OpenGLTexture() override;
         void Bind() const;
+        void Update(const Bitmap& bitmap);
 
         inline int GetWidth() const { return m_width; }
         inline int GetHeight() const { return m_height; }

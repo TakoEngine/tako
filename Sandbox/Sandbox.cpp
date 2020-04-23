@@ -14,13 +14,17 @@ static tako::AudioClip* clipMiss;
 static tako::AudioClip* clipMusic;
 static tako::Font* font;
 static tako::Texture* helloText;
+static tako::Bitmap bitmap(240, 135);
+static tako::Texture* bufferTex;
 static int helloTextSizeX;
 static int helloTextSizeY;
+static tako::PixelArtDrawer* g_drawer;
 static std::string exampleText = "The quick brown fox jumps over the lazy dog!?";
 
 void tako::Setup(tako::PixelArtDrawer* drawer)
 {
 	LOG("SANDBOX SETUP");
+	g_drawer = drawer;
 	clipBump = new AudioClip("/Bump.wav");
 	clipMiss = new AudioClip("/Miss.wav");
 	clipMusic = new AudioClip("/garden-of-kittens.mp3");
@@ -38,6 +42,7 @@ void tako::Setup(tako::PixelArtDrawer* drawer)
     auto textBitmap = font->RenderText(exampleText, 1, 5);
     std::tie(helloTextSizeX, helloTextSizeY) = font->CalculateDimensions(exampleText, 1, 5);
 	helloText = drawer->CreateTexture(textBitmap);
+	bufferTex = drawer->CreateTexture(bitmap);
 }
 
 int PingPong(int val, int max)
@@ -84,6 +89,23 @@ void tako::Update(tako::Input* input, float dt)
 	{
 		Audio::Play(*clipBump);
 	}
+
+    static float gradOff = 0;
+	static tako::Color col = {(tako::U8)(rand() % 256), (tako::U8)(rand() % 256), (tako::U8)(rand() % 256), 255};
+    gradOff += dt;
+    if (gradOff > 1)
+    {
+        gradOff--;
+        col = {(tako::U8)(rand() % 256), (tako::U8)(rand() % 256), (tako::U8)(rand() % 256), 255};
+    }
+	for (int x = 0; x < bitmap.Width(); x++)
+    {
+	    for (int y = 0; y < bitmap.Height(); y++)
+        {
+	        bitmap.SetPixel(x, y, col);
+        }
+    }
+    g_drawer->UpdateTexture(bufferTex, bitmap);
 }
 
 void tako::Draw(tako::PixelArtDrawer* drawer)
@@ -93,7 +115,8 @@ void tako::Draw(tako::PixelArtDrawer* drawer)
 
     drawer->DrawImage(-200, -200, 48 * 2, 64 * 2, tileset);
     drawer->DrawSprite(-300, 300, 16 * 10, 16 * 10, sprite);
-    drawer->DrawRectangle(0, 0, 100, 100, {100, 0, 255, alpha});
+    //drawer->DrawRectangle(0, 0, 100, 100, {100, 0, 255, alpha});
+    drawer->DrawImage(0, 0, 240, 135, bufferTex);
     drawer->DrawImage(75 + PingPong(x, 150), 75 + PingPong(y, 25), 100, 100, tree);
     drawer->DrawImage(75 + PingPong(x, 150), 175 + PingPong(y, 25), 100, 100, tree);
     drawer->DrawImage(75 + PingPong(x, 150), 275 + PingPong(y, 25), 100, 100, tree);

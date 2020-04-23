@@ -26,5 +26,7 @@ namespace tako
 
         virtual Texture* CreateTexture(const Bitmap& bitmap) = 0;
         virtual Sprite* CreateSprite(const Texture* texture, float x, float y, float w, float h) = 0;
+
+        virtual void UpdateTexture(Texture* texture, const Bitmap& bitmap) = 0;
     };
 }
