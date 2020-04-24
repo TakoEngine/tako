@@ -7,12 +7,13 @@
 #include "Utility.hpp"
 #include "FileSystem.hpp"
 #include "Input.hpp"
+#include "Resources.hpp"
 //#include <emscripten.h>
 #include "Audio.hpp"
 
 namespace tako
 {
-	extern void Setup(PixelArtDrawer* drawer);
+	extern void Setup(PixelArtDrawer* drawer, Resources* resources);
 	extern void Update(Input* input, float dt);
 	extern void Draw(PixelArtDrawer* drawer);
 

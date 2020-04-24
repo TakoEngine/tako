@@ -2,8 +2,12 @@
 #include "Tako.hpp"
 #include "World.hpp"
 #include "Timer.hpp"
+#include "Resources.hpp"
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
+#endif
+#ifdef TAKO_EDITOR
+#include "FileWatcher.hpp"
 #endif
 
 namespace tako
@@ -14,6 +18,10 @@ namespace tako
         tako::GraphicsContext& context;
         tako::PixelArtDrawer* drawer;
         tako::Input& input;
+        tako::Resources& resources;
+#ifdef TAKO_EDITOR
+        tako::FileWatcher& watcher;
+#endif
     };
 
     void Tick(void* p)
@@ -21,6 +29,19 @@ namespace tako
         TickStruct* data = reinterpret_cast<TickStruct*>(p);
         static tako::Timer timer;
         float dt = timer.GetDeltaTime();
+#ifdef TAKO_EDITOR
+        for (auto& change: data->watcher.Poll())
+        {
+            LOG("Change {}", change.path);
+            LOG("Change: {}", change.path.filename());
+            if (change.path.extension() == ".png")
+            {
+                auto file = "/" / change.path.filename();
+                auto bitmap = Bitmap::FromFile(file.c_str());
+                data->drawer->UpdateTexture(data->resources.Load<Texture>(file), bitmap);
+            }
+        }
+#endif
         data->window.Poll();
         data->input.Update();
         tako::Update(&data->input, dt);
@@ -37,8 +58,12 @@ namespace tako
         auto drawer = context.CreatePixelArtDrawer();
         Audio audio;
         audio.Init();
-        tako::Setup(drawer);
+        Resources resources(drawer);
+        tako::Setup(drawer, &resources);
         tako::Broadcaster broadcaster;
+#ifdef TAKO_EDITOR
+        tako::FileWatcher watcher("./Assets");
+#endif
 
         bool keepRunning = true;
 
@@ -75,7 +100,11 @@ namespace tako
             window,
             context,
             drawer,
-            input
+            input,
+            resources,
+#ifdef TAKO_EDITOR
+            watcher
+#endif
         };
 
 #ifndef EMSCRIPTEN

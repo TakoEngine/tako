@@ -28,7 +28,9 @@ add_library(${TAKO_DLL}
 	"src/EntryPoint.cpp"
 	"include/Font.hpp"
 	"include/Timer.hpp"
-	)
+	"include/Resources.hpp"
+	"src/Resources.cpp"
+)
 
 function(set_feature define val)
 	set(${define} ${val} PARENT_SCOPE)
@@ -43,12 +45,18 @@ if (WIN32)
 set_feature(TAKO_OPENGL false)
 set_feature(TAKO_VULKAN true)
 set_feature(TAKO_OPENAL false)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	set_feature(TAKO_EDITOR true)
+else()
+	set_feature(TAKO_EDITOR false)
+endif()
 endif(WIN32)
 
 if (EMSCRIPTEN)
 set_feature(TAKO_OPENGL true)
 set_feature(TAKO_VULKAN false)
 set_feature(TAKO_OPENAL true)
+set_feature(TAKO_EDITOR false)
 endif(EMSCRIPTEN)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -57,6 +65,12 @@ set_feature(TAKO_VULKAN false)
 set_feature(TAKO_OPENAL true)
 set_feature(TAKO_GLFW true)
 set_feature(TAKO_GLAD true)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	set_feature(TAKO_EDITOR true)
+else()
+	set_feature(TAKO_EDITOR false)
+endif()
+
 endif()
 
 if (WIN32)
@@ -125,14 +139,13 @@ target_sources(${TAKO_DLL} PRIVATE
 endif(TAKO_VULKAN)
 
 if (TAKO_GLFW)
-	message(ass)
 target_sources(${TAKO_DLL} PRIVATE
-		"src/platform/glfw/Window.cpp"
-		"src/platform/glfw/Timer.cpp"
-		"src/platform/glfw/glad.c"
-		"src/platform/glfw/glad/glad.h"
-		"src/platform/glfw/KHR/khrplatform.h"
-		)
+	"src/platform/glfw/Window.cpp"
+	"src/platform/glfw/Timer.cpp"
+	"src/platform/glfw/glad.c"
+	"src/platform/glfw/glad/glad.h"
+	"src/platform/glfw/KHR/khrplatform.h"
+)
 target_include_directories(${TAKO_DLL} PUBLIC "src/platform/glfw")
 target_compile_definitions(${TAKO_DLL} PUBLIC GLFW_INCLUDE_NONE)
 endif()
@@ -165,6 +178,13 @@ if (TAKO_OPENAL)
 	endif()
 endif(TAKO_OPENAL)
 
+
+if (TAKO_EDITOR)
+target_sources(${TAKO_DLL} PRIVATE
+	"Editor/include/FileWatcher.hpp"
+)
+target_include_directories(${TAKO_DLL} PUBLIC "Editor/include")
+endif(TAKO_EDITOR)
 
 
 target_link_libraries(${TAKO_DLL} PUBLIC fmt)
