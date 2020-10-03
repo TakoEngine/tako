@@ -265,7 +265,7 @@ namespace tako
         mat.translate(x, y, 0);
         mat.scale(w, h, 1);
         glUniformMatrix4fv(m_imageModelUniform, 1, GL_FALSE, &mat[0]);
-        glUniform4f(m_imageColorUniform, color.r, color.g, color.b, color.a);
+        glUniform4f(m_imageColorUniform, color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
 
         //glActiveTexture(GL_TEXTURE0);
         texture->Bind();
