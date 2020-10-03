@@ -22,8 +22,8 @@ namespace tako
 
         void Clear() override;
         void DrawRectangle(float x, float y, float w, float h, Color c) override;
-        void DrawImage(float x, float y, float w, float h, const Texture* img) override;
-        void DrawSprite(float x, float y, float w, float h, const Sprite* sprite) override ;
+        void DrawImage(float x, float y, float w, float h, const Texture* img, Color color = {255, 255, 255, 255}) override;
+        void DrawSprite(float x, float y, float w, float h, const Sprite* sprite, Color color = {255, 255, 255, 255}) override ;
 
         Texture* CreateTexture(const Bitmap& bitmap) override;
         Sprite* CreateSprite(const Texture* texture, float x, float y, float w, float h) override;
@@ -33,7 +33,7 @@ namespace tako
         void Resize(int w, int h);
 
     private:
-        void DrawTextureQuad(float x, float y, float w, float h, const OpenGLTexture* texture, GLuint buffer);
+        void DrawTextureQuad(float x, float y, float w, float h, const OpenGLTexture* texture, GLuint buffer, Color color);
         void SetupQuadPipeline();
         void SetupImagePipeline();
         void GetDrawOffset(float& x, float& y, float& w, float& h);
@@ -61,5 +61,6 @@ namespace tako
         GLuint m_imageProjectionUniform;
         GLuint m_imageModelUniform;
         GLuint m_imageTextureUniform;
+        GLuint m_imageColorUniform;
     };
 }

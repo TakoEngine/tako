@@ -152,15 +152,15 @@ namespace tako
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }
 
-    void OpenGLPixelArtDrawer::DrawImage(float x, float y, float w, float h, const Texture* img)
+    void OpenGLPixelArtDrawer::DrawImage(float x, float y, float w, float h, const Texture* img, Color color)
     {
-        DrawTextureQuad(x, y, w, h, dynamic_cast<const OpenGLTexture*>(img), m_imageVBO);
+        DrawTextureQuad(x, y, w, h, dynamic_cast<const OpenGLTexture*>(img), m_imageVBO, color);
     }
 
-    void OpenGLPixelArtDrawer::DrawSprite(float x, float y, float w, float h, const Sprite* sprite)
+    void OpenGLPixelArtDrawer::DrawSprite(float x, float y, float w, float h, const Sprite* sprite, Color color)
     {
         auto s = dynamic_cast<const OpenGLSprite*>(sprite);
-        DrawTextureQuad(x, y, w, h, s->GetTexture(), s->GetBuffer());
+        DrawTextureQuad(x, y, w, h, s->GetTexture(), s->GetBuffer(), color);
     }
 
     void OpenGLPixelArtDrawer::Resize(int w, int h)
@@ -256,7 +256,7 @@ namespace tako
         }
     }
 
-    void OpenGLPixelArtDrawer::DrawTextureQuad(float x, float y, float w, float h, const OpenGLTexture* texture, GLuint buffer)
+    void OpenGLPixelArtDrawer::DrawTextureQuad(float x, float y, float w, float h, const OpenGLTexture* texture, GLuint buffer, Color color)
     {
         GetDrawOffset(x, y, w, h);
         glUseProgram(m_imageProgram);
@@ -265,6 +265,7 @@ namespace tako
         mat.translate(x, y, 0);
         mat.scale(w, h, 1);
         glUniformMatrix4fv(m_imageModelUniform, 1, GL_FALSE, &mat[0]);
+        glUniform4f(m_imageColorUniform, color.r, color.g, color.b, color.a);
 
         //glActiveTexture(GL_TEXTURE0);
         texture->Bind();
@@ -317,6 +318,7 @@ namespace tako
         m_imageProjectionUniform = glGetUniformLocation(m_imageProgram, "projection");
         m_imageModelUniform = glGetUniformLocation(m_imageProgram, "model");
         m_imageTextureUniform = glGetUniformLocation(m_imageProgram, "texture");
+        m_imageColorUniform = glGetUniformLocation(m_imageProgram, "color");
 
         auto err = glGetError();
         if (err != GL_NO_ERROR)
