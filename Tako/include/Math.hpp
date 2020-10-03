@@ -126,6 +126,11 @@ namespace tako
 
 			return operator/=(mag);
 		}
+
+		static constexpr Vector2 Normalized(tako::Vector2 v)
+        {
+		    return v.normalize();
+        }
 	};
 
 	struct Vector3
