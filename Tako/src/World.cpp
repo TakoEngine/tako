@@ -80,5 +80,13 @@ namespace tako
         m_entities[handle.id] = targetHandle;
     }
 
+    void World::Reset()
+    {
+	    m_entities.clear();
+	    m_nextDeleted = 0;
+	    m_deletedCount = 0;
+	    m_archetypes.clear();
+    }
+
     std::map<U8, std::size_t> ComponentIDGenerator::m_componentSizes = {}; //TODO: move to archetype.cpp
 }
