@@ -111,7 +111,7 @@ namespace tako
 			return *this;
 		}
 
-		float magnitude() const
+		constexpr float magnitude() const
 		{
 			return std::sqrt(x * x + y * y);
 		}
