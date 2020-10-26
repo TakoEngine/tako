@@ -113,7 +113,7 @@ namespace tako
 
 		constexpr float magnitude() const
 		{
-			return mathf::sqrt(x * x + y * y);
+			return std::sqrt(x * x + y * y);
 		}
 
 		constexpr Vector2& normalize()
@@ -126,6 +126,11 @@ namespace tako
 
 			return operator/=(mag);
 		}
+
+		static constexpr Vector2 Normalized(tako::Vector2 v)
+        {
+		    return v.normalize();
+        }
 	};
 
 	struct Vector3

@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <thread>
 #include <unordered_map>
+#include <mutex>
 #include <atomic>
 
 namespace tako

@@ -198,6 +198,7 @@ namespace tako
         }
 
 		void Delete(Entity entity);
+		void Reset();
 	private:
 		std::vector<EntityHandle> m_entities;
         U32 m_nextDeleted = 0;
