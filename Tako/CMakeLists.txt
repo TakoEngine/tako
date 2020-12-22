@@ -73,6 +73,15 @@ endif()
 
 endif()
 
+if(UNIX AND NOT APPLE)
+set_feature(TAKO_OPENGL true)
+set_feature(TAKO_VULKAN false)
+set_feature(TAKO_OPENAL false)
+set_feature(TAKO_GLFW true)
+set_feature(TAKO_GLAD true)
+set_feature(TAKO_EDITOR false)
+endif()
+
 if (WIN32)
 target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/win32/Main.cpp"
@@ -90,6 +99,11 @@ target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/web/Timer.cpp"
 	"src/platform/default/Main.cpp")
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+target_sources(${TAKO_DLL} PRIVATE
+		"src/platform/default/FileSystem.cpp"
+		"src/platform/default/Main.cpp"
+		"src/platform/default/Log.cpp")
+elseif (UNIX AND NOT APPLE)
 target_sources(${TAKO_DLL} PRIVATE
 		"src/platform/default/FileSystem.cpp"
 		"src/platform/default/Main.cpp"
