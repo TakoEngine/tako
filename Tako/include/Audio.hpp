@@ -1,11 +1,11 @@
 #pragma once
 #ifdef TAKO_OPENAL
-    #ifdef EMSCRIPTEN
-    #include <AL/al.h>
-    #include <AL/alc.h>
-    #else
+    #ifdef TAKO_MAC
     #include <OpenAL/al.h>
     #include <OpenAL/alc.h>
+    #else
+    #include <AL/al.h>
+    #include <AL/alc.h>
     #endif
 #endif
 #include <array>

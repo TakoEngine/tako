@@ -42,6 +42,7 @@ function(set_feature define val)
 endfunction()
 
 if (WIN32)
+set_feature(TAKO_WIN32 true)
 set_feature(TAKO_OPENGL false)
 set_feature(TAKO_VULKAN true)
 set_feature(TAKO_OPENAL false)
@@ -53,6 +54,7 @@ endif()
 endif(WIN32)
 
 if (EMSCRIPTEN)
+set_feature(TAKO_EMSCRIPTEN true)
 set_feature(TAKO_OPENGL true)
 set_feature(TAKO_VULKAN false)
 set_feature(TAKO_OPENAL true)
@@ -60,6 +62,15 @@ set_feature(TAKO_EDITOR false)
 endif(EMSCRIPTEN)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+set_feature(TAKO_MAC true)
+
+endif()
+
+if(UNIX AND NOT APPLE)
+set_feature(TAKO_LINUX true)
+endif()
+
+if (TAKO_MAC OR TAKO_LINUX)
 set_feature(TAKO_OPENGL true)
 set_feature(TAKO_VULKAN false)
 set_feature(TAKO_OPENAL true)
@@ -70,16 +81,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 else()
 	set_feature(TAKO_EDITOR false)
 endif()
-
-endif()
-
-if(UNIX AND NOT APPLE)
-set_feature(TAKO_OPENGL true)
-set_feature(TAKO_VULKAN false)
-set_feature(TAKO_OPENAL false)
-set_feature(TAKO_GLFW true)
-set_feature(TAKO_GLAD true)
-set_feature(TAKO_EDITOR false)
 endif()
 
 if (WIN32)
