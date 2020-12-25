@@ -149,8 +149,8 @@ if (TAKO_VULKAN)
 target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/vulkan/VulkanContext.cpp"
 )
-configure_file("shaders/shader.vert.spv" ${CMAKE_BINARY_DIR}/shaders/shader.vert.spv COPYONLY)
-configure_file("shaders/shader.frag.spv" ${CMAKE_BINARY_DIR}/shaders/shader.frag.spv COPYONLY)
+#configure_file("shaders/shader.vert.spv" ${CMAKE_BINARY_DIR}/shaders/shader.vert.spv COPYONLY)
+#configure_file("shaders/shader.frag.spv" ${CMAKE_BINARY_DIR}/shaders/shader.frag.spv COPYONLY)
 endif(TAKO_VULKAN)
 
 if (TAKO_GLFW)
