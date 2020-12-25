@@ -1,10 +1,12 @@
 #include <GraphicsContext.hpp>
 #include "Window.hpp"
-//#include <Windows.h>
+#ifdef TAKO_WIN32
+#include <Windows.h>
+#include <vulkan/vulkan.h>
+#endif
 #include "Utility.hpp"
 #include "FileSystem.hpp"
 #include <algorithm>
-//#include <vulkan/vulkan.h>
 #include <vector>
 #include <array>
 #include <set>
@@ -12,7 +14,7 @@
 #include "Math.hpp"
 #include <chrono>
 
-static std::array<const char*, 2> vkWinExtensions = { VK_KHR_SURFACE_EXTENSION_NAME, /*VK_KHR_WIN32_SURFACE_EXTENSION_NAME,*/ VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
+static std::array<const char*, 3> vkWinExtensions = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
 static std::array<const char*, 1> vkDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 static std::array<const char*, 1> vkWinValidationLayers = { "VK_LAYER_LUNARG_standard_validation" };
 
@@ -124,15 +126,21 @@ namespace tako
 				createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 				createInfo.pApplicationInfo = &appInfo;
                 uint32_t winCount;
-                auto winExts = glfwGetRequiredInstanceExtensions(&winCount);
-                LOG("required {}", winCount);
-                LOG("{}", glfwVulkanSupported());
-                for (int i = 0; i < winCount; i++)
-                {
-                    LOG("{}", winExts[i]);
-                }
+#ifndef TAKO_GLFW
+				createInfo.enabledExtensionCount = vkWinExtensions.size();
+				createInfo.ppEnabledExtensionNames = vkWinExtensions.data();
+#else
+				
+				auto winExts = glfwGetRequiredInstanceExtensions(&winCount);
+				LOG("required {}", winCount);
+				LOG("{}", glfwVulkanSupported());
+				for (int i = 0; i < winCount; i++)
+				{
+					LOG("{}", winExts[i]);
+				}
 				createInfo.enabledExtensionCount = winCount;
 				createInfo.ppEnabledExtensionNames = winExts;
+#endif
 				createInfo.enabledLayerCount = 0;
 				createInfo.ppEnabledLayerNames = nullptr;
 
@@ -160,7 +168,7 @@ namespace tako
 			{
 				VkWin32SurfaceCreateInfoKHR createInfo = {};
 				createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-				createInfo.hwnd = hwnd;
+				createInfo.hwnd = windowHandle;
 				createInfo.hinstance = GetModuleHandle(nullptr);
 
 				auto vkCreateWin32SurfaceKHR = (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(vkInstance, "vkCreateWin32SurfaceKHR");

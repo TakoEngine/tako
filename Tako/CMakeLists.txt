@@ -47,7 +47,7 @@ set_feature(TAKO_OPENGL false)
 set_feature(TAKO_VULKAN true)
 set_feature(TAKO_OPENAL false)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-	set_feature(TAKO_EDITOR true)
+	set_feature(TAKO_EDITOR false)
 else()
 	set_feature(TAKO_EDITOR false)
 endif()
@@ -91,6 +91,7 @@ target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/win32/FileSystem.cpp"
 	"include/WinUtility.hpp"
 	"src/platform/win32/WinUtility.cpp"
+	"src/platform/default/Timer.cpp"
 )
 elseif (EMSCRIPTEN)
 target_sources(${TAKO_DLL} PRIVATE
@@ -179,7 +180,9 @@ endif()
 if (TAKO_VULKAN)
 find_package(Vulkan REQUIRED)
 target_include_directories(${TAKO_DLL} PUBLIC ${Vulkan_INCLUDE_DIRS})
-#target_compile_definitions(${TAKO_DLL} PRIVATE "VK_USE_PLATFORM_WIN32_KHR")
+if (TAKO_WIN32)
+target_compile_definitions(${TAKO_DLL} PRIVATE "VK_USE_PLATFORM_WIN32_KHR")
+endif()
 target_link_libraries(${TAKO_DLL} PRIVATE ${Vulkan_LIBRARIES})
 endif(TAKO_VULKAN)
 
