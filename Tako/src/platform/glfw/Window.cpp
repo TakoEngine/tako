@@ -1,7 +1,8 @@
 #include "Window.hpp"
 #include "Utility.hpp"
-#define GLFW_INCLUDE_NONE
+//#define GLFW_INCLUDE_NONE
 #include "glad/glad.h"
+#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <map>
 
@@ -44,6 +45,7 @@ namespace tako
             //glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
             //glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
             //glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
             m_window = glfwCreateWindow(1024, 768, "tako", NULL, NULL);
             m_width = 1024;
             m_height = 768;
@@ -56,9 +58,9 @@ namespace tako
 
             glfwSetWindowUserPointer(m_window, this);
 
-            glfwMakeContextCurrent(m_window);
-            gladLoadGLES2Loader((GLADloadproc) glfwGetProcAddress);
-            LOG("GLVersion {} {}.{}", glGetString(GL_SHADING_LANGUAGE_VERSION),GLVersion.major, GLVersion.minor);
+            //glfwMakeContextCurrent(m_window);
+            //gladLoadGLES2Loader((GLADloadproc) glfwGetProcAddress);
+            //LOG("GLVersion {} {}.{}", glGetString(GL_SHADING_LANGUAGE_VERSION),GLVersion.major, GLVersion.minor);
 
             glfwSetKeyCallback(m_window, KeyCallback);
             glfwSetWindowSizeCallback(m_window, WindowSizeCallback);
@@ -144,7 +146,7 @@ namespace tako
 
     WindowHandle Window::GetHandle() const
     {
-        return std::nullptr_t();
+        return m_impl->m_window;
     }
 
     void Window::SetEventCallback(const std::function<void(Event&)>& callback)

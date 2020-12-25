@@ -267,7 +267,7 @@ namespace tako
 			);
 		}
 
-		constexpr static Matrix4 lookAt(Vector3& eye, Vector3& target, Vector3& upDir)
+		constexpr static Matrix4 lookAt(const Vector3& eye, const Vector3& target, const Vector3& upDir)
 		{
 			Vector3 forward = eye - target;
 			forward.normalize();

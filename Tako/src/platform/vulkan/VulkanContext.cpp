@@ -1,10 +1,10 @@
 #include <GraphicsContext.hpp>
 #include "Window.hpp"
-#include <Windows.h>
+//#include <Windows.h>
 #include "Utility.hpp"
 #include "FileSystem.hpp"
 #include <algorithm>
-#include <vulkan/vulkan.h>
+//#include <vulkan/vulkan.h>
 #include <vector>
 #include <array>
 #include <set>
@@ -12,7 +12,7 @@
 #include "Math.hpp"
 #include <chrono>
 
-static std::array<const char*, 3> vkWinExtensions = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
+static std::array<const char*, 2> vkWinExtensions = { VK_KHR_SURFACE_EXTENSION_NAME, /*VK_KHR_WIN32_SURFACE_EXTENSION_NAME,*/ VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
 static std::array<const char*, 1> vkDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 static std::array<const char*, 1> vkWinValidationLayers = { "VK_LAYER_LUNARG_standard_validation" };
 
@@ -98,8 +98,9 @@ namespace tako
 	class GraphicsContext::ContextImpl
 	{
 	public:
-		ContextImpl(HWND hwnd)
+		ContextImpl(WindowHandle windowHandle)
 		{
+		    LOG("handle: {}", (uint64_t) windowHandle);
 			uint32_t extensionCount = 0;
 			vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
 			LOG("extensions available: {}", extensionCount);
@@ -122,15 +123,23 @@ namespace tako
 				VkInstanceCreateInfo createInfo = {};
 				createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 				createInfo.pApplicationInfo = &appInfo;
-				createInfo.enabledExtensionCount = vkWinExtensions.size();
-				createInfo.ppEnabledExtensionNames = vkWinExtensions.data();
-				createInfo.enabledLayerCount = vkWinValidationLayers.size();
-				createInfo.ppEnabledLayerNames = vkWinValidationLayers.data();
+                uint32_t winCount;
+                auto winExts = glfwGetRequiredInstanceExtensions(&winCount);
+                LOG("required {}", winCount);
+                LOG("{}", glfwVulkanSupported());
+                for (int i = 0; i < winCount; i++)
+                {
+                    LOG("{}", winExts[i]);
+                }
+				createInfo.enabledExtensionCount = winCount;
+				createInfo.ppEnabledExtensionNames = winExts;
+				createInfo.enabledLayerCount = 0;
+				createInfo.ppEnabledLayerNames = nullptr;
 
 				auto result = vkCreateInstance(&createInfo, nullptr, &vkInstance);
 				ASSERT(result == VK_SUCCESS);
 			}
-			{
+			/*{
 				VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
 				createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 				createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
@@ -140,8 +149,14 @@ namespace tako
 
 				auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(vkInstance, "vkCreateDebugUtilsMessengerEXT");
 				auto result = func(vkInstance, &createInfo, nullptr, &callback);
+                ASSERT(result == VK_SUCCESS);
+			}*/
+#if TAKO_GLFW
+            {
+			    auto result = glfwCreateWindowSurface(vkInstance, windowHandle, NULL, &m_surface);
+                ASSERT(result == VK_SUCCESS);
 			}
-
+#elif TAKO_WIN32
 			{
 				VkWin32SurfaceCreateInfoKHR createInfo = {};
 				createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
@@ -152,6 +167,7 @@ namespace tako
 				auto result = vkCreateWin32SurfaceKHR(vkInstance, &createInfo, nullptr, &m_surface);
 				ASSERT(result == VK_SUCCESS);
 			}
+#endif
 
 			uint32_t deviceCount = 0;
 			auto result = vkEnumeratePhysicalDevices(vkInstance, &deviceCount, nullptr);
@@ -247,10 +263,12 @@ namespace tako
 				auto result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, m_surface, &capabilities);
 				ASSERT(result == VK_SUCCESS);
 
-				RECT clientRect;
+				/*RECT clientRect;
 				GetClientRect(hwnd, &clientRect);
 				uint32_t clientWidth = clientRect.right - clientRect.left;
-				uint32_t clientHeight = clientRect.bottom - clientRect.top;
+				uint32_t clientHeight = clientRect.bottom - clientRect.top;*/
+                uint32_t clientWidth = 1024;
+                uint32_t clientHeight = 768;
 
 				VkSwapchainCreateInfoKHR createInfo = {};
 				createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -375,8 +393,8 @@ namespace tako
 			}
 
 			{
-				const char* vertPath = "shaders/shader.vert.spv";
-				const char* fragPath = "shaders/shader.frag.spv";
+				const char* vertPath = "/shader.vert.spv";
+				const char* fragPath = "/shader.frag.spv";
 				VkShaderModule vertShaderModule = CreateShaderModule(vertPath);
 				VkShaderModule fragShaderModule = CreateShaderModule(fragPath);
 

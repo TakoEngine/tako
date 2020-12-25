@@ -6,6 +6,7 @@
 #include <GLFW/glfw3.h>
 #endif
 #ifdef TAKO_GLFW
+#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #endif
 
