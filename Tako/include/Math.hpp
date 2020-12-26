@@ -111,12 +111,12 @@ namespace tako
 			return *this;
 		}
 
-		constexpr float magnitude() const
+		float magnitude() const
 		{
-			return mathf::sqrt(x * x + y * y);
+			return std::sqrt(x * x + y * y);
 		}
 
-		constexpr Vector2& normalize()
+		Vector2& normalize()
 		{
 			float mag = magnitude();
 			if (mag < 0.0001f)
@@ -127,7 +127,7 @@ namespace tako
 			return operator/=(mag);
 		}
 
-		static constexpr Vector2 Normalized(tako::Vector2 v)
+		static Vector2 Normalized(tako::Vector2 v)
         {
 		    return v.normalize();
         }
@@ -170,12 +170,12 @@ namespace tako
 			return *this;
 		}
 
-		constexpr float magnitude() const
+		float magnitude() const
 		{
-			return mathf::sqrt(x * x + y * y + z * z);
+			return std::sqrt(x * x + y * y + z * z);
 		}
 
-		constexpr Vector3& normalize()
+		Vector3& normalize()
 		{
 			float mag = magnitude();
 			if (mag < 0.0001f)
@@ -267,7 +267,7 @@ namespace tako
 			);
 		}
 
-		constexpr static Matrix4 lookAt(const Vector3& eye, const Vector3& target, const Vector3& upDir)
+		static Matrix4 lookAt(const Vector3& eye, const Vector3& target, const Vector3& upDir)
 		{
 			Vector3 forward = eye - target;
 			forward.normalize();
