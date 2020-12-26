@@ -23,7 +23,7 @@ static std::array<const char*, 1> vkWinValidationLayers = { "VK_LAYER_LUNARG_sta
 namespace tako
 {
 	struct Vertex {
-		Vector2 pos;
+		Vector3 pos;
 		Vector3 color;
 
 		static constexpr VkVertexInputBindingDescription GetBindingDescription() {
@@ -40,7 +40,7 @@ namespace tako
 
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
-			attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 			attributeDescriptions[0].offset = offsetof(Vertex, pos);
 
 			attributeDescriptions[1].binding = 0;
@@ -51,19 +51,28 @@ namespace tako
 			return attributeDescriptions;
 		}
 	};
+	
+    const std::vector<Vertex> vertices =
+    {
+        {{-1, -1, -1}, {1.0f, 0.0f, 0.0f}},
+        {{ 1, -1, -1}, {0.0f, 1.0f, 0.0f}},
+        {{ 1,  1, -1}, {0.0f, 0.0f, 1.0f}},
+        {{-1,  1, -1}, {1.0f, 1.0f, 0.0f}},
+        {{-1, -1,  1}, {0.0f, 1.0f, 1.0f}},
+        {{ 1, -1,  1}, {1.0f, 0.0f, 1.0f}},
+        {{ 1,  1,  1}, {0.0f, 0.0f, 0.0f}},
+        {{-1,  1,  1}, {1.0f, 1.0f, 1.0f}},
+    };
 
-	const std::vector<Vertex> vertices =
-	{
-		{{-1, -1}, {1.0f, 0.0f, 0.0f}},
-		{{ 1, -1}, {0.0f, 1.0f, 0.0f}},
-		{{ 1,  1}, {0.0f, 0.0f, 1.0f}},
-		{{-1,  1}, {1.0f, 1.0f, 1.0f}}
-	};
-
-	const std::vector<uint16_t> indices =
-	{
-		0, 1, 2, 2, 3, 0
-	};
+    const std::vector<uint16_t> indices =
+    {
+        0, 1, 3, 3, 1, 2,
+        1, 5, 2, 2, 5, 6,
+        5, 4, 6, 6, 4, 7,
+        4, 0, 7, 7, 0, 3,
+        3, 2, 7, 7, 2, 6,
+        4, 5, 0, 0, 5, 1
+    };
 
 	struct UniformBufferObject
 	{
@@ -463,7 +472,7 @@ namespace tako
 				rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 				rasterizer.lineWidth = 1.0f;
 				rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-				rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+				rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 				rasterizer.depthBiasEnable = VK_FALSE;
 				rasterizer.depthBiasConstantFactor = 0.0f;
 				rasterizer.depthBiasClamp = 0.0f;
@@ -789,7 +798,7 @@ namespace tako
 
 			UniformBufferObject ubo = {};
 			ubo.model = Matrix4::rotate(time);
-			ubo.view = Matrix4::lookAt(Vector3(0, 0, 2), Vector3(0, 0, 0), Vector3(0, 1, 0));
+			ubo.view = Matrix4::lookAt(Vector3(5 * cos(time),  5 * sin(time), 5), Vector3(0, 0, 0), Vector3(0, 1, 0));
 			//ubo.model = Matrix4::identity;
 			//ubo.view = Matrix4::identity;
 			ubo.proj = Matrix4::perspective(45, m_swapChainExtent.width / (float)m_swapChainExtent.height, 0.1f, 10);
