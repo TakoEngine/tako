@@ -147,6 +147,7 @@ add_shader("image.frag.glsl")
 endif(TAKO_OPENGL)
 
 if (TAKO_VULKAN)
+target_compile_definitions(${TAKO_DLL} PUBLIC "GLFW_INCLUDE_VULKAN")
 target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/vulkan/VulkanContext.cpp"
 )
