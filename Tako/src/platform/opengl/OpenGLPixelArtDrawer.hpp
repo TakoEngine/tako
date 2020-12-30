@@ -7,7 +7,7 @@
 
 namespace tako
 {
-    class OpenGLPixelArtDrawer : public PixelArtDrawer
+    class OpenGLPixelArtDrawer final : public PixelArtDrawer
     {
     public:
         OpenGLPixelArtDrawer();

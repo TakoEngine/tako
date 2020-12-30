@@ -1,4 +1,5 @@
 #pragma once
+#include "GraphicsAPI.hpp"
 #include "WindowHandle.hpp"
 #include <memory>
 #include "Event.hpp"
@@ -6,10 +7,12 @@
 
 namespace tako
 {
+    enum class GraphicsAPI;
+
 	class Window
 	{
 	public:
-		Window();
+		Window(GraphicsAPI api);
 		~Window();
 		void Poll();
 		bool ShouldExit();

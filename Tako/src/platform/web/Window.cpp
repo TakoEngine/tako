@@ -185,7 +185,7 @@ namespace tako
 	};
 
 
-	Window::Window() : m_impl(new WindowImpl())
+	Window::Window(GraphicsAPI api) : m_impl(new WindowImpl())
 	{
 	}
 

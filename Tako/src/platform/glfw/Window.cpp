@@ -1,7 +1,6 @@
 #include "Window.hpp"
 #include "Utility.hpp"
 //#define GLFW_INCLUDE_NONE
-#include "glad/glad.h"
 #include <GLFW/glfw3.h>
 #include <map>
 
@@ -33,16 +32,16 @@ namespace tako
     class Window::WindowImpl
     {
     public:
-        WindowImpl()
+        WindowImpl(GraphicsAPI api)
         {
-            if (!glfwInit())
-            {
+            if (!glfwInit()) {
                 LOG_ERR("Error GLFW INIT");
                 return;
             }
-#ifdef TAKO_VULKAN
-            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-#endif
+            if (api != GraphicsAPI::OpenGL)
+            {
+                glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+            }
             m_window = glfwCreateWindow(1024, 768, "tako", NULL, NULL);
             m_width = 1024;
             m_height = 768;
@@ -55,10 +54,6 @@ namespace tako
 
             glfwSetWindowUserPointer(m_window, this);
 
-#ifdef TAKO_OPENGL
-            glfwMakeContextCurrent(m_window);
-            gladLoadGLES2Loader((GLADloadproc) glfwGetProcAddress);
-#endif
             //LOG("GLVersion {} {}.{}", glGetString(GL_SHADING_LANGUAGE_VERSION),GLVersion.major, GLVersion.minor);
 
             glfwSetKeyCallback(m_window, KeyCallback);
@@ -69,7 +64,7 @@ namespace tako
         {
             //glClearColor(1, 0, 1, 1);
             //glClear(GL_COLOR_BUFFER_BIT);
-            glfwSwapBuffers(m_window);
+            //glfwSwapBuffers(m_window);
             glfwPollEvents();
         }
 
@@ -117,7 +112,7 @@ namespace tako
         }
     };
 
-    Window::Window() : m_impl(new WindowImpl())
+    Window::Window(GraphicsAPI api) : m_impl(new WindowImpl(api))
     {
     }
 

@@ -11,6 +11,7 @@ add_library(${TAKO_DLL}
 	"include/Bitmap.hpp"
 	"src/Bitmap.cpp"
 	"include/GraphicsContext.hpp"
+	"src/GraphicsContext.cpp"
 	"include/Texture.hpp"
 	"include/PixelArtDrawer.hpp"
 	"include/Tako.hpp"
@@ -30,6 +31,7 @@ add_library(${TAKO_DLL}
 	"include/Timer.hpp"
 	"include/Resources.hpp"
 	"src/Resources.cpp"
+	"include/GraphicsAPI.hpp"
 )
 
 function(set_feature define val)
@@ -71,11 +73,11 @@ set_feature(TAKO_LINUX true)
 endif()
 
 if (TAKO_MAC OR TAKO_LINUX)
-set_feature(TAKO_OPENGL false)
+set_feature(TAKO_OPENGL true)
 set_feature(TAKO_VULKAN true)
 set_feature(TAKO_OPENAL true)
 set_feature(TAKO_GLFW true)
-set_feature(TAKO_GLAD false)
+set_feature(TAKO_GLAD true)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set_feature(TAKO_EDITOR true)
 else()
@@ -120,8 +122,10 @@ target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/opengl/OpenGLTexture.cpp"
 	"src/platform/opengl/OpenGLSprite.hpp"
 	"src/platform/opengl/OpenGLSprite.cpp"
+	"src/platform/opengl/OpenGLContext.hpp"
     "src/platform/opengl/OpenGLContext.cpp"
 )
+target_include_directories(${TAKO_DLL} PUBLIC "src/platform/opengl")
 
 function(add_shader filename)
 	SET(SHADER_IN ${CMAKE_CURRENT_SOURCE_DIR}/shaders/${filename})
@@ -149,8 +153,10 @@ endif(TAKO_OPENGL)
 if (TAKO_VULKAN)
 target_compile_definitions(${TAKO_DLL} PUBLIC "GLFW_INCLUDE_VULKAN")
 target_sources(${TAKO_DLL} PRIVATE
+	"src/platform/vulkan/VulkanContext.hpp"
 	"src/platform/vulkan/VulkanContext.cpp"
 )
+target_include_directories(${TAKO_DLL} PUBLIC "src/platform/vulkan")
 #configure_file("shaders/shader.vert.spv" ${CMAKE_BINARY_DIR}/shaders/shader.vert.spv COPYONLY)
 #configure_file("shaders/shader.frag.spv" ${CMAKE_BINARY_DIR}/shaders/shader.frag.spv COPYONLY)
 endif(TAKO_VULKAN)

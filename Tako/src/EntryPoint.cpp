@@ -52,10 +52,11 @@ namespace tako
     int RunGameLoop()
     {
         LOG("Init!");
-        tako::Window window;
+        auto api = tako::GraphicsAPI::Vulkan;
+        tako::Window window(api);
         tako::Input input;
-        tako::GraphicsContext context(window.GetHandle(), window.GetWidth(), window.GetHeight());
-        auto drawer = context.CreatePixelArtDrawer();
+        auto context = tako::GraphicsContext::Create(&window, api);
+        auto drawer = context->CreatePixelArtDrawer();
         Audio audio;
         audio.Init();
         Resources resources(drawer);
@@ -87,7 +88,7 @@ namespace tako
         });
 
         broadcaster.Register(&onEvent);
-        broadcaster.Register(&context);
+        broadcaster.Register(context.get());
         broadcaster.Register(&input);
 
         window.SetEventCallback([&](tako::Event& evt)
@@ -98,7 +99,7 @@ namespace tako
         TickStruct data
         {
             window,
-            context,
+            *context,
             drawer,
             input,
             resources,
