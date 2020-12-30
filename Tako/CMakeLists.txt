@@ -45,9 +45,10 @@ endfunction()
 
 if (WIN32)
 set_feature(TAKO_WIN32 true)
-set_feature(TAKO_OPENGL false)
+set_feature(TAKO_OPENGL true)
 set_feature(TAKO_VULKAN true)
 set_feature(TAKO_OPENAL false)
+set_feature(TAKO_GLAD true)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set_feature(TAKO_EDITOR false)
 else()
@@ -127,6 +128,14 @@ target_sources(${TAKO_DLL} PRIVATE
 )
 target_include_directories(${TAKO_DLL} PUBLIC "src/platform/opengl")
 
+	if (TAKO_GLAD)
+	target_sources(${TAKO_DLL} PRIVATE
+		"src/platform/opengl/glad.c"
+		"src/platform/opengl/glad/glad.h"
+		"src/platform/opengl/KHR/khrplatform.h"
+	)
+	endif(TAKO_GLAD)
+
 function(add_shader filename)
 	SET(SHADER_IN ${CMAKE_CURRENT_SOURCE_DIR}/shaders/${filename})
 	SET(SHADER_OUT ${CMAKE_BINARY_DIR}/shader/${filename})
@@ -165,9 +174,6 @@ if (TAKO_GLFW)
 target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/glfw/Window.cpp"
 	"src/platform/glfw/Timer.cpp"
-	"src/platform/glfw/glad.c"
-	"src/platform/glfw/glad/glad.h"
-	"src/platform/glfw/KHR/khrplatform.h"
 )
 target_include_directories(${TAKO_DLL} PUBLIC "src/platform/glfw")
 target_compile_definitions(${TAKO_DLL} PUBLIC GLFW_INCLUDE_NONE)

@@ -2,7 +2,6 @@
 #include "Window.hpp"
 #ifdef TAKO_WIN32
 #include <Windows.h>
-#include <vulkan/vulkan.h>
 #endif
 #include "Utility.hpp"
 #include "FileSystem.hpp"

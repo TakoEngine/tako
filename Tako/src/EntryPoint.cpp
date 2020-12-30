@@ -52,7 +52,7 @@ namespace tako
     int RunGameLoop()
     {
         LOG("Init!");
-        auto api = tako::GraphicsAPI::Vulkan;
+        auto api = tako::GraphicsAPI::OpenGL;
         tako::Window window(api);
         tako::Input input;
         auto context = tako::GraphicsContext::Create(&window, api);

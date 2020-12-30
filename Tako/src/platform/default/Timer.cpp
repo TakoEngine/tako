@@ -4,7 +4,7 @@
 double GetTime()
 {
 	static auto start = std::chrono::steady_clock::now();
-	std::chrono::duration<double, std::nano> duration = std::chrono::steady_clock::now() - start;
+	std::chrono::duration<double> duration = std::chrono::steady_clock::now() - start;
 	return duration.count();
 }
 

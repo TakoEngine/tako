@@ -10,7 +10,7 @@ int main(int argc, char* argv[])
     auto input = Files::ReadText(argv[1]);
     std::filesystem::path outputPath(argv[2]);
     auto targetDir = outputPath.remove_filename();
-    Files::CreateFolderIfNotExist(targetDir.c_str());
+    Files::CreateFolderIfNotExist((char*)targetDir.c_str());
 
 #ifdef EMSCRIPTEN
     std::string header = "#version 100\nprecision mediump float;\n";
