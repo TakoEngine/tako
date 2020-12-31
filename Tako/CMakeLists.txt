@@ -32,6 +32,7 @@ add_library(${TAKO_DLL}
 	"include/Resources.hpp"
 	"src/Resources.cpp"
 	"include/GraphicsAPI.hpp"
+	"include/IGraphicsContext.hpp"
 )
 
 function(set_feature define val)

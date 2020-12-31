@@ -1,10 +1,11 @@
 #pragma once
-#include "GraphicsContext.hpp"
+#include "IGraphicsContext.hpp"
 #include "OpenGLPixelArtDrawer.hpp"
+
 
 namespace tako
 {
-    class OpenGLContext final : public GraphicsContext
+    class OpenGLContext final : public IGraphicsContext
     {
     public:
         OpenGLContext(Window* window);

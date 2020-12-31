@@ -1,10 +1,10 @@
 #pragma once
-#include <GraphicsContext.hpp>
+#include <IGraphicsContext.hpp>
 #include <vulkan/vulkan.h>
 
 namespace tako
 {
-    class VulkanContext final : public GraphicsContext
+    class VulkanContext final : public IGraphicsContext
     {
     public:
         VulkanContext(Window* window);

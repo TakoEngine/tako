@@ -1,16 +1,14 @@
 #include "GraphicsContext.hpp"
 
-#ifdef TAKO_OPENGL
-#include "OpenGLContext.hpp"
-#endif
-#if TAKO_VULKAN
-#include "VulkanContext.hpp"
-#endif
-
 namespace tako
 {
-    std::unique_ptr<GraphicsContext> GraphicsContext::Create(Window *window, GraphicsAPI api)
+    std::unique_ptr<GraphicsContext> CreateGraphicsContext(Window *window, GraphicsAPI api)
     {
+        if constexpr (SingleAPI)
+        {
+            //ASSERT(api == SupportedAPIs[0]);
+            return std::make_unique<APITypeMap<SupportedAPIs[0]>::type>(window);
+        }
         switch (api)
         {
 #ifdef TAKO_OPENGL

@@ -55,7 +55,7 @@ namespace tako
         auto api = tako::GraphicsAPI::OpenGL;
         tako::Window window(api);
         tako::Input input;
-        auto context = tako::GraphicsContext::Create(&window, api);
+        auto context = CreateGraphicsContext(&window, api);
         auto drawer = context->CreatePixelArtDrawer();
         Audio audio;
         audio.Init();
