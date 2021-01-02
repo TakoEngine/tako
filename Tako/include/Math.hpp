@@ -31,19 +31,18 @@ namespace tako
 		    return value;
         }
 
-		//TODO: optimize
-		constexpr float sqrt(float x, float margin = 0.000001f)
+        constexpr float sqrt(float x)
 		{
-			if (x < 0) return -1;
-			float a = 1;
-			float b = x;
-			while (abs(a - b) < margin)
-			{
-				a = (a + b) / 2;
-				b = x / a;
-			}
+            if (x < 0) return std::numeric_limits<float>::quiet_NaN();
+            float a = x / 2;
+            float b = 0;
+            while (a != b)
+            {
+                b = a;
+                a = (x/a + a) / 2;
+            }
 
-			return a;
+            return a;
 		}
 
 		const float PI = 3.1415927f;
@@ -111,9 +110,9 @@ namespace tako
 			return *this;
 		}
 
-		float magnitude() const
+		constexpr float magnitude() const
 		{
-			return std::sqrt(x * x + y * y);
+			return mathf::sqrt(x * x + y * y);
 		}
 
 		Vector2& normalize()
@@ -170,12 +169,12 @@ namespace tako
 			return *this;
 		}
 
-		float magnitude() const
+		constexpr float magnitude() const
 		{
-			return std::sqrt(x * x + y * y + z * z);
+			return mathf::sqrt(x * x + y * y + z * z);
 		}
 
-		Vector3& normalize()
+		constexpr Vector3& normalize()
 		{
 			float mag = magnitude();
 			if (mag < 0.0001f)
@@ -267,7 +266,7 @@ namespace tako
 			);
 		}
 
-		static Matrix4 lookAt(const Vector3& eye, const Vector3& target, const Vector3& upDir)
+		constexpr static Matrix4 lookAt(const Vector3& eye, const Vector3& target, const Vector3& upDir)
 		{
 			Vector3 forward = eye - target;
 			forward.normalize();
