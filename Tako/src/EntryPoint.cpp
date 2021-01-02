@@ -3,6 +3,7 @@
 #include "World.hpp"
 #include "Timer.hpp"
 #include "Resources.hpp"
+#include "OpenGLPixelArtDrawer.hpp"
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
 #endif
@@ -56,10 +57,11 @@ namespace tako
         tako::Window window(api);
         tako::Input input;
         auto context = CreateGraphicsContext(&window, api);
-        auto drawer = context->CreatePixelArtDrawer();
+        auto drawer = new OpenGLPixelArtDrawer(context.get());
+        drawer->Resize(window.GetWidth(), window.GetHeight());
         Audio audio;
         audio.Init();
-        Resources resources(drawer);
+        Resources resources(context.get());
         tako::Setup(drawer, &resources);
         tako::Broadcaster broadcaster;
 #ifdef TAKO_EDITOR
@@ -67,11 +69,15 @@ namespace tako
 #endif
 
         bool keepRunning = true;
-
         tako::CallbackEventHandler onEvent([&](tako::Event& ev)
         {
            switch (ev.GetType())
            {
+               case tako::EventType::WindowResize:
+               {
+                   tako::WindowResize& res = static_cast<tako::WindowResize&>(ev);
+                   drawer->Resize(res.width, res.height);
+               } break;
                case tako::EventType::WindowClose:
                {
                    tako::WindowClose& clo = static_cast<tako::WindowClose&>(ev);

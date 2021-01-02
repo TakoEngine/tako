@@ -120,8 +120,6 @@ if (TAKO_OPENGL)
 target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/opengl/OpenGLPixelArtDrawer.hpp"
 	"src/platform/opengl/OpenGLPixelArtDrawer.cpp"
-	"src/platform/opengl/OpenGLTexture.hpp"
-	"src/platform/opengl/OpenGLTexture.cpp"
 	"src/platform/opengl/OpenGLSprite.hpp"
 	"src/platform/opengl/OpenGLSprite.cpp"
 	"src/platform/opengl/OpenGLContext.hpp"

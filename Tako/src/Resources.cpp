@@ -3,7 +3,7 @@
 namespace tako
 {
     template<>
-    Texture* Resources::Load(std::string path)
+    Texture Resources::Load(std::string path)
     {
         auto search = m_map.find(path);
         if (search != m_map.end())

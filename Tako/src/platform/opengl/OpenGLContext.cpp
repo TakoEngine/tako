@@ -56,12 +56,12 @@ namespace tako
 #endif
 #endif
 
-        GetPixelArtDrawer()->Resize(window->GetWidth(), window->GetHeight());
+        //GetPixelArtDrawer()->Resize(window->GetWidth(), window->GetHeight());
     }
 
     void OpenGLContext::Resize(int w, int h)
     {
-        GetPixelArtDrawer()->Resize(w, h);
+        //GetPixelArtDrawer()->Resize(w, h);
     }
 
     void OpenGLContext::HandleEvent(Event& evt)
@@ -72,25 +72,26 @@ namespace tako
         {
             tako::WindowResize& res = static_cast<tako::WindowResize&>(evt);
             LOG("Window Resize: {} {} {}", res.GetName(), res.width, res.height);
-            GetPixelArtDrawer()->Resize(res.width, res.height);
+            //GetPixelArtDrawer()->Resize(res.width, res.height);
         } break;
         }
     }
 
-    OpenGLPixelArtDrawer* OpenGLContext::GetPixelArtDrawer()
+    Texture OpenGLContext::CreateTexture(const Bitmap& bitmap)
     {
-        if (m_drawer)
-        {
-            return m_drawer;
-        }
+        GLuint tex;
+        glGenTextures(1, &tex);
+        glBindTexture(GL_TEXTURE_2D, tex);
 
-        m_drawer = new OpenGLPixelArtDrawer();
-        return m_drawer;
-    }
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bitmap.Width(), bitmap.Height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap.GetData());
 
-    PixelArtDrawer* OpenGLContext::CreatePixelArtDrawer()
-    {
-        return GetPixelArtDrawer();
+        Texture t;
+        t.value = tex;
+        return t;
     }
 
 	void OpenGLContext::Present()

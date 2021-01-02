@@ -12,7 +12,7 @@ namespace tako
         virtual void Present() override;
         virtual void Resize(int width, int height) override;
         virtual void HandleEvent(Event& evt) override;
-        virtual PixelArtDrawer* CreatePixelArtDrawer() override;
+        virtual Texture CreateTexture(const Bitmap& bitmap) override;
 
         VkShaderModule CreateShaderModule(const char* codePath);
         void UpdateUniformBuffer(uint32_t currentImage);

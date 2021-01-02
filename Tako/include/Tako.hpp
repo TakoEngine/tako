@@ -10,6 +10,7 @@
 #include "Resources.hpp"
 //#include <emscripten.h>
 #include "Audio.hpp"
+#include "PixelArtDrawer.hpp"
 
 namespace tako
 {

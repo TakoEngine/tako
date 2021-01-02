@@ -1,10 +1,7 @@
 #pragma once
+#include "NumberTypes.hpp"
 
 namespace tako
 {
-    class Texture
-    {
-    public:
-        virtual ~Texture() {}
-    };
+    struct Texture { U64 value; };
 }

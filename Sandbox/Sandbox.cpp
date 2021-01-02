@@ -1,8 +1,8 @@
 #include "Tako.hpp"
 #include "Font.hpp"
 
-static tako::Texture* tree;
-static tako::Texture* tileset;
+static tako::Texture tree;
+static tako::Texture tileset;
 static tako::Sprite* sprite;
 static int x = 0;
 static int y = 0;
@@ -13,9 +13,9 @@ static tako::AudioClip* clipBump;
 static tako::AudioClip* clipMiss;
 static tako::AudioClip* clipMusic;
 static tako::Font* font;
-static tako::Texture* helloText;
+static tako::Texture helloText;
 static tako::Bitmap bitmap(240, 135);
-static tako::Texture* bufferTex;
+static tako::Texture bufferTex;
 static int helloTextSizeX;
 static int helloTextSizeY;
 static tako::PixelArtDrawer* g_drawer;

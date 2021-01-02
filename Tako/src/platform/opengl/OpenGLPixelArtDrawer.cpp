@@ -55,7 +55,7 @@ namespace tako
     }
 
 
-    OpenGLPixelArtDrawer::OpenGLPixelArtDrawer()
+    OpenGLPixelArtDrawer::OpenGLPixelArtDrawer(GraphicsContext* context) : PixelArtDrawer(context)
     {
         m_scale = 1;
         m_sizeSet = false;
@@ -152,9 +152,9 @@ namespace tako
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }
 
-    void OpenGLPixelArtDrawer::DrawImage(float x, float y, float w, float h, const Texture* img, Color color)
+    void OpenGLPixelArtDrawer::DrawImage(float x, float y, float w, float h, const Texture img, Color color)
     {
-        DrawTextureQuad(x, y, w, h, dynamic_cast<const OpenGLTexture*>(img), m_imageVBO, color);
+        DrawTextureQuad(x, y, w, h, img, m_imageVBO, color);
     }
 
     void OpenGLPixelArtDrawer::DrawSprite(float x, float y, float w, float h, const Sprite* sprite, Color color)
@@ -191,18 +191,19 @@ namespace tako
         }
     }
 
-    Texture* OpenGLPixelArtDrawer::CreateTexture(const Bitmap &bitmap)
+    Texture OpenGLPixelArtDrawer::CreateTexture(const Bitmap &bitmap)
     {
-        return new OpenGLTexture(bitmap);
+        return m_context->CreateTexture(bitmap);
     }
 
-    Sprite* OpenGLPixelArtDrawer::CreateSprite(const Texture* texture, float x, float y, float w, float h)
+    Sprite* OpenGLPixelArtDrawer::CreateSprite(const Texture texture, float x, float y, float w, float h)
     {
-        auto tex = dynamic_cast<const OpenGLTexture*>(texture);
-        float sX = x / tex->GetWidth();
-        float sY = y / tex->GetHeight();
-        float sW = w / tex->GetWidth();
-        float sH = h / tex->GetHeight();
+        float texW = 1;
+        float texH = 1;
+        float sX = x / texW;
+        float sY = y / texH;
+        float sW = w / texW;
+        float sH = h / texH;
         auto vertices = CreateImageVertices(sX, sY, sW, sH);
 
         GLuint spriteVBO = 0;
@@ -210,13 +211,13 @@ namespace tako
         glBindBuffer(GL_ARRAY_BUFFER, spriteVBO);
         glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(ImageVertex), &vertices[0], GL_STATIC_DRAW);
 
-        return new OpenGLSprite(tex, spriteVBO);
+        return new OpenGLSprite(texture, spriteVBO);
     }
 
-    void OpenGLPixelArtDrawer::UpdateTexture(Texture* texture, const Bitmap& bitmap)
+    void OpenGLPixelArtDrawer::UpdateTexture(Texture texture, const Bitmap& bitmap)
     {
-        auto tex = dynamic_cast<OpenGLTexture*>(texture);
-        tex->Update(bitmap);
+        glBindTexture(GL_TEXTURE_2D, texture.value);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bitmap.Width(), bitmap.Height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap.GetData());
     }
 
     namespace
@@ -256,7 +257,7 @@ namespace tako
         }
     }
 
-    void OpenGLPixelArtDrawer::DrawTextureQuad(float x, float y, float w, float h, const OpenGLTexture* texture, GLuint buffer, Color color)
+    void OpenGLPixelArtDrawer::DrawTextureQuad(float x, float y, float w, float h, const Texture texture, GLuint buffer, Color color)
     {
         GetDrawOffset(x, y, w, h);
         glUseProgram(m_imageProgram);
@@ -268,7 +269,7 @@ namespace tako
         glUniform4f(m_imageColorUniform, color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
 
         //glActiveTexture(GL_TEXTURE0);
-        texture->Bind();
+        glBindTexture(GL_TEXTURE_2D, (GLuint) texture.value);
         //glUniform1i(m_imageTextureUniform, 0);
         static auto posLocation = glGetAttribLocation(m_imageProgram, "position");
         static auto texLocation = glGetAttribLocation(m_imageProgram, "texcoord");

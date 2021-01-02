@@ -925,8 +925,5 @@ namespace tako
 
 	void VulkanContext::Resize(int width, int height) {}
 	void VulkanContext::HandleEvent(Event& evt) {}
-	PixelArtDrawer* VulkanContext::CreatePixelArtDrawer()
-	{
-		return nullptr;
-	}
+    Texture VulkanContext::CreateTexture(const Bitmap& bitmap) { return {0}; }
 }
