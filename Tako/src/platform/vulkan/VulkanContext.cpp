@@ -6,6 +6,7 @@
 #include "Utility.hpp"
 #include "FileSystem.hpp"
 #include <algorithm>
+#include "SmallVec.hpp"
 #include <vector>
 #include <array>
 #include <set>
@@ -14,7 +15,7 @@
 #include <chrono>
 
 #ifdef  TAKO_WIN32
-static std::array<const char*, 3> vkWinExtensions = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
+static std::array<const char*, 3> vkWinExtensions = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
 #endif
 static std::array<const char*, 1> vkDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 static std::array<const char*, 1> vkWinValidationLayers = { "VK_LAYER_LUNARG_standard_validation" };
@@ -121,6 +122,18 @@ namespace tako
             LOG("{}", extension.extensionName);
         }
 
+        SmallVec<const char*, 50> vulkanExtensions;
+#ifndef NDEBUG
+        vulkanExtensions.Push(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+#endif
+#ifdef TAKO_WIN32
+        vulkanExtensions.PushArray(vkWinExtensions.data(), vkWinExtensions.size());
+#endif
+#ifdef TAKO_GLFW
+        uint32_t glfwExtCount;
+        auto glfwExts = glfwGetRequiredInstanceExtensions(&glfwExtCount);
+        vulkanExtensions.PushArray(glfwExts, glfwExtCount);
+#endif
         {
             VkApplicationInfo appInfo = {};
             appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -133,22 +146,8 @@ namespace tako
             VkInstanceCreateInfo createInfo = {};
             createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
             createInfo.pApplicationInfo = &appInfo;
-            uint32_t winCount;
-#ifndef TAKO_GLFW
-            createInfo.enabledExtensionCount = vkWinExtensions.size();
-            createInfo.ppEnabledExtensionNames = vkWinExtensions.data();
-#else
-
-            auto winExts = glfwGetRequiredInstanceExtensions(&winCount);
-            LOG("required {}", winCount);
-            LOG("{}", glfwVulkanSupported());
-            for (int i = 0; i < winCount; i++)
-            {
-                LOG("{}", winExts[i]);
-            }
-            createInfo.enabledExtensionCount = winCount;
-            createInfo.ppEnabledExtensionNames = winExts;
-#endif
+            createInfo.enabledExtensionCount = vulkanExtensions.GetLength();
+            createInfo.ppEnabledExtensionNames = vulkanExtensions.GetData();
             createInfo.enabledLayerCount = 0;
             createInfo.ppEnabledLayerNames = nullptr;
 
