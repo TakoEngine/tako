@@ -4,10 +4,10 @@
 
 namespace tako
 {
-    void PlatformConsoleLog(tako::LogLevel level, const char* message)
-    {
-        std::cout << message << std::endl;
-    }
+	void PlatformConsoleLog(tako::LogLevel level, const char* message)
+	{
+		std::cout << message << std::endl;
+	}
 }
 
 

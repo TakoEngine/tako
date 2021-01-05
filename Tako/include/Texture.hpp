@@ -3,5 +3,5 @@
 
 namespace tako
 {
-    struct Texture { U64 value; };
+	struct Texture { U64 value; };
 }

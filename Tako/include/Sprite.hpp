@@ -2,9 +2,9 @@
 
 namespace tako
 {
-    class Sprite
-    {
-    public:
-        virtual ~Sprite() {}
-    };
+	class Sprite
+	{
+	public:
+		virtual ~Sprite() {}
+	};
 }

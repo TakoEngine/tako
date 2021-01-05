@@ -7,7 +7,7 @@
 
 namespace tako
 {
-    enum class GraphicsAPI;
+	enum class GraphicsAPI;
 
 	class Window
 	{

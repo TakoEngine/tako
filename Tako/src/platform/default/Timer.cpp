@@ -10,16 +10,16 @@ double GetTime()
 
 namespace tako
 {
-    Timer::Timer()
-    {
+	Timer::Timer()
+	{
 		m_lastFrame = GetTime();
-    }
+	}
 
-    float Timer::GetDeltaTime()
-    {
-        double time = GetTime();
-        float dt = time - m_lastFrame;
-        m_lastFrame = time;
-        return dt;
-    }
+	float Timer::GetDeltaTime()
+	{
+		double time = GetTime();
+		float dt = time - m_lastFrame;
+		m_lastFrame = time;
+		return dt;
+	}
 }

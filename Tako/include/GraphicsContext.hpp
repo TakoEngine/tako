@@ -11,32 +11,32 @@
 
 namespace tako
 {
-    constexpr GraphicsAPI SupportedAPIs[] =
-    {
+	constexpr GraphicsAPI SupportedAPIs[] =
+	{
 #ifdef TAKO_OPENGL
-        GraphicsAPI::OpenGL,
+		GraphicsAPI::OpenGL,
 #endif
 #ifdef TAKO_VULKAN
-        GraphicsAPI::Vulkan,
+		GraphicsAPI::Vulkan,
 #endif
-    };
+	};
 
-    constexpr int SingleAPI = sizeof(SupportedAPIs) / sizeof(GraphicsAPI) == 1;
+	constexpr int SingleAPI = sizeof(SupportedAPIs) / sizeof(GraphicsAPI) == 1;
 
-    template<GraphicsAPI> struct APITypeMap;
+	template<GraphicsAPI> struct APITypeMap;
 
 #ifdef TAKO_OPENGL
-    template<> struct APITypeMap<GraphicsAPI::OpenGL> {
-        using type = OpenGLContext;
-    };
+	template<> struct APITypeMap<GraphicsAPI::OpenGL> {
+		using type = OpenGLContext;
+	};
 #endif
 #ifdef TAKO_VULKAN
-    template<> struct APITypeMap<GraphicsAPI::Vulkan> {
-        using type = VulkanContext;
-    };
+	template<> struct APITypeMap<GraphicsAPI::Vulkan> {
+		using type = VulkanContext;
+	};
 #endif
 
-    using GraphicsContext = std::conditional<!SingleAPI, IGraphicsContext, APITypeMap<SupportedAPIs[0]>::type>::type;
+	using GraphicsContext = std::conditional<!SingleAPI, IGraphicsContext, APITypeMap<SupportedAPIs[0]>::type>::type;
 
-    std::unique_ptr<GraphicsContext> CreateGraphicsContext(Window *window, GraphicsAPI api);
+	std::unique_ptr<GraphicsContext> CreateGraphicsContext(Window *window, GraphicsAPI api);
 }

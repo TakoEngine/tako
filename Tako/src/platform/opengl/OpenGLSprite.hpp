@@ -5,15 +5,15 @@
 
 namespace tako
 {
-    class OpenGLSprite : public Sprite
-    {
-    public:
-        OpenGLSprite(const Texture texture, GLuint buffer);
+	class OpenGLSprite : public Sprite
+	{
+	public:
+		OpenGLSprite(const Texture texture, GLuint buffer);
 
-        inline const Texture GetTexture() const { return m_texture; }
-        inline GLuint GetBuffer() const { return m_buffer; }
-    private:
-        const Texture m_texture;
-        GLuint m_buffer;
-    };
+		inline const Texture GetTexture() const { return m_texture; }
+		inline GLuint GetBuffer() const { return m_buffer; }
+	private:
+		const Texture m_texture;
+		GLuint m_buffer;
+	};
 }

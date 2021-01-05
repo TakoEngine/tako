@@ -2,5 +2,5 @@
 
 namespace tako
 {
-    int RunGameLoop();
+	int RunGameLoop();
 }

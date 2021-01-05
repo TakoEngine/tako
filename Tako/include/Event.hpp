@@ -57,54 +57,54 @@ namespace tako
 	};
 
 	enum class Key
-    {
-	    W = 0,
-	    A,
-	    S,
-	    D,
-	    Q,
-	    E,
-	    K,
-	    L,
-	    X,
-	    C,
-	    Up,
-	    Down,
-	    Left,
-	    Right,
-	    Space,
-	    Enter,
-	    Gamepad_A,
-        Gamepad_B,
-        Gamepad_X,
-        Gamepad_Y,
-        Gamepad_Dpad_Up,
-        Gamepad_Dpad_Down,
-        Gamepad_Dpad_Left,
-        Gamepad_Dpad_Right,
-        Gamepad_Start,
-        Gamepad_Select,
-        Gamepad_L,
-        Gamepad_L2,
-        Gamepad_R,
-        Gamepad_R2,
-        Unknown
-    };
+	{
+		W = 0,
+		A,
+		S,
+		D,
+		Q,
+		E,
+		K,
+		L,
+		X,
+		C,
+		Up,
+		Down,
+		Left,
+		Right,
+		Space,
+		Enter,
+		Gamepad_A,
+		Gamepad_B,
+		Gamepad_X,
+		Gamepad_Y,
+		Gamepad_Dpad_Up,
+		Gamepad_Dpad_Down,
+		Gamepad_Dpad_Left,
+		Gamepad_Dpad_Right,
+		Gamepad_Start,
+		Gamepad_Select,
+		Gamepad_L,
+		Gamepad_L2,
+		Gamepad_R,
+		Gamepad_R2,
+		Unknown
+	};
 
-    enum class KeyStatus
-    {
-        Up = 0,
-        Down
-    };
+	enum class KeyStatus
+	{
+		Up = 0,
+		Down
+	};
 
-    class KeyPress : public Event
-    {
-    public:
-        EVENT_CLASS_TYPE(KeyPress)
+	class KeyPress : public Event
+	{
+	public:
+		EVENT_CLASS_TYPE(KeyPress)
 
-        Key key;
-        KeyStatus status;
-    };
+		Key key;
+		KeyStatus status;
+	};
 
 	class AppQuit : public Event
 	{

@@ -3,16 +3,16 @@
 
 namespace tako
 {
-    Timer::Timer()
-    {
-        m_lastFrame = glfwGetTime();
-    }
+	Timer::Timer()
+	{
+		m_lastFrame = glfwGetTime();
+	}
 
-    float Timer::GetDeltaTime()
-    {
-        double time = glfwGetTime();
-        float dt = time - m_lastFrame;
-        m_lastFrame = time;
-        return dt;
-    }
+	float Timer::GetDeltaTime()
+	{
+		double time = glfwGetTime();
+		float dt = time - m_lastFrame;
+		m_lastFrame = time;
+		return dt;
+	}
 }

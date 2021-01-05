@@ -2,9 +2,9 @@
 
 namespace tako
 {
-    enum class GraphicsAPI
-    {
-        OpenGL,
-        Vulkan
-    };
+	enum class GraphicsAPI
+	{
+		OpenGL,
+		Vulkan
+	};
 }
