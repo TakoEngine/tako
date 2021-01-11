@@ -1,8 +1,8 @@
 #include "Tako.hpp"
 #include "Font.hpp"
 
-static tako::Texture* tree;
-static tako::Texture* tileset;
+static tako::Texture tree;
+static tako::Texture tileset;
 static tako::Sprite* sprite;
 static int x = 0;
 static int y = 0;
@@ -13,9 +13,9 @@ static tako::AudioClip* clipBump;
 static tako::AudioClip* clipMiss;
 static tako::AudioClip* clipMusic;
 static tako::Font* font;
-static tako::Texture* helloText;
+static tako::Texture helloText;
 static tako::Bitmap bitmap(240, 135);
-static tako::Texture* bufferTex;
+static tako::Texture bufferTex;
 static int helloTextSizeX;
 static int helloTextSizeY;
 static tako::PixelArtDrawer* g_drawer;
@@ -107,14 +107,14 @@ void tako::Draw(tako::PixelArtDrawer* drawer)
     auto alpha = static_cast<tako::U8>(PingPong(a, 255));
     drawer->Clear();
 
-    drawer->DrawImage(-200, -200, 48 * 2, 64 * 2, tileset);
+    drawer->DrawImage(-200, -200, 48 * 2, 64 * 2, tileset.handle);
     drawer->DrawSprite(-300, 300, 16 * 10, 16 * 10, sprite);
     //drawer->DrawRectangle(0, 0, 100, 100, {100, 0, 255, alpha});
-    drawer->DrawImage(0, 0, 240, 135, bufferTex);
-    drawer->DrawImage(75 + PingPong(x, 150), 75 + PingPong(y, 25), 100, 100, tree);
-    drawer->DrawImage(75 + PingPong(x, 150), 175 + PingPong(y, 25), 100, 100, tree);
-    drawer->DrawImage(75 + PingPong(x, 150), 275 + PingPong(y, 25), 100, 100, tree);
+    drawer->DrawImage(0, 0, 240, 135, bufferTex.handle);
+    drawer->DrawImage(75 + PingPong(x, 150), 75 + PingPong(y, 25), 100, 100, tree.handle);
+    drawer->DrawImage(75 + PingPong(x, 150), 175 + PingPong(y, 25), 100, 100, tree.handle);
+    drawer->DrawImage(75 + PingPong(x, 150), 275 + PingPong(y, 25), 100, 100, tree.handle);
 
     drawer->DrawRectangle(pos.x, pos.y, 64, 64, {255, 0, 0, 255});
-    drawer->DrawImage(-400, 0, helloTextSizeX * 2, helloTextSizeY * 2, helloText);
+    drawer->DrawImage(-400, 0, helloTextSizeX * 2, helloTextSizeY * 2, helloText.handle);
 }

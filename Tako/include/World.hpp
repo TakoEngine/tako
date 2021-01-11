@@ -7,40 +7,40 @@
 
 namespace tako
 {
-    namespace {
+	namespace {
 
-        template <class... Args>
-        struct type_list
-        {
-            template <std::size_t N>
-            using type = typename std::tuple_element<N, std::tuple<Args...>>::type;
-        };
+		template <class... Args>
+		struct type_list
+		{
+			template <std::size_t N>
+			using type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+		};
 
-        template<typename... Cs>
-        class TupleHelper
-        {
-        public:
-            template<std::size_t... I>
-            static inline auto GetComponentArrays(const Archetype& arch, Chunk& chunk, const std::array<U8,sizeof...(Cs)>& componentID, std::index_sequence<I...>)
-            {
-                return std::make_tuple((static_cast<typename type_list<Cs*...>::template type<I>>(arch.GetComponentArray(chunk, std::get<I>(componentID))))...);
-            }
+		template<typename... Cs>
+		class TupleHelper
+		{
+		public:
+			template<std::size_t... I>
+			static inline auto GetComponentArrays(const Archetype& arch, Chunk& chunk, const std::array<U8,sizeof...(Cs)>& componentID, std::index_sequence<I...>)
+			{
+				return std::make_tuple((static_cast<typename type_list<Cs*...>::template type<I>>(arch.GetComponentArray(chunk, std::get<I>(componentID))))...);
+			}
 
-            template<std::size_t... I>
-            static inline std::tuple<Cs&...> CreateTuple(const std::tuple<Cs*...>& componentArray, int index, std::index_sequence<I...>)
-            {
-                return std::make_tuple(std::ref(std::get<I>(componentArray)[index])...);
-            }
+			template<std::size_t... I>
+			static inline std::tuple<Cs&...> CreateTuple(const std::tuple<Cs*...>& componentArray, int index, std::index_sequence<I...>)
+			{
+				return std::make_tuple(std::ref(std::get<I>(componentArray)[index])...);
+			}
 
-            template<typename Cb, std::size_t... I>
-            static inline void CallbackTuple(const std::tuple<Cs*...>& componentArray, int index, Cb callback, std::index_sequence<I...>)
-            {
-                callback(std::ref(std::get<I>(componentArray)[index])...);
-            }
-        };
+			template<typename Cb, std::size_t... I>
+			static inline void CallbackTuple(const std::tuple<Cs*...>& componentArray, int index, Cb callback, std::index_sequence<I...>)
+			{
+				callback(std::ref(std::get<I>(componentArray)[index])...);
+			}
+		};
 
 
-    }
+	}
 	template<typename... Cs>
 	class ComponentIterator;
 
@@ -66,48 +66,48 @@ namespace tako
 		template<typename T>
 		T& GetComponent(Entity entity)
 		{
-		    auto handle = m_entities[entity];
+			auto handle = m_entities[entity];
 			return handle.archeType->GetComponent<T>(*handle.chunk, handle.indexChunk);
 		}
 
-        template<typename T>
-        bool HasComponent(Entity entity)
-        {
-            auto handle = m_entities[entity];
-            return handle.archeType->HasComponent<T>(*handle.chunk, handle.indexChunk);
-        }
+		template<typename T>
+		bool HasComponent(Entity entity)
+		{
+			auto handle = m_entities[entity];
+			return handle.archeType->HasComponent<T>(*handle.chunk, handle.indexChunk);
+		}
 
 		template<typename T>
 		void AddComponent(Entity entity)
-        {
-		    auto compID = ComponentIDGenerator::GetID<T>();
-		    auto handle = m_entities[entity];
-		    auto hash = handle.archeType->componentHash;
-		    auto newHash = hash | (1 << static_cast<U64>(compID));
-		    if (hash == newHash)
-            {
-		        LOG("same hash");
-		        return;
-            }
+		{
+			auto compID = ComponentIDGenerator::GetID<T>();
+			auto handle = m_entities[entity];
+			auto hash = handle.archeType->componentHash;
+			auto newHash = hash | (1 << static_cast<U64>(compID));
+			if (hash == newHash)
+			{
+				LOG("same hash");
+				return;
+			}
 
-            MoveEntityArchetype(handle, newHash);
-        }
+			MoveEntityArchetype(handle, newHash);
+		}
 
-        template<typename T>
-        void RemoveComponent(Entity entity)
-        {
-            auto compID = ComponentIDGenerator::GetID<T>();
-            auto handle = m_entities[entity];
-            auto hash = handle.archeType->componentHash;
-            auto newHash = hash & (~(1 << static_cast<U64>(compID)));
-            if (hash == newHash)
-            {
-                LOG("same hash");
-                return;
-            }
+		template<typename T>
+		void RemoveComponent(Entity entity)
+		{
+			auto compID = ComponentIDGenerator::GetID<T>();
+			auto handle = m_entities[entity];
+			auto hash = handle.archeType->componentHash;
+			auto newHash = hash & (~(1 << static_cast<U64>(compID)));
+			if (hash == newHash)
+			{
+				LOG("same hash");
+				return;
+			}
 
-            MoveEntityArchetype(handle, newHash);
-        }
+			MoveEntityArchetype(handle, newHash);
+		}
 
 		template<typename... Cs>
 		ComponentIterator<Cs...> Iter()
@@ -152,7 +152,7 @@ namespace tako
 				U64 archHash = pair.first;
 				if ((archHash & hash) == hash)
 				{
-                    auto& arch = pair.second;
+					auto& arch = pair.second;
 					auto chunkSize = arch.chunks.size();
 					for (int ch = 0; ch < chunkSize; ++ch)
 					{
@@ -170,39 +170,39 @@ namespace tako
 			}
 		}
 
-        template<typename... Cs, typename Cb, typename=void>
-        void IterateComps(Cb callback)
-        {
-            std::array<U8, sizeof...(Cs)> componentID = { { ComponentIDGenerator::GetID<Cs>()... } };
-            auto indexSequence = std::index_sequence_for<Cs...>{};
-            auto hash = GetArchetypeHash<Cs...>();
-            for (auto& pair : m_archetypes)
-            {
-                U64 archHash = pair.first;
-                if ((archHash & hash) == hash)
-                {
-                    auto& arch = pair.second;
-                    auto chunkSize = arch.chunks.size();
-                    for (int ch = 0; ch < chunkSize; ++ch)
-                    {
-                        Chunk& chunk = *arch.chunks[ch];
-                        std::tuple<Cs*...> comps = TupleHelper<Cs...>::GetComponentArrays(arch, chunk, componentID, indexSequence);
-                        auto arraySize = chunk.header.last;
-                        for (int i = 0; i < arraySize; ++i)
-                        {
-                            TupleHelper<Cs...>::CallbackTuple(comps, i, callback, indexSequence);
-                        }
-                    }
-                }
-            }
-        }
+		template<typename... Cs, typename Cb, typename=void>
+		void IterateComps(Cb callback)
+		{
+			std::array<U8, sizeof...(Cs)> componentID = { { ComponentIDGenerator::GetID<Cs>()... } };
+			auto indexSequence = std::index_sequence_for<Cs...>{};
+			auto hash = GetArchetypeHash<Cs...>();
+			for (auto& pair : m_archetypes)
+			{
+				U64 archHash = pair.first;
+				if ((archHash & hash) == hash)
+				{
+					auto& arch = pair.second;
+					auto chunkSize = arch.chunks.size();
+					for (int ch = 0; ch < chunkSize; ++ch)
+					{
+						Chunk& chunk = *arch.chunks[ch];
+						std::tuple<Cs*...> comps = TupleHelper<Cs...>::GetComponentArrays(arch, chunk, componentID, indexSequence);
+						auto arraySize = chunk.header.last;
+						for (int i = 0; i < arraySize; ++i)
+						{
+							TupleHelper<Cs...>::CallbackTuple(comps, i, callback, indexSequence);
+						}
+					}
+				}
+			}
+		}
 
 		void Delete(Entity entity);
 		void Reset();
 	private:
 		std::vector<EntityHandle> m_entities;
-        U32 m_nextDeleted = 0;
-        std::size_t m_deletedCount = 0;
+		U32 m_nextDeleted = 0;
+		std::size_t m_deletedCount = 0;
 		std::unordered_map<U64, Archetype> m_archetypes;
 
 		Entity CreateEntityInArchetype(Archetype& arch);

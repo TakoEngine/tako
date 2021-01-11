@@ -10,75 +10,75 @@ using namespace tako::literals;
 
 namespace tako
 {
-    namespace
-    {
-        struct StrCmp
-        {
-            bool operator()(const EM_UTF8* a, const EM_UTF8* b) const
-            {
-                return std::strcmp(a, b) < 0;
-            }
-        };
+	namespace
+	{
+		struct StrCmp
+		{
+			bool operator()(const EM_UTF8* a, const EM_UTF8* b) const
+			{
+				return std::strcmp(a, b) < 0;
+			}
+		};
 
-        std::map<const EM_UTF8*, Key, StrCmp> KeyCodeMapping
-        {
-            {"KeyW", Key::W},
-            {"KeyA", Key::A},
-            {"KeyS", Key::S},
-            {"KeyD", Key::D},
-            {"KeyQ", Key::Q},
-            {"KeyE", Key::E},
-            {"KeyK", Key::K},
-            {"KeyL", Key::L},
-            {"KeyX", Key::X},
-            {"KeyC", Key::C},
-            {"ArrowDown", Key::Down},
-            {"ArrowLeft", Key::Left},
-            {"ArrowRight", Key::Right},
-            {"ArrowUp", Key::Up},
-            {"Space", Key::Space},
-            {"Enter", Key::Enter}
-        };
+		std::map<const EM_UTF8*, Key, StrCmp> KeyCodeMapping
+		{
+			{"KeyW", Key::W},
+			{"KeyA", Key::A},
+			{"KeyS", Key::S},
+			{"KeyD", Key::D},
+			{"KeyQ", Key::Q},
+			{"KeyE", Key::E},
+			{"KeyK", Key::K},
+			{"KeyL", Key::L},
+			{"KeyX", Key::X},
+			{"KeyC", Key::C},
+			{"ArrowDown", Key::Down},
+			{"ArrowLeft", Key::Left},
+			{"ArrowRight", Key::Right},
+			{"ArrowUp", Key::Up},
+			{"Space", Key::Space},
+			{"Enter", Key::Enter}
+		};
 
-        std::pair<int, Key> GamepadMapping[]
-        {
-            {0, Key::Gamepad_A},
-            {1, Key::Gamepad_B},
-            {2, Key::Gamepad_X},
-            {3, Key::Gamepad_Y},
-            {4, Key::Gamepad_L},
-            {5, Key::Gamepad_R},
-            {6, Key::Gamepad_L2},
-            {7, Key::Gamepad_R2},
-            {8, Key::Gamepad_Select},
-            {9, Key::Gamepad_Start},
-            {12, Key::Gamepad_Dpad_Up},
-            {13, Key::Gamepad_Dpad_Down},
-            {14, Key::Gamepad_Dpad_Left},
-            {15, Key::Gamepad_Dpad_Right},
-        };
-    }
+		std::pair<int, Key> GamepadMapping[]
+		{
+			{0, Key::Gamepad_A},
+			{1, Key::Gamepad_B},
+			{2, Key::Gamepad_X},
+			{3, Key::Gamepad_Y},
+			{4, Key::Gamepad_L},
+			{5, Key::Gamepad_R},
+			{6, Key::Gamepad_L2},
+			{7, Key::Gamepad_R2},
+			{8, Key::Gamepad_Select},
+			{9, Key::Gamepad_Start},
+			{12, Key::Gamepad_Dpad_Up},
+			{13, Key::Gamepad_Dpad_Down},
+			{14, Key::Gamepad_Dpad_Left},
+			{15, Key::Gamepad_Dpad_Right},
+		};
+	}
 	class Window::WindowImpl
 	{
 	public:
 		WindowImpl()
 		{
-            EmscriptenWebGLContextAttributes attributes;
-            emscripten_webgl_init_context_attributes(&attributes);
-            attributes.alpha = false;
-            attributes.antialias = false;
-            m_contextHandle = emscripten_webgl_create_context(0, &attributes);
-            emscripten_webgl_make_context_current(m_contextHandle);
-            double width, height;
-            emscripten_get_element_css_size(0, &width, &height);
-            int w, h;
-            emscripten_get_canvas_element_size(0, &w, &h);
-            Resize(width, height);
-            emscripten_set_resize_callback(0, this, false, WindowResizeCallback);
+			EmscriptenWebGLContextAttributes attributes;
+			emscripten_webgl_init_context_attributes(&attributes);
+			attributes.alpha = false;
+			attributes.antialias = false;
+			m_contextHandle = emscripten_webgl_create_context(0, &attributes);
+			emscripten_webgl_make_context_current(m_contextHandle);
+			double width, height;
+			emscripten_get_element_css_size(0, &width, &height);
+			int w, h;
+			emscripten_get_canvas_element_size(0, &w, &h);
+			Resize(width, height);
+			emscripten_set_resize_callback(0, this, false, WindowResizeCallback);
 
-            emscripten_set_keypress_callback(0, this, false, KeyPressCallback);
-            emscripten_set_keydown_callback(0, this, false, KeyPressCallback);
-            emscripten_set_keyup_callback(0, this, false, KeyPressCallback);
+			emscripten_set_keypress_callback(0, this, false, KeyPressCallback);
+			emscripten_set_keydown_callback(0, this, false, KeyPressCallback);
+			emscripten_set_keyup_callback(0, this, false, KeyPressCallback);
 		}
 
 
@@ -88,32 +88,32 @@ namespace tako
 
 		void Poll()
 		{
-		    auto status = emscripten_sample_gamepad_data();
-		    if (status == EMSCRIPTEN_RESULT_SUCCESS)
-            {
-                auto numGamepads = emscripten_get_num_gamepads();
-                EmscriptenGamepadEvent padState;
-                for (int i = 0; i < numGamepads; i++)
-                {
-                    status = emscripten_get_gamepad_status(i, &padState);
-                    if (status == EMSCRIPTEN_RESULT_SUCCESS && padState.connected)
-                    {
-                        for (auto [index, key] : GamepadMapping)
-                        {
-                            if (index >= padState.numButtons)
-                            {
-                                continue;
-                            }
-                            KeyPress evt;
-                            evt.key = key;
-                            evt.status = padState.digitalButton[index] ? KeyStatus::Down : KeyStatus::Up;
-                            m_callback(evt);
-                        }
+			auto status = emscripten_sample_gamepad_data();
+			if (status == EMSCRIPTEN_RESULT_SUCCESS)
+			{
+				auto numGamepads = emscripten_get_num_gamepads();
+				EmscriptenGamepadEvent padState;
+				for (int i = 0; i < numGamepads; i++)
+				{
+					status = emscripten_get_gamepad_status(i, &padState);
+					if (status == EMSCRIPTEN_RESULT_SUCCESS && padState.connected)
+					{
+						for (auto [index, key] : GamepadMapping)
+						{
+							if (index >= padState.numButtons)
+							{
+								continue;
+							}
+							KeyPress evt;
+							evt.key = key;
+							evt.status = padState.digitalButton[index] ? KeyStatus::Down : KeyStatus::Up;
+							m_callback(evt);
+						}
 
-                        break;
-                    }
-                }
-            }
+						break;
+					}
+				}
+			}
 		}
 
 		bool ShouldExit()
@@ -123,7 +123,7 @@ namespace tako
 		friend Window;
 	private:
 		int m_width, m_height;
-        EMSCRIPTEN_WEBGL_CONTEXT_HANDLE m_contextHandle;
+		EMSCRIPTEN_WEBGL_CONTEXT_HANDLE m_contextHandle;
 		std::function<void(Event&)> m_callback;
 		GLFWwindow* m_window;
 
@@ -140,52 +140,52 @@ namespace tako
 		}
 
 		static EM_BOOL WindowResizeCallback(int eventType, const EmscriptenUiEvent* uiEvent, void* userData)
-        {
-            Window::WindowImpl* win = static_cast<Window::WindowImpl*>(userData);
-            double width, height;
-            emscripten_get_element_css_size(0, &width, &height);
-		    win->Resize(width, height);
-            if (win->m_callback)
-            {
-                WindowResize evt;
-                evt.width = win->m_width;
-                evt.height = win->m_height;
-                win->m_callback(evt);
-            }
+		{
+			Window::WindowImpl* win = static_cast<Window::WindowImpl*>(userData);
+			double width, height;
+			emscripten_get_element_css_size(0, &width, &height);
+			win->Resize(width, height);
+			if (win->m_callback)
+			{
+				WindowResize evt;
+				evt.width = win->m_width;
+				evt.height = win->m_height;
+				win->m_callback(evt);
+			}
 
-            return true;
-        }
+			return true;
+		}
 
-        static EM_BOOL KeyPressCallback(int eventType, const EmscriptenKeyboardEvent* keyEvent, void* userData)
-        {
-            Window::WindowImpl* win = static_cast<Window::WindowImpl*>(userData);
-            if (KeyCodeMapping.count(keyEvent->code) <= 0)
-            {
-                return false;
-            }
-            if (win->m_callback)
-            {
-                KeyPress evt;
-                evt.key = KeyCodeMapping[keyEvent->code];
-                switch (eventType)
-                {
-                    case EMSCRIPTEN_EVENT_KEYPRESS:
-                    case EMSCRIPTEN_EVENT_KEYDOWN:
-                        evt.status = KeyStatus::Down;
-                        break;
-                    case EMSCRIPTEN_EVENT_KEYUP:
-                        evt.status = KeyStatus::Up;
-                        break;
-                }
-                win->m_callback(evt);
-            }
+		static EM_BOOL KeyPressCallback(int eventType, const EmscriptenKeyboardEvent* keyEvent, void* userData)
+		{
+			Window::WindowImpl* win = static_cast<Window::WindowImpl*>(userData);
+			if (KeyCodeMapping.count(keyEvent->code) <= 0)
+			{
+				return false;
+			}
+			if (win->m_callback)
+			{
+				KeyPress evt;
+				evt.key = KeyCodeMapping[keyEvent->code];
+				switch (eventType)
+				{
+					case EMSCRIPTEN_EVENT_KEYPRESS:
+					case EMSCRIPTEN_EVENT_KEYDOWN:
+						evt.status = KeyStatus::Down;
+						break;
+					case EMSCRIPTEN_EVENT_KEYUP:
+						evt.status = KeyStatus::Up;
+						break;
+				}
+				win->m_callback(evt);
+			}
 
-		    return true;
-        }
+			return true;
+		}
 	};
 
 
-	Window::Window() : m_impl(new WindowImpl())
+	Window::Window(GraphicsAPI api) : m_impl(new WindowImpl())
 	{
 	}
 

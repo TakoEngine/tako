@@ -11,6 +11,7 @@ add_library(${TAKO_DLL}
 	"include/Bitmap.hpp"
 	"src/Bitmap.cpp"
 	"include/GraphicsContext.hpp"
+	"src/GraphicsContext.cpp"
 	"include/Texture.hpp"
 	"include/PixelArtDrawer.hpp"
 	"include/Tako.hpp"
@@ -30,6 +31,9 @@ add_library(${TAKO_DLL}
 	"include/Timer.hpp"
 	"include/Resources.hpp"
 	"src/Resources.cpp"
+	"include/GraphicsAPI.hpp"
+	"include/IGraphicsContext.hpp"
+	"include/SmallVec.hpp"
 )
 
 function(set_feature define val)
@@ -43,11 +47,12 @@ endfunction()
 
 if (WIN32)
 set_feature(TAKO_WIN32 true)
-set_feature(TAKO_OPENGL false)
+set_feature(TAKO_OPENGL true)
 set_feature(TAKO_VULKAN true)
 set_feature(TAKO_OPENAL false)
+set_feature(TAKO_GLAD true)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-	set_feature(TAKO_EDITOR true)
+	set_feature(TAKO_EDITOR false)
 else()
 	set_feature(TAKO_EDITOR false)
 endif()
@@ -72,7 +77,7 @@ endif()
 
 if (TAKO_MAC OR TAKO_LINUX)
 set_feature(TAKO_OPENGL true)
-set_feature(TAKO_VULKAN false)
+set_feature(TAKO_VULKAN true)
 set_feature(TAKO_OPENAL true)
 set_feature(TAKO_GLFW true)
 set_feature(TAKO_GLAD true)
@@ -91,6 +96,7 @@ target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/win32/FileSystem.cpp"
 	"include/WinUtility.hpp"
 	"src/platform/win32/WinUtility.cpp"
+	"src/platform/default/Timer.cpp"
 )
 elseif (EMSCRIPTEN)
 target_sources(${TAKO_DLL} PRIVATE
@@ -115,12 +121,20 @@ if (TAKO_OPENGL)
 target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/opengl/OpenGLPixelArtDrawer.hpp"
 	"src/platform/opengl/OpenGLPixelArtDrawer.cpp"
-	"src/platform/opengl/OpenGLTexture.hpp"
-	"src/platform/opengl/OpenGLTexture.cpp"
 	"src/platform/opengl/OpenGLSprite.hpp"
 	"src/platform/opengl/OpenGLSprite.cpp"
+	"src/platform/opengl/OpenGLContext.hpp"
     "src/platform/opengl/OpenGLContext.cpp"
 )
+target_include_directories(${TAKO_DLL} PUBLIC "src/platform/opengl")
+
+	if (TAKO_GLAD)
+	target_sources(${TAKO_DLL} PRIVATE
+		"src/platform/opengl/glad.c"
+		"src/platform/opengl/glad/glad.h"
+		"src/platform/opengl/KHR/khrplatform.h"
+	)
+	endif(TAKO_GLAD)
 
 function(add_shader filename)
 	SET(SHADER_IN ${CMAKE_CURRENT_SOURCE_DIR}/shaders/${filename})
@@ -146,9 +160,12 @@ add_shader("image.frag.glsl")
 endif(TAKO_OPENGL)
 
 if (TAKO_VULKAN)
+target_compile_definitions(${TAKO_DLL} PUBLIC "GLFW_INCLUDE_VULKAN")
 target_sources(${TAKO_DLL} PRIVATE
+	"src/platform/vulkan/VulkanContext.hpp"
 	"src/platform/vulkan/VulkanContext.cpp"
 )
+target_include_directories(${TAKO_DLL} PUBLIC "src/platform/vulkan")
 #configure_file("shaders/shader.vert.spv" ${CMAKE_BINARY_DIR}/shaders/shader.vert.spv COPYONLY)
 #configure_file("shaders/shader.frag.spv" ${CMAKE_BINARY_DIR}/shaders/shader.frag.spv COPYONLY)
 endif(TAKO_VULKAN)
@@ -157,9 +174,6 @@ if (TAKO_GLFW)
 target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/glfw/Window.cpp"
 	"src/platform/glfw/Timer.cpp"
-	"src/platform/glfw/glad.c"
-	"src/platform/glfw/glad/glad.h"
-	"src/platform/glfw/KHR/khrplatform.h"
 )
 target_include_directories(${TAKO_DLL} PUBLIC "src/platform/glfw")
 target_compile_definitions(${TAKO_DLL} PUBLIC GLFW_INCLUDE_NONE)
@@ -177,9 +191,11 @@ target_link_libraries(${TAKO_DLL} PUBLIC glfw)
 endif()
 
 if (TAKO_VULKAN)
-find_package(vulkan REQUIRED)
+find_package(Vulkan REQUIRED)
 target_include_directories(${TAKO_DLL} PUBLIC ${Vulkan_INCLUDE_DIRS})
+if (TAKO_WIN32)
 target_compile_definitions(${TAKO_DLL} PRIVATE "VK_USE_PLATFORM_WIN32_KHR")
+endif()
 target_link_libraries(${TAKO_DLL} PRIVATE ${Vulkan_LIBRARIES})
 endif(TAKO_VULKAN)
 

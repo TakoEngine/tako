@@ -1,66 +1,65 @@
 #pragma once
 
 #include "PixelArtDrawer.hpp"
-#include "OpenGLTexture.hpp"
 #include "OpenGLSprite.hpp"
 #include "OpenGL.hpp"
 
 namespace tako
 {
-    class OpenGLPixelArtDrawer : public PixelArtDrawer
-    {
-    public:
-        OpenGLPixelArtDrawer();
-        ~OpenGLPixelArtDrawer() override;
+	class OpenGLPixelArtDrawer final : public PixelArtDrawer
+	{
+	public:
+		OpenGLPixelArtDrawer(GraphicsContext* context);
+		~OpenGLPixelArtDrawer() override;
 
-        void SetClearColor(Color c) override;
-        void SetTargetSize(int width, int height) override;
-        void AutoScale() override;
-        void SetCameraPosition(Vector2 position) override;
-        Vector2 GetCameraPosition() override;
-        Vector2 GetCameraViewSize() override;
+		void SetClearColor(Color c) override;
+		void SetTargetSize(int width, int height) override;
+		void AutoScale() override;
+		void SetCameraPosition(Vector2 position) override;
+		Vector2 GetCameraPosition() override;
+		Vector2 GetCameraViewSize() override;
 
-        void Clear() override;
-        void DrawRectangle(float x, float y, float w, float h, Color c) override;
-        void DrawImage(float x, float y, float w, float h, const Texture* img, Color color = {255, 255, 255, 255}) override;
-        void DrawSprite(float x, float y, float w, float h, const Sprite* sprite, Color color = {255, 255, 255, 255}) override ;
+		void Clear() override;
+		void DrawRectangle(float x, float y, float w, float h, Color c) override;
+		void DrawImage(float x, float y, float w, float h, const TextureHandle img, Color color = {255, 255, 255, 255}) override;
+		void DrawSprite(float x, float y, float w, float h, const Sprite* sprite, Color color = {255, 255, 255, 255}) override ;
 
-        Texture* CreateTexture(const Bitmap& bitmap) override;
-        Sprite* CreateSprite(const Texture* texture, float x, float y, float w, float h) override;
+		Texture CreateTexture(const Bitmap& bitmap) override;
+		Sprite* CreateSprite(const Texture texture, float x, float y, float w, float h) override;
 
-        void UpdateTexture(Texture* texture, const Bitmap& bitmap) override;
+		void UpdateTexture(Texture texture, const Bitmap& bitmap) override;
 
-        void Resize(int w, int h);
+		void Resize(int w, int h);
 
-    private:
-        void DrawTextureQuad(float x, float y, float w, float h, const OpenGLTexture* texture, GLuint buffer, Color color);
-        void SetupQuadPipeline();
-        void SetupImagePipeline();
-        void GetDrawOffset(float& x, float& y, float& w, float& h);
-        void CalculateScale();
+	private:
+		void DrawTextureQuad(float x, float y, float w, float h, const TextureHandle texture, GLuint buffer, Color color);
+		void SetupQuadPipeline();
+		void SetupImagePipeline();
+		void GetDrawOffset(float& x, float& y, float& w, float& h);
+		void CalculateScale();
 
-        Vector2 m_cameraPosition;
-        U32 m_width;
-        U32 m_height;
+		Vector2 m_cameraPosition;
+		U32 m_width;
+		U32 m_height;
 
-        bool m_sizeSet;
-        bool m_autoScale;
-        U32 m_scale;
-        U32 m_sizeW;
-        U32 m_sizeH;
-        Color m_clearColor;
+		bool m_sizeSet;
+		bool m_autoScale;
+		U32 m_scale;
+		U32 m_sizeW;
+		U32 m_sizeH;
+		Color m_clearColor;
 
-        GLuint m_quadProgram;
-        GLuint m_quadVBO;
-        GLuint m_quadProjectionUniform;
-        GLuint m_quadModelUniform;
-        GLuint m_quadColorUniform;
+		GLuint m_quadProgram;
+		GLuint m_quadVBO;
+		GLuint m_quadProjectionUniform;
+		GLuint m_quadModelUniform;
+		GLuint m_quadColorUniform;
 
-        GLuint m_imageProgram;
-        GLuint m_imageVBO;
-        GLuint m_imageProjectionUniform;
-        GLuint m_imageModelUniform;
-        GLuint m_imageTextureUniform;
-        GLuint m_imageColorUniform;
-    };
+		GLuint m_imageProgram;
+		GLuint m_imageVBO;
+		GLuint m_imageProjectionUniform;
+		GLuint m_imageModelUniform;
+		GLuint m_imageTextureUniform;
+		GLuint m_imageColorUniform;
+	};
 }

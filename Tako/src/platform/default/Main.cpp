@@ -2,5 +2,5 @@
 
 int main()
 {
-    return tako::RunGameLoop();
+	return tako::RunGameLoop();
 }

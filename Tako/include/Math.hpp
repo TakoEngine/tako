@@ -7,10 +7,10 @@ namespace tako
 {
 	namespace mathf
 	{
-	    constexpr float sign(float x)
-        {
-	        return x < 0 ? -1 : 1;
-        }
+		constexpr float sign(float x)
+		{
+			return x < 0 ? -1 : 1;
+		}
 
 		constexpr float abs(float x)
 		{
@@ -18,29 +18,28 @@ namespace tako
 		}
 
 		constexpr float clamp(float value, float min, float max)
-        {
-		    if (value < min)
-            {
-		        return min;
-            }
-		    if (value > max)
-            {
-		        return max;
-            }
-
-		    return value;
-        }
-
-		//TODO: optimize
-		constexpr float sqrt(float x, float margin = 0.000001f)
 		{
-			if (x < 0) return -1;
-			float a = 1;
-			float b = x;
-			while (abs(a - b) < margin)
+			if (value < min)
 			{
-				a = (a + b) / 2;
-				b = x / a;
+				return min;
+			}
+			if (value > max)
+			{
+				return max;
+			}
+
+			return value;
+		}
+
+		constexpr float sqrt(float x)
+		{
+			if (x < 0) return std::numeric_limits<float>::quiet_NaN();
+			float a = x / 2;
+			float b = 0;
+			while (a != b)
+			{
+				b = a;
+				a = (x/a + a) / 2;
 			}
 
 			return a;
@@ -66,12 +65,12 @@ namespace tako
 			return !operator==(rhs);
 		}
 
-        constexpr Vector2& operator+=(const Vector2& rhs)
-        {
-            x += rhs.x;
-            y += rhs.y;
-            return *this;
-        }
+		constexpr Vector2& operator+=(const Vector2& rhs)
+		{
+			x += rhs.x;
+			y += rhs.y;
+			return *this;
+		}
 
 		constexpr Vector2& operator-=(const Vector2& rhs)
 		{
@@ -80,10 +79,10 @@ namespace tako
 			return *this;
 		}
 
-        friend constexpr Vector2 operator+(Vector2 lhs, const Vector2 rhs)
-        {
-            return lhs += rhs;
-        }
+		friend constexpr Vector2 operator+(Vector2 lhs, const Vector2 rhs)
+		{
+			return lhs += rhs;
+		}
 
 		friend constexpr Vector2 operator-(Vector2 lhs, const Vector2 rhs)
 		{
@@ -91,18 +90,18 @@ namespace tako
 		}
 
 		friend constexpr Vector2 operator*(Vector2 lhs, const float rhs)
-        {
-		    lhs.x *= rhs;
-		    lhs.y *= rhs;
-		    return lhs;
-        }
+		{
+			lhs.x *= rhs;
+			lhs.y *= rhs;
+			return lhs;
+		}
 
-        friend constexpr Vector2 operator/(Vector2 lhs, const float rhs)
-        {
-            lhs.x /= rhs;
-            lhs.y /= rhs;
-            return lhs;
-        }
+		friend constexpr Vector2 operator/(Vector2 lhs, const float rhs)
+		{
+			lhs.x /= rhs;
+			lhs.y /= rhs;
+			return lhs;
+		}
 
 		constexpr Vector2& operator/=(const float factor)
 		{
@@ -113,10 +112,10 @@ namespace tako
 
 		constexpr float magnitude() const
 		{
-			return std::sqrt(x * x + y * y);
+			return mathf::sqrt(x * x + y * y);
 		}
 
-		constexpr Vector2& normalize()
+		Vector2& normalize()
 		{
 			float mag = magnitude();
 			if (mag < 0.0001f)
@@ -127,10 +126,10 @@ namespace tako
 			return operator/=(mag);
 		}
 
-		static constexpr Vector2 Normalized(tako::Vector2 v)
-        {
-		    return v.normalize();
-        }
+		static Vector2 Normalized(tako::Vector2 v)
+		{
+			return v.normalize();
+		}
 	};
 
 	struct Vector3
@@ -267,7 +266,7 @@ namespace tako
 			);
 		}
 
-		constexpr static Matrix4 lookAt(Vector3& eye, Vector3& target, Vector3& upDir)
+		constexpr static Matrix4 lookAt(const Vector3& eye, const Vector3& target, const Vector3& upDir)
 		{
 			Vector3 forward = eye - target;
 			forward.normalize();

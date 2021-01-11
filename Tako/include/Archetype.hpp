@@ -13,36 +13,36 @@ namespace tako
 {
 
 
-    class ComponentIDGenerator
-    {
-        static U8 Identifier(std::size_t size)
-        {
-            static U8 value = 0;
-            auto id = value++;
-            m_componentSizes[id] = size;
-            return id;
-        }
+	class ComponentIDGenerator
+	{
+		static U8 Identifier(std::size_t size)
+		{
+			static U8 value = 0;
+			auto id = value++;
+			m_componentSizes[id] = size;
+			return id;
+		}
 
-        static std::map<U8, std::size_t> m_componentSizes;
-    public:
-        template<typename C>
-        static U8 GetID()
-        {
-            static const U8 value = Identifier(sizeof(C));
-            return value;
-        }
+		static std::map<U8, std::size_t> m_componentSizes;
+	public:
+		template<typename C>
+		static U8 GetID()
+		{
+			static const U8 value = Identifier(sizeof(C));
+			return value;
+		}
 
-        static std::size_t GetComponentSize(U8 id)
-        {
-            auto size = m_componentSizes.at(id);
-            return size;
-        }
-    };
+		static std::size_t GetComponentSize(U8 id)
+		{
+			auto size = m_componentSizes.at(id);
+			return size;
+		}
+	};
 
 
 
-    namespace
-    {
+	namespace
+	{
 		template<typename C, typename... Cs>
 		U64 GetArchetypeHash()
 		{
@@ -57,11 +57,11 @@ namespace tako
 			}
 		}
 
-        struct CompInfo
-        {
-            U8 id;
-            std::size_t size;
-        };
+		struct CompInfo
+		{
+			U8 id;
+			std::size_t size;
+		};
 
 		template<std::size_t index, std::size_t size, typename C, typename... Cs>
 		void FillIDArray(std::array<CompInfo, size>& arr)
@@ -134,34 +134,34 @@ namespace tako
 		std::size_t offset;
 	};
 
-    U16 FillComponentTypeInfo(std::map<U8, ComponenTypeInfo>& infos, const CompInfo* compInfos, std::size_t infoCount, std::size_t elementSize)
-    {
-        if (infoCount == 0)
-        {
-            return (CHUNK_SIZE - sizeof(ChunkHeader)) / sizeof(Entity);
-        }
-        else
-        {
-            U16 capacity = (CHUNK_SIZE - sizeof(ChunkHeader)) / elementSize;
-            std::size_t offset = sizeof(Entity) * capacity;
-            for (int i = 0; i < infoCount; i++)
-            {
-                auto info = compInfos[i];
-                ComponenTypeInfo compInfo;
-                compInfo.id = info.id;
-                compInfo.size = info.size;
-                compInfo.offset = offset;
-                infos.emplace(info.id, compInfo);
-                //LOG("Offset {} {}", info.id, offset);
-                offset += info.size * capacity;
-            }
+	U16 FillComponentTypeInfo(std::map<U8, ComponenTypeInfo>& infos, const CompInfo* compInfos, std::size_t infoCount, std::size_t elementSize)
+	{
+		if (infoCount == 0)
+		{
+			return (CHUNK_SIZE - sizeof(ChunkHeader)) / sizeof(Entity);
+		}
+		else
+		{
+			U16 capacity = (CHUNK_SIZE - sizeof(ChunkHeader)) / elementSize;
+			std::size_t offset = sizeof(Entity) * capacity;
+			for (int i = 0; i < infoCount; i++)
+			{
+				auto info = compInfos[i];
+				ComponenTypeInfo compInfo;
+				compInfo.id = info.id;
+				compInfo.size = info.size;
+				compInfo.offset = offset;
+				infos.emplace(info.id, compInfo);
+				//LOG("Offset {} {}", info.id, offset);
+				offset += info.size * capacity;
+			}
 
-            return capacity;
-        }
-    }
+			return capacity;
+		}
+	}
 
 
-    template<class... Cs>
+	template<class... Cs>
 	U16 FillComponentTypeInfo(std::map<U8, ComponenTypeInfo>& infos)
 	{
 		if constexpr (sizeof...(Cs) == 0)
@@ -170,21 +170,21 @@ namespace tako
 		}
 		else
 		{
-            auto compInfoArray = GetIDArray<Cs...>();
-		    return FillComponentTypeInfo(infos, compInfoArray.data(), compInfoArray.size(), CalculateEntitySize<Cs...>());
+			auto compInfoArray = GetIDArray<Cs...>();
+			return FillComponentTypeInfo(infos, compInfoArray.data(), compInfoArray.size(), CalculateEntitySize<Cs...>());
 		}
 	}
 
-    U16 FillComponentTypeInfo(std::map<U8, ComponenTypeInfo>& infos, const CompInfo* compInfos, std::size_t infoCount)
-    {
-        std::size_t elementSize = sizeof(Entity);
-        for (int i = 0; i < infoCount; i++)
-        {
-            elementSize += compInfos[i].size;
-        }
+	U16 FillComponentTypeInfo(std::map<U8, ComponenTypeInfo>& infos, const CompInfo* compInfos, std::size_t infoCount)
+	{
+		std::size_t elementSize = sizeof(Entity);
+		for (int i = 0; i < infoCount; i++)
+		{
+			elementSize += compInfos[i].size;
+		}
 
-        return FillComponentTypeInfo(infos, compInfos, infoCount, elementSize);
-    }
+		return FillComponentTypeInfo(infos, compInfos, infoCount, elementSize);
+	}
 
 	struct Archetype;
 
@@ -233,28 +233,28 @@ namespace tako
 			return arch;
 		}
 
-        static Archetype Create(U64 hash)
-        {
-		    std::array<CompInfo, 64> componentInfos;
-		    std::size_t componentInfoCount = 0;
+		static Archetype Create(U64 hash)
+		{
+			std::array<CompInfo, 64> componentInfos;
+			std::size_t componentInfoCount = 0;
 
-		    U64 tempHash = hash;
-		    for (U64 i = 0; tempHash > 0; i++)
-            {
-		        if (tempHash & (static_cast<U64>(1) << i))
-                {
-		            componentInfos[componentInfoCount].id = i;
-                    componentInfos[componentInfoCount].size = ComponentIDGenerator::GetComponentSize(i);
-                    componentInfoCount++;
-                    tempHash &= ~(static_cast<U64>(1) << i);
-                }
-            }
+			U64 tempHash = hash;
+			for (U64 i = 0; tempHash > 0; i++)
+			{
+				if (tempHash & (static_cast<U64>(1) << i))
+				{
+					componentInfos[componentInfoCount].id = i;
+					componentInfos[componentInfoCount].size = ComponentIDGenerator::GetComponentSize(i);
+					componentInfoCount++;
+					tempHash &= ~(static_cast<U64>(1) << i);
+				}
+			}
 
-            Archetype arch;
-            arch.componentHash = hash;
-            arch.chunkCapacity = FillComponentTypeInfo(arch.componentInfo, componentInfos.data(), componentInfoCount);
-            return arch;
-        }
+			Archetype arch;
+			arch.componentHash = hash;
+			arch.chunkCapacity = FillComponentTypeInfo(arch.componentInfo, componentInfos.data(), componentInfoCount);
+			return arch;
+		}
 
 		EntityHandle AddEntity(Entity entity)
 		{
@@ -280,22 +280,22 @@ namespace tako
 		}
 
 		void CopyComponentData(EntityHandle src, Chunk& chunk, Entity entity, int index)
-        {
-            ASSERT(GetEntityArray(chunk)[index] == entity);
+		{
+			ASSERT(GetEntityArray(chunk)[index] == entity);
 
-            for (auto [id, info] : componentInfo)
-            {
-                //auto arr = ch
-                auto& srcComponentInfo = src.archeType->componentInfo;
-                if (srcComponentInfo.find(id) != srcComponentInfo.end())
-                {
-                    U8* srcArray = &src.chunk->data[srcComponentInfo[id].offset];
-                    U8* compArray = &chunk.data[info.offset];
-                    std::memcpy(compArray + info.size * index, srcArray + info.size * src.indexChunk, info.size);
-                }
+			for (auto [id, info] : componentInfo)
+			{
+				//auto arr = ch
+				auto& srcComponentInfo = src.archeType->componentInfo;
+				if (srcComponentInfo.find(id) != srcComponentInfo.end())
+				{
+					U8* srcArray = &src.chunk->data[srcComponentInfo[id].offset];
+					U8* compArray = &chunk.data[info.offset];
+					std::memcpy(compArray + info.size * index, srcArray + info.size * src.indexChunk, info.size);
+				}
 
-            }
-        }
+			}
+		}
 		
 
 		int AddEntityToChunk(Chunk& chunk, Entity entity)
@@ -315,44 +315,44 @@ namespace tako
 		}
 
 		std::optional<Entity> DeleteEntityFromChunk(Chunk& chunk, Entity entity, int index)
-        {
-            ASSERT(GetEntityArray(chunk)[index] == entity);
-            bool wasFull = chunk.header.last >= chunkCapacity;
-            std::optional<Entity> swapped;
+		{
+			ASSERT(GetEntityArray(chunk)[index] == entity);
+			bool wasFull = chunk.header.last >= chunkCapacity;
+			std::optional<Entity> swapped;
 
-            chunk.header.last--;
-            if (index < chunk.header.last)
-            {
-                Entity* entities = GetEntityArray(chunk);
-                swapped = entities[index] = entities[chunk.header.last];
-                for (auto [id, info] : componentInfo)
-                {
-                    //auto arr = ch
-                    U8* compArray = &chunk.data[info.offset];
-                    std::memcpy(compArray + info.size * index, compArray + info.size * chunk.header.last, info.size);
-                }
-            }
+			chunk.header.last--;
+			if (index < chunk.header.last)
+			{
+				Entity* entities = GetEntityArray(chunk);
+				swapped = entities[index] = entities[chunk.header.last];
+				for (auto [id, info] : componentInfo)
+				{
+					//auto arr = ch
+					U8* compArray = &chunk.data[info.offset];
+					std::memcpy(compArray + info.size * index, compArray + info.size * chunk.header.last, info.size);
+				}
+			}
 
 
-            if (wasFull)
-            {
-                chunksFilled--;
-                auto ptr = &chunk;
-                for (int i = 0; i < chunks.size(); i++)
-                {
-                    if (ptr == chunks[i].get())
-                    {
-                        if (i < chunksFilled)
-                        {
-                            std::swap(chunks[i], chunks[chunksFilled]);
-                        }
-                        break;
-                    }
-                }
-            }
+			if (wasFull)
+			{
+				chunksFilled--;
+				auto ptr = &chunk;
+				for (int i = 0; i < chunks.size(); i++)
+				{
+					if (ptr == chunks[i].get())
+					{
+						if (i < chunksFilled)
+						{
+							std::swap(chunks[i], chunks[chunksFilled]);
+						}
+						break;
+					}
+				}
+			}
 
-            return swapped;
-        }
+			return swapped;
+		}
 
 		Entity* GetEntityArray(Chunk& chunk)
 		{
@@ -361,8 +361,8 @@ namespace tako
 
 		void* GetComponentArray(Chunk& chunk, U8 componentID) const
 		{
-            auto info = componentInfo.at(componentID);
-            //ASSERT(info != componentInfo.end());
+			auto info = componentInfo.at(componentID);
+			//ASSERT(info != componentInfo.end());
 
 			return &chunk.data[info.offset];
 		}
@@ -393,14 +393,14 @@ namespace tako
 			return arr[index];
 		}
 
-        template<typename T>
-        bool HasComponent(Chunk& chunk, U16 index)
-        {
-            ASSERT(index < chunkCapacity);
-            ASSERT(index < chunk.header.last);
-            U8 compID = ComponentIDGenerator::GetID<T>();
-            auto info = componentInfo.find(compID);
-            return info != componentInfo.end();
-        }
+		template<typename T>
+		bool HasComponent(Chunk& chunk, U16 index)
+		{
+			ASSERT(index < chunkCapacity);
+			ASSERT(index < chunk.header.last);
+			U8 compID = ComponentIDGenerator::GetID<T>();
+			auto info = componentInfo.find(compID);
+			return info != componentInfo.end();
+		}
 	};
 }

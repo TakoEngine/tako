@@ -25,7 +25,8 @@ namespace tako::FileSystem
 {
 	bool ReadFile(const char* filePath, U8* buffer, size_t bufferSize, size_t& bytesRead)
 	{
-		auto fileHandle = GetFileHandle(filePath);
+		auto path = std::string("./Assets") + filePath;
+		auto fileHandle = GetFileHandle(path.c_str());
 		if (!fileHandle)
 		{
 			return false;
@@ -48,7 +49,8 @@ namespace tako::FileSystem
 
 	size_t GetFileSize(const char* filePath)
 	{
-		auto fileHandle = GetFileHandle(filePath);
+		auto path = std::string("./Assets") + filePath;
+		auto fileHandle = GetFileHandle(path.c_str());
 		ASSERT(fileHandle);
 
 		LARGE_INTEGER size;

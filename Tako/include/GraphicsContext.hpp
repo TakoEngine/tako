@@ -1,22 +1,42 @@
 #pragma once
-#include "Window.hpp"
+#include "IGraphicsContext.hpp"
 #include <memory>
-#include "Event.hpp"
-#include "PixelArtDrawer.hpp"
+#include <type_traits>
+#ifdef TAKO_OPENGL
+#include "OpenGLContext.hpp"
+#endif
+#if TAKO_VULKAN
+#include "VulkanContext.hpp"
+#endif
 
 namespace tako
 {
-	class GraphicsContext : public IEventHandler
+	constexpr GraphicsAPI SupportedAPIs[] =
 	{
-	public:
-		GraphicsContext(WindowHandle handle, int width, int height);
-		~GraphicsContext();
-		void Present();
-		void Resize(int width, int height);
-		virtual void HandleEvent(Event& evt) override;
-		PixelArtDrawer* CreatePixelArtDrawer();
-	private:
-		class ContextImpl;
-		std::unique_ptr<ContextImpl> m_impl;
+#ifdef TAKO_OPENGL
+		GraphicsAPI::OpenGL,
+#endif
+#ifdef TAKO_VULKAN
+		GraphicsAPI::Vulkan,
+#endif
 	};
+
+	constexpr int SingleAPI = sizeof(SupportedAPIs) / sizeof(GraphicsAPI) == 1;
+
+	template<GraphicsAPI> struct APITypeMap;
+
+#ifdef TAKO_OPENGL
+	template<> struct APITypeMap<GraphicsAPI::OpenGL> {
+		using type = OpenGLContext;
+	};
+#endif
+#ifdef TAKO_VULKAN
+	template<> struct APITypeMap<GraphicsAPI::Vulkan> {
+		using type = VulkanContext;
+	};
+#endif
+
+	using GraphicsContext = std::conditional<!SingleAPI, IGraphicsContext, APITypeMap<SupportedAPIs[0]>::type>::type;
+
+	std::unique_ptr<GraphicsContext> CreateGraphicsContext(Window *window, GraphicsAPI api);
 }

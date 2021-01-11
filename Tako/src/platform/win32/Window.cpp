@@ -16,7 +16,7 @@ namespace tako
 	class Window::WindowImpl
 	{
 	public:
-		WindowImpl()
+		WindowImpl(GraphicsAPI api)
 		{
 			WNDCLASSEX windowClass = { 0 };
 			windowClass.cbSize = sizeof(WNDCLASSEX);
@@ -171,7 +171,7 @@ namespace tako
 	};
 
 
-	Window::Window() : m_impl(new WindowImpl())
+	Window::Window(GraphicsAPI api) : m_impl(new WindowImpl(api))
 	{
 	}
 

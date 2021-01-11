@@ -1,12 +1,12 @@
 #pragma once
 #ifdef TAKO_OPENAL
-    #ifdef TAKO_MAC
-    #include <OpenAL/al.h>
-    #include <OpenAL/alc.h>
-    #else
-    #include <AL/al.h>
-    #include <AL/alc.h>
-    #endif
+#ifdef TAKO_MAC
+#include <OpenAL/al.h>
+#include <OpenAL/alc.h>
+#else
+#include <AL/al.h>
+#include <AL/alc.h>
+#endif
 #endif
 #include <array>
 
@@ -19,7 +19,7 @@ namespace tako
 	{
 	public:
 		AudioClip(const char* file);
-    private:
+	private:
 #ifdef TAKO_OPENAL
 		ALuint m_buffer;
 #endif

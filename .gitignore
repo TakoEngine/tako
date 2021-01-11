@@ -33,7 +33,7 @@
 
 /.vs
 /CMakeSettings.json
-*.spv
+#*.spv
 /.vscode
 /build
 /out
