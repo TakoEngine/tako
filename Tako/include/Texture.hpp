@@ -3,5 +3,14 @@
 
 namespace tako
 {
-	struct Texture { U64 value; };
+	struct TextureHandle
+	{
+		U64 value;
+	};
+	struct Texture
+	{
+		TextureHandle handle;
+		int width;
+		int height;
+	};
 }

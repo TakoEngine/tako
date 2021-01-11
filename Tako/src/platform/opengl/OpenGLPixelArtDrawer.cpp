@@ -152,7 +152,7 @@ namespace tako
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 	}
 
-	void OpenGLPixelArtDrawer::DrawImage(float x, float y, float w, float h, const Texture img, Color color)
+	void OpenGLPixelArtDrawer::DrawImage(float x, float y, float w, float h, const TextureHandle img, Color color)
 	{
 		DrawTextureQuad(x, y, w, h, img, m_imageVBO, color);
 	}
@@ -160,7 +160,7 @@ namespace tako
 	void OpenGLPixelArtDrawer::DrawSprite(float x, float y, float w, float h, const Sprite* sprite, Color color)
 	{
 		auto s = dynamic_cast<const OpenGLSprite*>(sprite);
-		DrawTextureQuad(x, y, w, h, s->GetTexture(), s->GetBuffer(), color);
+		DrawTextureQuad(x, y, w, h, s->GetTexture().handle, s->GetBuffer(), color);
 	}
 
 	void OpenGLPixelArtDrawer::Resize(int w, int h)
@@ -198,12 +198,12 @@ namespace tako
 
 	Sprite* OpenGLPixelArtDrawer::CreateSprite(const Texture texture, float x, float y, float w, float h)
 	{
-		float texW = 1;
-		float texH = 1;
-		float sX = x / texW;
-		float sY = y / texH;
-		float sW = w / texW;
-		float sH = h / texH;
+		float texWidth = texture.width;
+		float texHeight = texture.height;
+		float sX = x / texWidth;
+		float sY = y / texHeight;
+		float sW = w / texWidth;
+		float sH = h / texHeight;
 		auto vertices = CreateImageVertices(sX, sY, sW, sH);
 
 		GLuint spriteVBO = 0;
@@ -216,7 +216,9 @@ namespace tako
 
 	void OpenGLPixelArtDrawer::UpdateTexture(Texture texture, const Bitmap& bitmap)
 	{
-		glBindTexture(GL_TEXTURE_2D, texture.value);
+		glBindTexture(GL_TEXTURE_2D, texture.handle.value);
+		texture.width = bitmap.Width();
+		texture.height = bitmap.Height();
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bitmap.Width(), bitmap.Height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap.GetData());
 	}
 
@@ -257,7 +259,7 @@ namespace tako
 		}
 	}
 
-	void OpenGLPixelArtDrawer::DrawTextureQuad(float x, float y, float w, float h, const Texture texture, GLuint buffer, Color color)
+	void OpenGLPixelArtDrawer::DrawTextureQuad(float x, float y, float w, float h, const TextureHandle texture, GLuint buffer, Color color)
 	{
 		GetDrawOffset(x, y, w, h);
 		glUseProgram(m_imageProgram);
