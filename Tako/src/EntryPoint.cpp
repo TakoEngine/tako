@@ -71,6 +71,7 @@ namespace tako
 		bool keepRunning = true;
 		tako::CallbackEventHandler onEvent([&](tako::Event& ev)
 		{
+			LOG("Event: {}", ev);
 			switch (ev.GetType())
 			{
 				case tako::EventType::WindowResize:
@@ -82,6 +83,10 @@ namespace tako
 				{
 					tako::WindowClose& clo = static_cast<tako::WindowClose&>(ev);
 					clo.abortQuit = false;
+
+					// For now, send app quit event, later handle callbacks to maybe abort closing process
+					tako::AppQuit quitEvent;
+					broadcaster.Broadcast(quitEvent);
 				} break;
 				case tako::EventType::AppQuit:
 				{
@@ -89,8 +94,6 @@ namespace tako
 					LOG("Quitting...");
 				} break;
 			}
-
-			LOG("Event: {}", ev);
 		});
 
 		broadcaster.Register(&onEvent);

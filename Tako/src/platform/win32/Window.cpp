@@ -150,11 +150,13 @@ namespace tako
 				{
 					win->m_callback(evt);
 				}
+				/*
 				if (!evt.abortQuit)
 				{
 					PostQuitMessage(0);
 					LOG("post quit");
 				}
+				*/
 			} break;
 			default: result = DefWindowProc(hwnd, uMsg, wParam, lParam);
 			}
