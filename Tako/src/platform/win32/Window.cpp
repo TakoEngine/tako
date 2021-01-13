@@ -13,6 +13,31 @@ using namespace tako::literals;
 
 namespace tako
 {
+	Key ProcessKey(WPARAM wParam)
+	{
+		switch (wParam)
+		{
+		case 0x57: return Key::W;
+		case 0x41: return Key::A;
+		case 0x53: return Key::S;
+		case 0x44: return Key::D;
+		case 0x51: return Key::Q;
+		case 0x45: return Key::E;
+		case 0x4B: return Key::K;
+		case 0x4C: return Key::L;
+		case 0x58: return Key::X;
+		case 0x43: return Key::C;
+		case VK_UP: return Key::Up;
+		case VK_DOWN: return Key::Down;
+		case VK_LEFT: return Key::Left;
+		case VK_RIGHT: return Key::Right;
+		case VK_SPACE: return Key::Space;
+		case VK_RETURN: return Key::Enter;
+		//TODO: more
+		default: return Key::Unknown;
+		}
+	}
+
 	class Window::WindowImpl
 	{
 	public:
@@ -92,6 +117,28 @@ namespace tako
 			WindowImpl* win = reinterpret_cast<WindowImpl*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 			switch (uMsg)
 			{
+			case WM_KEYDOWN:
+			{
+				Key key = ProcessKey(wParam);
+				if (key != Key::Unknown)
+				{
+					KeyPress evt;
+					evt.key = key;
+					evt.status = KeyStatus::Down;
+					win->m_callback(evt);
+				}
+			} break;
+			case WM_KEYUP:
+			{
+				Key key = ProcessKey(wParam);
+				if (key != Key::Unknown)
+				{
+					KeyPress evt;
+					evt.key = key;
+					evt.status = KeyStatus::Up;
+					win->m_callback(evt);
+				}
+			} break;
 			case WM_SIZE:
 			{
 				RECT clientRect;

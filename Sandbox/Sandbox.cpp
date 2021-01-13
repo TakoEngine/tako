@@ -63,19 +63,19 @@ void tako::Update(tako::Input* input, float dt)
     y = (y + 1) % 50;
     a = (a + 1) % 512;
 
-    if (input->GetKey(tako::Key::W) || input->GetKey(tako::Key::Gamepad_Dpad_Up))
+    if (input->GetKey(tako::Key::W) || input->GetKey(tako::Key::Up) || input->GetKey(tako::Key::Gamepad_Dpad_Up))
     {
         pos.y += speed * dt;
     }
-    if (input->GetKey(tako::Key::S) || input->GetKey(tako::Key::Gamepad_Dpad_Down))
+    if (input->GetKey(tako::Key::S) || input->GetKey(tako::Key::Down) || input->GetKey(tako::Key::Gamepad_Dpad_Down))
     {
         pos.y -= speed * dt;
     }
-    if (input->GetKey(tako::Key::A) || input->GetKey(tako::Key::Gamepad_Dpad_Left))
+    if (input->GetKey(tako::Key::A) || input->GetKey(tako::Key::Left) || input->GetKey(tako::Key::Gamepad_Dpad_Left))
     {
         pos.x -= speed * dt;
     }
-    if (input->GetKey(tako::Key::D) || input->GetKey(tako::Key::Gamepad_Dpad_Right))
+    if (input->GetKey(tako::Key::D) || input->GetKey(tako::Key::Right) || input->GetKey(tako::Key::Gamepad_Dpad_Right))
     {
         pos.x += speed * dt;
     }
