@@ -14,6 +14,11 @@ namespace tako
 					activeKeys[static_cast<size_t>(press.key)] = press.status;
 				}
 			} break;
+			case tako::EventType::MouseMove:
+			{
+				tako::MouseMove& move = static_cast<tako::MouseMove&>(evt);
+				m_mousePosition = move.position;
+			} break;
 		}
 	}
 
@@ -30,6 +35,11 @@ namespace tako
 	bool Input::GetKeyUp(Key key)
 	{
 		return keys[static_cast<size_t>(key)] == KeyStatus::Up && prevKeys[static_cast<size_t>(key)] == KeyStatus::Down;
+	}
+
+	Vector2 Input::GetMousePosition()
+	{
+		return m_mousePosition;
 	}
 
 	void Input::Update()

@@ -139,6 +139,14 @@ namespace tako
 					win->m_callback(evt);
 				}
 			} break;
+			case WM_MOUSEMOVE:
+			{
+				POINTS pts = MAKEPOINTS(lParam);
+				//LOG("{} {}", pts.x, pts.y);
+				MouseMove evt;
+				evt.position = Vector2(pts.x, win->m_height - pts.y);
+				win->m_callback(evt);
+			} break;
 			case WM_SIZE:
 			{
 				RECT clientRect;

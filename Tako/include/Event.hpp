@@ -3,6 +3,7 @@
 #include <vector>
 #include <functional>
 #include <iostream>
+#include "Math.hpp"
 
 namespace tako
 {
@@ -11,6 +12,7 @@ namespace tako
 		WindowClose,
 		WindowResize,
 		KeyPress,
+		MouseMove,
 		AppQuit
 	};
 
@@ -104,6 +106,14 @@ namespace tako
 
 		Key key;
 		KeyStatus status;
+	};
+
+	class MouseMove : public Event
+	{
+	public:
+		EVENT_CLASS_TYPE(MouseMove)
+
+		Vector2 position;
 	};
 
 	class AppQuit : public Event

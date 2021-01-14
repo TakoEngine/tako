@@ -71,7 +71,7 @@ namespace tako
 		bool keepRunning = true;
 		tako::CallbackEventHandler onEvent([&](tako::Event& ev)
 		{
-			LOG("Event: {}", ev);
+			//LOG("Event: {}", ev);
 			switch (ev.GetType())
 			{
 				case tako::EventType::WindowResize:
