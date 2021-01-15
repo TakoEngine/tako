@@ -57,6 +57,7 @@ namespace tako
 			//LOG("GLVersion {} {}.{}", glGetString(GL_SHADING_LANGUAGE_VERSION),GLVersion.major, GLVersion.minor);
 
 			glfwSetKeyCallback(m_window, KeyCallback);
+			glfwSetCursorPosCallback(m_window, CursorPositionCallback);
 			glfwSetWindowSizeCallback(m_window, WindowSizeCallback);
 		}
 
@@ -97,6 +98,14 @@ namespace tako
 				evt.status = KeyStatus::Up;
 			}
 
+			win->m_callback(evt);
+		}
+
+		static void CursorPositionCallback(GLFWwindow* window, double xpos, double ypos)
+		{
+			auto win = static_cast<WindowImpl*>(glfwGetWindowUserPointer(window));
+			MouseMove evt;
+			evt.position = Vector2(xpos, win->m_height - ypos);
 			win->m_callback(evt);
 		}
 
