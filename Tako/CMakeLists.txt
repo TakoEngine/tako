@@ -64,14 +64,9 @@ set_feature(TAKO_OPENGL true)
 set_feature(TAKO_VULKAN false)
 set_feature(TAKO_OPENAL true)
 set_feature(TAKO_EDITOR false)
-endif(EMSCRIPTEN)
-
-if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 set_feature(TAKO_MAC true)
-
-endif()
-
-if(UNIX AND NOT APPLE)
+elseif(UNIX AND NOT APPLE)
 set_feature(TAKO_LINUX true)
 endif()
 

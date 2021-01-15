@@ -8,6 +8,8 @@
 
 using namespace tako::literals;
 
+constexpr char* HTML_TARGET = "#canvas";
+
 namespace tako
 {
 	namespace
@@ -67,18 +69,19 @@ namespace tako
 			emscripten_webgl_init_context_attributes(&attributes);
 			attributes.alpha = false;
 			attributes.antialias = false;
-			m_contextHandle = emscripten_webgl_create_context(0, &attributes);
+			m_contextHandle = emscripten_webgl_create_context(HTML_TARGET, &attributes);
 			emscripten_webgl_make_context_current(m_contextHandle);
 			double width, height;
-			emscripten_get_element_css_size(0, &width, &height);
+			emscripten_get_element_css_size(HTML_TARGET, &width, &height);
 			int w, h;
-			emscripten_get_canvas_element_size(0, &w, &h);
+			emscripten_get_canvas_element_size(HTML_TARGET, &w, &h);
 			Resize(width, height);
-			emscripten_set_resize_callback(0, this, false, WindowResizeCallback);
+			emscripten_set_resize_callback(HTML_TARGET, this, false, WindowResizeCallback);
 
-			emscripten_set_keypress_callback(0, this, false, KeyPressCallback);
-			emscripten_set_keydown_callback(0, this, false, KeyPressCallback);
-			emscripten_set_keyup_callback(0, this, false, KeyPressCallback);
+			emscripten_set_keypress_callback(HTML_TARGET, this, false, KeyPressCallback);
+			emscripten_set_keydown_callback(HTML_TARGET, this, false, KeyPressCallback);
+			emscripten_set_keyup_callback(HTML_TARGET, this, false, KeyPressCallback);
+			emscripten_set_mousemove_callback(HTML_TARGET, this, false, MouseMoveCallback);
 		}
 
 
@@ -136,14 +139,14 @@ namespace tako
 		{
 			m_width = width;
 			m_height = height;
-			emscripten_set_canvas_element_size(0, width, height);
+			emscripten_set_canvas_element_size(HTML_TARGET, width, height);
 		}
 
 		static EM_BOOL WindowResizeCallback(int eventType, const EmscriptenUiEvent* uiEvent, void* userData)
 		{
 			Window::WindowImpl* win = static_cast<Window::WindowImpl*>(userData);
 			double width, height;
-			emscripten_get_element_css_size(0, &width, &height);
+			emscripten_get_element_css_size(HTML_TARGET, &width, &height);
 			win->Resize(width, height);
 			if (win->m_callback)
 			{
@@ -181,6 +184,18 @@ namespace tako
 			}
 
 			return true;
+		}
+
+		EM_BOOL static MouseMoveCallback(int eventType, const EmscriptenMouseEvent* mouseEvent, void *userData)
+		{
+			Window::WindowImpl* win = static_cast<Window::WindowImpl*>(userData);
+			if (win->m_callback)
+			{
+				MouseMove evt;
+				evt.position.x = mouseEvent->clientX;
+				evt.position.y = win->m_height - mouseEvent->clientY;
+				win->m_callback(evt);
+			}
 		}
 	};
 
