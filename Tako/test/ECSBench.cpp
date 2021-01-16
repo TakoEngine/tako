@@ -23,6 +23,7 @@ int main()
 	LOG("{}", world.Create<Position>());
 	LOG("{}", world.Create<Position, Velocity>());
 	LOG("{}", world.Create<Position>());
+	LOG("{}", world.Create(Position{{42, 1337}}, Velocity{{10, 20}}));
 
 	world.IterateHandle<Position>([&](auto handle)
 	{

@@ -63,6 +63,15 @@ namespace tako
 			return CreateEntityInArchetype(arch);
 		}
 
+		template<typename...Cs, typename = std::enable_if<(sizeof...(Cs) > 0)>>
+		Entity Create(Cs&&... comps)
+		{
+			auto ent = Create<Cs...>();
+			auto handle = m_entities[ent];
+			(handle.archeType->GetComponent<Cs>(*handle.chunk, handle.indexChunk).operator=(std::move(comps)), ...);
+			return ent;
+		}
+
 		template<typename T>
 		T& GetComponent(Entity entity)
 		{
