@@ -66,6 +66,17 @@ int main()
 		LOG("id: {} x: {} y: {}", handle.id, pos.pos.x, pos.pos.y);
 	});
 
+	LOG("comps---");
+	world.IterateComps<tako::Entity, Position>([&](tako::Entity entity, Position& pos)
+	{
+		LOG("id: {} x: {} y: {}", entity, pos.pos.x, pos.pos.y);
+	});
+
+	world.IterateComps<tako::Entity>([&](tako::Entity entity)
+	{
+		LOG("id: {}", entity);
+	});
+
 	return 0;
 
 	for (int i = 0; i < 10000000; i++)
@@ -119,10 +130,10 @@ int main()
 
 	LOG("Iter Comps:");
 	t1 = std::chrono::high_resolution_clock::now();
-	world.IterateComps<Position, Velocity>([&](Position& pos, Velocity& vel)
+	world.IterateComps<tako::Entity, Position, Velocity>([&](tako::Entity ent, Position& pos, Velocity& vel)
 	{
 		//auto [pos] = tup;
-		//LOG("Iter x: {} y: {}", pos.pos.x, pos.pos.y);
+		LOG("Iter x: {} y: {}", pos.pos.x, pos.pos.y);
 		pos.pos.x++;
 		vel.vel.x++;
 	});

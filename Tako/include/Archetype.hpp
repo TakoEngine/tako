@@ -354,7 +354,7 @@ namespace tako
 			return swapped;
 		}
 
-		Entity* GetEntityArray(Chunk& chunk)
+		Entity* GetEntityArray(Chunk& chunk) const
 		{
 			return reinterpret_cast<Entity*>(&chunk.data[0]);
 		}
@@ -368,7 +368,7 @@ namespace tako
 		}
 
 		template<typename T>
-		auto GetArray(Chunk& chunk)
+		auto GetArray(Chunk& chunk) const
 		{
 			if constexpr (std::is_same<T, Entity>::value)
 			{
