@@ -39,12 +39,23 @@ namespace tako
 			}
 		};
 
+		template<typename... Cs>
+		auto GetCompIDArray()
+		{
+			return std::array<U8, sizeof...(Cs)>({ComponentIDGenerator::GetID<Cs>()... });
+		}
+
 		template<typename C, typename... Cs>
 		class EntityTupleHelper
 		{
 		public:
 			constexpr static auto HasEntity = std::is_same_v<C, Entity>;
+			constexpr static auto compCount = HasEntity ? sizeof...(Cs) : sizeof...(Cs) + 1;
+			constexpr static auto FullSequence = std::index_sequence_for<C, Cs...>();
+			constexpr static auto TailSequence = std::index_sequence_for<Cs...>();
+			//constexpr static auto IndexSequence = HasEntity ? TailSequence : FullSequence;
 			using types = std::conditional<HasEntity, type_list<C, Cs...>, type_list<Cs...>>;
+			using Tuple = std::conditional<HasEntity, type_list<C, Cs*...>, type_list<C*, Cs*...>>;
 
 			constexpr static auto GetHash()
 			{
@@ -65,22 +76,67 @@ namespace tako
 				}
 			}
 
-			template<std::size_t... I>
-			static inline auto GetComponentArrays(const Archetype& arch, Chunk& chunk, std::index_sequence<I...>)
+			static auto GetIDArray()
 			{
-				return std::make_tuple((static_cast<typename type_list<C*, Cs*...>::template type<I>>(arch.GetArray<typename type_list<C, Cs...>::template type<I>>(chunk)))...);
+				if constexpr (HasEntity)
+				{
+					return GetCompIDArray<Cs...>();
+				}
+				else
+				{
+					return GetCompIDArray<C, Cs...>();
+				}
+			}
+
+			static inline const std::tuple<C*, Cs*...> GetComponentArrays(const Archetype& arch, Chunk& chunk, const std::array<U8, compCount>& componentID)
+			{
+				if constexpr (HasEntity)
+				{
+					return GetComponentArraysSequence(arch, chunk, componentID, TailSequence);
+				}
+				else
+				{
+					return GetComponentArraysSequence(arch, chunk, componentID, FullSequence);
+				}
 			}
 
 			template<std::size_t... I>
-			static inline std::tuple<C&, Cs&...> CreateTuple(const std::tuple<C*, Cs*...>& componentArray, int index, std::index_sequence<I...>)
+			static inline const std::tuple<C*, Cs*...> GetComponentArraysSequence(const Archetype& arch, Chunk& chunk, const std::array <U8, compCount>& componentID, std::index_sequence<I...>)
 			{
-				return std::make_tuple(std::ref(std::get<I>(componentArray)[index])...);
+				if constexpr (HasEntity)
+				{
+					return std::make_tuple(arch.GetEntityArray(chunk), (static_cast<typename type_list<Cs*...>::template type<I>>(arch.GetComponentArray(chunk, std::get<I>(componentID))))...);
+				}
+				else
+				{
+					return std::make_tuple((static_cast<typename type_list<C*, Cs*...>::template type<I>>(arch.GetComponentArray(chunk, std::get<I>(componentID))))...);
+				}
+				
+			}
+
+			template<typename Cb>
+			static inline void CallbackTuple(const std::tuple<C*, Cs*...>& componentArray, int index, Cb callback)
+			{
+				return CallbackTupleSequence(componentArray, index, callback, FullSequence);
+			}
+
+			template<std::size_t I>
+			static inline auto IndexCompArray(const std::tuple<C*, Cs*...>& componentArray, int index)
+			{
+				if constexpr (HasEntity && I == 0)
+				{
+					return std::get<I>(componentArray)[index];
+				}
+				else
+				{
+					return std::ref(std::get<I>(componentArray)[index]);
+				}
 			}
 
 			template<typename Cb, std::size_t... I>
-			static inline void CallbackTuple(const std::tuple<C*, Cs*...>& componentArray, int index, Cb callback, std::index_sequence<I...>)
+			static inline void CallbackTupleSequence(const std::tuple<C*, Cs*...>& componentArray, int index, Cb callback, std::index_sequence<I...>)
 			{
-				callback(std::ref(std::get<I>(componentArray)[index])...);
+				callback(IndexCompArray<I>(componentArray, index)...);
 			}
 		};
 
@@ -227,8 +283,7 @@ namespace tako
 		template<typename... Cs, typename Cb, typename=void>
 		void IterateComps(Cb callback)
 		{
-			//std::array<U8, sizeof...(Cs)> componentID = { { ComponentIDGenerator::GetID<Cs>()... } };
-			auto indexSequence = std::index_sequence_for<Cs...>{};
+			auto componentID = EntityTupleHelper<Cs...>::GetIDArray();
 			auto hash = EntityTupleHelper<Cs...>::GetHash();
 			for (auto& pair : m_archetypes)
 			{
@@ -240,11 +295,11 @@ namespace tako
 					for (int ch = 0; ch < chunkSize; ++ch)
 					{
 						Chunk& chunk = *arch.chunks[ch];
-						auto comps = EntityTupleHelper<Cs...>::GetComponentArrays(arch, chunk, indexSequence);
+						auto comps = EntityTupleHelper<Cs...>::GetComponentArrays(arch, chunk, componentID);
 						auto arraySize = chunk.header.last;
 						for (int i = 0; i < arraySize; ++i)
 						{
-							EntityTupleHelper<Cs...>::CallbackTuple(comps, i, callback, indexSequence);
+							EntityTupleHelper<Cs...>::CallbackTuple(comps, i, callback);
 						}
 					}
 				}

@@ -28,6 +28,10 @@ namespace tako
 		template<typename C>
 		static U8 GetID()
 		{
+			if constexpr (std::is_same_v<C, Entity>)
+			{
+				return 0;
+			}
 			static const U8 value = Identifier(sizeof(C));
 			return value;
 		}
