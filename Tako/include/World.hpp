@@ -72,7 +72,7 @@ namespace tako
 				}
 				else
 				{
-					return GetArchetypeHash<typename C, Cs...>();
+					return GetArchetypeHash<C, Cs...>();
 				}
 			}
 
@@ -164,12 +164,12 @@ namespace tako
 			return CreateEntityInArchetype(arch);
 		}
 
-		template<typename...Cs, typename = std::enable_if<(sizeof...(Cs) > 0)>>
+		template<typename... Cs, typename = std::enable_if<(sizeof...(Cs) > 0)>>
 		Entity Create(Cs&&... comps)
 		{
 			auto ent = Create<Cs...>();
 			auto handle = m_entities[ent];
-			(handle.archeType->GetComponent<Cs>(*handle.chunk, handle.indexChunk).operator=(std::move(comps)), ...);
+			(handle.archeType->template GetComponent<Cs>(*handle.chunk, handle.indexChunk).operator=(std::move(comps)), ...);
 			return ent;
 		}
 
