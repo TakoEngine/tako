@@ -4,15 +4,30 @@
 
 namespace tako
 {
+	struct BufferMapEntry
+	{
+		VkBuffer vertexBuffer;
+		VkDeviceMemory vertexBufferMemory;
+		VkBuffer indexBuffer;
+		VkDeviceMemory indexBufferMemory;
+		uint32_t indicesCount;
+	};
+
 	class VulkanContext final : public IGraphicsContext
 	{
 	public:
 		VulkanContext(Window* window);
 		virtual ~VulkanContext() override;
+		virtual void Begin() override;
+		virtual void End() override;
 		virtual void Present() override;
 		virtual void Resize(int width, int height) override;
 		virtual void HandleEvent(Event& evt) override;
+
+		virtual void DrawMesh(const Matrix4& model) override;
+
 		virtual Texture CreateTexture(const Bitmap& bitmap) override;
+		virtual Mesh CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices) override;
 
 		VkShaderModule CreateShaderModule(const char* codePath);
 		void UpdateUniformBuffer(uint32_t currentImage);
@@ -21,6 +36,8 @@ namespace tako
 		void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 		void CreateDescriptorSets();
 	private:
+		void FillCommandBuffer(const VkCommandBuffer& commandBuffer, const VkFramebuffer& swapChainFramebuffer);
+
 		VkExtent2D m_swapChainExtent;
 		VkInstance vkInstance;
 		VkDebugUtilsMessengerEXT callback;
@@ -38,15 +55,15 @@ namespace tako
 		VkPipeline m_graphicsPipeline;
 		VkCommandPool m_commandPool;
 		std::vector<VkCommandBuffer> m_commandBuffers;
+		uint32_t m_acticeImageIndex;
 		VkSemaphore m_imageAvailableSemaphore;
 		VkSemaphore m_renderFinishedSemaphore;
-		VkBuffer m_vertexBuffer;
-		VkDeviceMemory m_vertexBufferMemory;
-		VkBuffer m_indexBuffer;
-		VkDeviceMemory m_indexBufferMemory;
+		Mesh m_cubeMesh;
 		std::vector<VkBuffer> m_uniformBuffers;
 		std::vector<VkDeviceMemory> m_uniformBuffersMemory;
 		VkDescriptorPool m_descriptorPool;
 		std::vector<VkDescriptorSet> m_descriptorSets;
+		VkPhysicalDevice m_physicalDevice;
+		std::unordered_map<U64, BufferMapEntry> m_bufferMap;
 	};
 }

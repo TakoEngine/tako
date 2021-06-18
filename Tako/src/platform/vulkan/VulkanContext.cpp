@@ -22,37 +22,36 @@ static std::array<const char*, 1> vkWinValidationLayers = { "VK_LAYER_LUNARG_sta
 
 namespace tako
 {
-	struct Vertex {
-		Vector3 pos;
-		Vector3 color;
+	static constexpr VkVertexInputBindingDescription GetVertexBindingDescription() {
+		VkVertexInputBindingDescription bindingDescription = {};
+		bindingDescription.binding = 0;
+		bindingDescription.stride = sizeof(Vertex);
+		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-		static constexpr VkVertexInputBindingDescription GetBindingDescription() {
-			VkVertexInputBindingDescription bindingDescription = {};
-			bindingDescription.binding = 0;
-			bindingDescription.stride = sizeof(Vertex);
-			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+		return bindingDescription;
+	}
 
-			return bindingDescription;
-		}
+	static std::array<VkVertexInputAttributeDescription, 2> GetVertexAttributeDescriptions() {
+		std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions = {};
 
-		static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
-			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions = {};
+		attributeDescriptions[0].binding = 0;
+		attributeDescriptions[0].location = 0;
+		attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+		attributeDescriptions[0].offset = offsetof(Vertex, pos);
 
-			attributeDescriptions[0].binding = 0;
-			attributeDescriptions[0].location = 0;
-			attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-			attributeDescriptions[0].offset = offsetof(Vertex, pos);
+		attributeDescriptions[1].binding = 0;
+		attributeDescriptions[1].location = 1;
+		attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+		attributeDescriptions[1].offset = offsetof(Vertex, color);
 
-			attributeDescriptions[1].binding = 0;
-			attributeDescriptions[1].location = 1;
-			attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-			attributeDescriptions[1].offset = offsetof(Vertex, color);
+		return attributeDescriptions;
+	}
 
-			return attributeDescriptions;
-		}
+	struct MeshPushConstants {
+		Matrix4 renderMatrix;
 	};
 	
-	const std::vector<Vertex> vertices =
+	const std::vector<Vertex> cubeVertices =
 	{
 		{{-1, -1, -1}, {1.0f, 0.0f, 0.0f}},
 		{{ 1, -1, -1}, {0.0f, 1.0f, 0.0f}},
@@ -64,7 +63,7 @@ namespace tako
 		{{-1,  1,  1}, {1.0f, 1.0f, 1.0f}},
 	};
 
-	const std::vector<uint16_t> indices =
+	const std::vector<uint16_t> cubeIndices =
 	{
 		0, 1, 3, 3, 1, 2,
 		1, 5, 2, 2, 5, 6,
@@ -199,6 +198,7 @@ namespace tako
 			LOG("{}", deviceProperties.deviceName);
 			physicalDevice = device;
 		}
+		m_physicalDevice = physicalDevice;
 
 		uint32_t queueFamilyCount = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
@@ -427,8 +427,8 @@ namespace tako
 
 			VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
 
-			auto bindingDescription = Vertex::GetBindingDescription();
-			auto attributeDescriptions = Vertex::getAttributeDescriptions();
+			auto bindingDescription = GetVertexBindingDescription();
+			auto attributeDescriptions = GetVertexAttributeDescriptions();
 
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 			vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -489,10 +489,17 @@ namespace tako
 			colorBlending.attachmentCount = 1;
 			colorBlending.pAttachments = &colorBlendAttachment;
 
+			VkPushConstantRange pushConstant;
+			pushConstant.offset = 0;
+			pushConstant.size = sizeof(MeshPushConstants);
+			pushConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
 			pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 			pipelineLayoutInfo.setLayoutCount = 1;
 			pipelineLayoutInfo.pSetLayouts = &m_descriptorSetLayout;
+			pipelineLayoutInfo.pPushConstantRanges = &pushConstant;
+			pipelineLayoutInfo.pushConstantRangeCount = 1;
 
 			auto result = vkCreatePipelineLayout(m_vkDevice, &pipelineLayoutInfo, nullptr, &m_pipelineLayout);
 			ASSERT(result == VK_SUCCESS);
@@ -550,49 +557,7 @@ namespace tako
 			ASSERT(result == VK_SUCCESS);
 		}
 
-		{
-			const VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-
-			VkBuffer stagingBuffer;
-			VkDeviceMemory stagingBufferMemory;
-			CreateBuffer(physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-			void* data;
-			result = vkMapMemory(m_vkDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
-			ASSERT(result == VK_SUCCESS);
-			memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
-			vkUnmapMemory(m_vkDevice, stagingBufferMemory);
-
-			CreateBuffer(physicalDevice, bufferSize,
-				VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-				m_vertexBuffer, m_vertexBufferMemory);
-
-			CopyBuffer(stagingBuffer, m_vertexBuffer, bufferSize);
-
-			vkDestroyBuffer(m_vkDevice, stagingBuffer, nullptr);
-			vkFreeMemory(m_vkDevice, stagingBufferMemory, nullptr);
-		}
-
-		{
-			VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-
-			VkBuffer stagingBuffer;
-			VkDeviceMemory stagingBufferMemory;
-			CreateBuffer(physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-			void* data;
-			result = vkMapMemory(m_vkDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
-			ASSERT(result == VK_SUCCESS);
-			memcpy(data, indices.data(), static_cast<size_t>(bufferSize));
-			vkUnmapMemory(m_vkDevice, stagingBufferMemory);
-
-			CreateBuffer(physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_indexBuffer, m_indexBufferMemory);
-
-			CopyBuffer(stagingBuffer, m_indexBuffer, bufferSize);
-
-			vkDestroyBuffer(m_vkDevice, stagingBuffer, nullptr);
-			vkFreeMemory(m_vkDevice, stagingBufferMemory, nullptr);
-		}
+		m_cubeMesh = CreateMesh(cubeVertices, cubeIndices);
 
 		{
 			VkDeviceSize bufferSize = sizeof(UniformBufferObject);
@@ -662,13 +627,22 @@ namespace tako
 
 			vkCmdBindPipeline(m_commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipeline);
 
-			VkBuffer vertexBuffers[] = { m_vertexBuffer };
+			auto entry = m_bufferMap[m_cubeMesh.value];
+			VkBuffer vertexBuffers[] = { entry.vertexBuffer };
 			VkDeviceSize offsets[] = { 0 };
 			vkCmdBindVertexBuffers(m_commandBuffers[i], 0, 1, vertexBuffers, offsets);
-			vkCmdBindIndexBuffer(m_commandBuffers[i], m_indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+			vkCmdBindIndexBuffer(m_commandBuffers[i], entry.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
 			vkCmdBindDescriptorSets(m_commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[0], 0, nullptr);
-			vkCmdDrawIndexed(m_commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+
+
+			Matrix4 model = Matrix4::identity.translation(0,0,0);
+			MeshPushConstants constants;
+			constants.renderMatrix = model;
+
+			//upload the matrix to the GPU via push constants
+			vkCmdPushConstants(m_commandBuffers[i], m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
+			vkCmdDrawIndexed(m_commandBuffers[i], static_cast<uint32_t>(entry.indicesCount), 1, 0, 0, 0);
 
 			vkCmdEndRenderPass(m_commandBuffers[i]);
 			result = vkEndCommandBuffer(m_commandBuffers[i]);
@@ -732,10 +706,10 @@ namespace tako
 			vkDestroyBuffer(m_vkDevice, m_uniformBuffers[i], nullptr);
 			vkFreeMemory(m_vkDevice, m_uniformBuffersMemory[i], nullptr);
 		}
-		vkDestroyBuffer(m_vkDevice, m_indexBuffer, nullptr);
-		vkFreeMemory(m_vkDevice, m_indexBufferMemory, nullptr);
-		vkDestroyBuffer(m_vkDevice, m_vertexBuffer, nullptr);
-		vkFreeMemory(m_vkDevice, m_vertexBufferMemory, nullptr);
+		//vkDestroyBuffer(m_vkDevice, m_indexBuffer, nullptr);
+		//vkFreeMemory(m_vkDevice, m_indexBufferMemory, nullptr);
+		//vkDestroyBuffer(m_vkDevice, m_vertexBuffer, nullptr);
+		//vkFreeMemory(m_vkDevice, m_vertexBufferMemory, nullptr);
 		vkDestroyDescriptorPool(m_vkDevice, m_descriptorPool, nullptr);
 		vkDestroyDevice(m_vkDevice, nullptr);
 		vkDestroySurfaceKHR(vkInstance, m_surface, nullptr);
@@ -744,46 +718,103 @@ namespace tako
 		vkDestroyInstance(vkInstance, nullptr);
 	}
 
-		void VulkanContext::Present()
-		{
-			auto result = vkQueueWaitIdle(m_presentQueue);
-			ASSERT(result == VK_SUCCESS);
+	void VulkanContext::Begin()
+	{
+		auto result = vkQueueWaitIdle(m_presentQueue);
+		ASSERT(result == VK_SUCCESS);
 
+		{
 			uint32_t imageIndex;
 			result = vkAcquireNextImageKHR(m_vkDevice, m_swapChain, (std::numeric_limits<uint64_t>::max)(), m_imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 			ASSERT(result == VK_SUCCESS);
-
-			UpdateUniformBuffer(imageIndex);
-
-			VkSubmitInfo submitInfo = {};
-			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-			VkSemaphore waitSemaphores[] = { m_imageAvailableSemaphore };
-			VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-			submitInfo.waitSemaphoreCount = 1;
-			submitInfo.pWaitSemaphores = waitSemaphores;
-			submitInfo.pWaitDstStageMask = waitStages;
-			submitInfo.commandBufferCount = 1;
-			submitInfo.pCommandBuffers = &m_commandBuffers[imageIndex];
-			VkSemaphore signalSemaphores[] = { m_renderFinishedSemaphore };
-			submitInfo.signalSemaphoreCount = 1;
-			submitInfo.pSignalSemaphores = signalSemaphores;
-
-			result = vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-			ASSERT(result == VK_SUCCESS);
-
-			VkPresentInfoKHR presentInfo = {};
-			presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-			presentInfo.waitSemaphoreCount = 1;
-			presentInfo.pWaitSemaphores = signalSemaphores;
-			VkSwapchainKHR swapChains[] = { m_swapChain };
-			presentInfo.swapchainCount = 1;
-			presentInfo.pSwapchains = swapChains;
-			presentInfo.pImageIndices = &imageIndex;
-
-			result = vkQueuePresentKHR(m_presentQueue, &presentInfo);
-			ASSERT(result == VK_SUCCESS);
+			m_acticeImageIndex = imageIndex;
 		}
+
+		UpdateUniformBuffer(m_acticeImageIndex);
+
+		auto commandBuffer = m_commandBuffers[m_acticeImageIndex];
+		auto swapChainFramebuffer = m_swapChainFramebuffers[m_acticeImageIndex];
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+
+		result = vkBeginCommandBuffer(commandBuffer, &beginInfo);
+		ASSERT(result == VK_SUCCESS);
+
+		VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		VkRenderPassBeginInfo renderPassInfo = {};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassInfo.renderPass = m_renderPass;
+		renderPassInfo.framebuffer = swapChainFramebuffer;
+		renderPassInfo.renderArea.offset = { 0, 0 };
+		renderPassInfo.renderArea.extent = m_swapChainExtent;
+		renderPassInfo.clearValueCount = 1;
+		renderPassInfo.pClearValues = &clearColor;
+
+		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipeline);
+	}
+
+	void VulkanContext::End()
+	{
+		auto commandBuffer = m_commandBuffers[m_acticeImageIndex];
+
+		vkCmdEndRenderPass(commandBuffer);
+		auto result = vkEndCommandBuffer(commandBuffer);
+		ASSERT(result == VK_SUCCESS);
+	}
+
+	void VulkanContext::Present()
+	{
+		VkSubmitInfo submitInfo = {};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+		VkSemaphore waitSemaphores[] = { m_imageAvailableSemaphore };
+		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = waitSemaphores;
+		submitInfo.pWaitDstStageMask = waitStages;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &m_commandBuffers[m_acticeImageIndex];
+		VkSemaphore signalSemaphores[] = { m_renderFinishedSemaphore };
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = signalSemaphores;
+
+		auto result = vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+		ASSERT(result == VK_SUCCESS);
+
+		VkPresentInfoKHR presentInfo = {};
+		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		presentInfo.waitSemaphoreCount = 1;
+		presentInfo.pWaitSemaphores = signalSemaphores;
+		VkSwapchainKHR swapChains[] = { m_swapChain };
+		presentInfo.swapchainCount = 1;
+		presentInfo.pSwapchains = swapChains;
+		presentInfo.pImageIndices = &m_acticeImageIndex;
+
+		result = vkQueuePresentKHR(m_presentQueue, &presentInfo);
+		ASSERT(result == VK_SUCCESS);
+	}
+
+	void VulkanContext::DrawMesh(const Matrix4& model)
+	{
+		auto commandBuffer = m_commandBuffers[m_acticeImageIndex];
+		auto entry = m_bufferMap[m_cubeMesh.value];
+		VkBuffer vertexBuffers[] = { entry.vertexBuffer };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(commandBuffer, entry.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[0], 0, nullptr);
+;
+		MeshPushConstants constants;
+		constants.renderMatrix = model;
+
+		//upload the matrix to the GPU via push constants
+		vkCmdPushConstants(commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
+		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(entry.indicesCount), 1, 0, 0, 0);
+	}
 
 	void VulkanContext::UpdateUniformBuffer(uint32_t currentImage)
 	{
@@ -794,7 +825,7 @@ namespace tako
 
 		UniformBufferObject ubo = {};
 		ubo.model = Matrix4::rotate(time);
-		ubo.view = Matrix4::lookAt(Vector3(5 * cos(time),  5 * sin(time), 5), Vector3(0, 0, 0), Vector3(0, 1, 0));
+		ubo.view = Matrix4::lookAt(Vector3(0, 5, 5), Vector3(0, 0, 0), Vector3(0, 1, 0));
 		//ubo.model = Matrix4::identity;
 		//ubo.view = Matrix4::identity;
 		ubo.proj = Matrix4::perspective(45, m_swapChainExtent.width / (float)m_swapChainExtent.height, 0.1f, 10);
@@ -925,4 +956,58 @@ namespace tako
 	void VulkanContext::Resize(int width, int height) {}
 	void VulkanContext::HandleEvent(Event& evt) {}
 	Texture VulkanContext::CreateTexture(const Bitmap& bitmap) { return {0}; }
+
+	Mesh VulkanContext::CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices)
+	{
+		BufferMapEntry entry;
+		{
+			const VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+
+			VkBuffer stagingBuffer;
+			VkDeviceMemory stagingBufferMemory;
+			CreateBuffer(m_physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+			void* data;
+			auto result = vkMapMemory(m_vkDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
+			ASSERT(result == VK_SUCCESS);
+			memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
+			vkUnmapMemory(m_vkDevice, stagingBufferMemory);
+
+			CreateBuffer(m_physicalDevice, bufferSize,
+				VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+				entry.vertexBuffer, entry.vertexBufferMemory);
+
+			CopyBuffer(stagingBuffer, entry.vertexBuffer, bufferSize);
+
+			vkDestroyBuffer(m_vkDevice, stagingBuffer, nullptr);
+			vkFreeMemory(m_vkDevice, stagingBufferMemory, nullptr);
+		}
+
+		{
+			VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+			VkBuffer stagingBuffer;
+			VkDeviceMemory stagingBufferMemory;
+			CreateBuffer(m_physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+			void* data;
+			auto result = vkMapMemory(m_vkDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
+			ASSERT(result == VK_SUCCESS);
+			memcpy(data, indices.data(), static_cast<size_t>(bufferSize));
+			vkUnmapMemory(m_vkDevice, stagingBufferMemory);
+
+			CreateBuffer(m_physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, entry.indexBuffer, entry.indexBufferMemory);
+
+			CopyBuffer(stagingBuffer, entry.indexBuffer, bufferSize);
+
+			vkDestroyBuffer(m_vkDevice, stagingBuffer, nullptr);
+			vkFreeMemory(m_vkDevice, stagingBufferMemory, nullptr);
+			entry.indicesCount = indices.size();
+		}
+
+		static U64 curIndex = 0;
+		m_bufferMap[curIndex] = entry;
+		curIndex++;
+		return { curIndex - 1 };
+	}
 }

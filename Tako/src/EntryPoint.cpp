@@ -3,7 +3,7 @@
 #include "World.hpp"
 #include "Timer.hpp"
 #include "Resources.hpp"
-#include "OpenGLPixelArtDrawer.hpp"
+//#include "OpenGLPixelArtDrawer.hpp"
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
 #endif
@@ -47,22 +47,28 @@ namespace tako
 		data->input.Update();
 		tako::Update(&data->input, dt);
 		tako::Draw(data->drawer);
+		data->context.Begin();
+		data->context.DrawMesh(Matrix4::identity);
+		data->context.DrawMesh(Matrix4::identity.translation(4, 2, 0).scale(0.5f, 0.5f, 0.5f));
+		data->context.DrawMesh(Matrix4::identity.translation(-4, 2, 0).scale(0.5f, 0.5f, 0.5f));
+		data->context.End();
 		data->context.Present();
 	}
 
 	int RunGameLoop()
 	{
 		LOG("Init!");
-		auto api = tako::GraphicsAPI::OpenGL;
+		auto api = tako::GraphicsAPI::Vulkan;
 		tako::Window window(api);
 		tako::Input input;
 		auto context = CreateGraphicsContext(&window, api);
-		auto drawer = new OpenGLPixelArtDrawer(context.get());
-		drawer->Resize(window.GetWidth(), window.GetHeight());
+		//TODO: Get frontend to get from configuration	
+		//auto drawer = new OpenGLPixelArtDrawer(context.get());
+		//drawer->Resize(window.GetWidth(), window.GetHeight());
 		Audio audio;
 		audio.Init();
 		Resources resources(context.get());
-		tako::Setup(drawer, &resources);
+		//tako::Setup(std::nullptr_t, &resources);
 		tako::Broadcaster broadcaster;
 #ifdef TAKO_EDITOR
 		tako::FileWatcher watcher("./Assets");
@@ -77,7 +83,7 @@ namespace tako
 				case tako::EventType::WindowResize:
 				{
 					tako::WindowResize& res = static_cast<tako::WindowResize&>(ev);
-					drawer->Resize(res.width, res.height);
+					//drawer->Resize(res.width, res.height);
 				} break;
 				case tako::EventType::WindowClose:
 				{
@@ -109,7 +115,7 @@ namespace tako
 		{
 			window,
 			*context,
-			drawer,
+			nullptr,
 			input,
 			resources,
 #ifdef TAKO_EDITOR
