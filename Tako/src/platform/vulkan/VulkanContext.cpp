@@ -50,28 +50,6 @@ namespace tako
 	struct MeshPushConstants {
 		Matrix4 renderMatrix;
 	};
-	
-	const std::vector<Vertex> cubeVertices =
-	{
-		{{-1, -1, -1}, {1.0f, 0.0f, 0.0f}},
-		{{ 1, -1, -1}, {0.0f, 1.0f, 0.0f}},
-		{{ 1,  1, -1}, {0.0f, 0.0f, 1.0f}},
-		{{-1,  1, -1}, {1.0f, 1.0f, 0.0f}},
-		{{-1, -1,  1}, {0.0f, 1.0f, 1.0f}},
-		{{ 1, -1,  1}, {1.0f, 0.0f, 1.0f}},
-		{{ 1,  1,  1}, {0.0f, 0.0f, 0.0f}},
-		{{-1,  1,  1}, {1.0f, 1.0f, 1.0f}},
-	};
-
-	const std::vector<uint16_t> cubeIndices =
-	{
-		0, 1, 3, 3, 1, 2,
-		1, 5, 2, 2, 5, 6,
-		5, 4, 6, 6, 4, 7,
-		4, 0, 7, 7, 0, 3,
-		3, 2, 7, 7, 2, 6,
-		4, 5, 0, 0, 5, 1
-	};
 
 	struct UniformBufferObject
 	{
@@ -557,8 +535,6 @@ namespace tako
 			ASSERT(result == VK_SUCCESS);
 		}
 
-		m_cubeMesh = CreateMesh(cubeVertices, cubeIndices);
-
 		{
 			VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
@@ -567,7 +543,7 @@ namespace tako
 
 			for (size_t i = 0; i < m_swapChainImages.size(); i++)
 			{
-				CreateBuffer(physicalDevice, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_uniformBuffers[i], m_uniformBuffersMemory[i]);
+				CreateVulkanBuffer(physicalDevice, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_uniformBuffers[i], m_uniformBuffersMemory[i]);
 			}
 		}
 
@@ -604,6 +580,7 @@ namespace tako
 		}
 
 
+		/*
 		for (size_t i = 0; i < m_commandBuffers.size(); i++)
 		{
 			VkCommandBufferBeginInfo beginInfo = {};
@@ -648,6 +625,7 @@ namespace tako
 			result = vkEndCommandBuffer(m_commandBuffers[i]);
 			ASSERT(result == VK_SUCCESS);
 		}
+		*/
 
 		{
 			VkSemaphoreCreateInfo semaphoreInfo = {};
@@ -706,10 +684,11 @@ namespace tako
 			vkDestroyBuffer(m_vkDevice, m_uniformBuffers[i], nullptr);
 			vkFreeMemory(m_vkDevice, m_uniformBuffersMemory[i], nullptr);
 		}
-		//vkDestroyBuffer(m_vkDevice, m_indexBuffer, nullptr);
-		//vkFreeMemory(m_vkDevice, m_indexBufferMemory, nullptr);
-		//vkDestroyBuffer(m_vkDevice, m_vertexBuffer, nullptr);
-		//vkFreeMemory(m_vkDevice, m_vertexBufferMemory, nullptr);
+		for (auto [_, buffer] : m_bufferMap)
+		{
+			vkDestroyBuffer(m_vkDevice, buffer.buffer, nullptr);
+			vkFreeMemory(m_vkDevice, buffer.bufferMemory, nullptr);
+		}
 		vkDestroyDescriptorPool(m_vkDevice, m_descriptorPool, nullptr);
 		vkDestroyDevice(m_vkDevice, nullptr);
 		vkDestroySurfaceKHR(vkInstance, m_surface, nullptr);
@@ -797,23 +776,37 @@ namespace tako
 		ASSERT(result == VK_SUCCESS);
 	}
 
-	void VulkanContext::DrawMesh(const Matrix4& model)
+	void VulkanContext::BindVertexBuffer(const Buffer* buffer)
 	{
-		auto commandBuffer = m_commandBuffers[m_acticeImageIndex];
-		auto entry = m_bufferMap[m_cubeMesh.value];
-		VkBuffer vertexBuffers[] = { entry.vertexBuffer };
+		auto commandBuffer = GetActiveCommandBuffer();
+		auto entry = m_bufferMap[buffer->value];
+		VkBuffer vertexBuffers[] = { entry.buffer };
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-		vkCmdBindIndexBuffer(commandBuffer, entry.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+	}
 
+	void VulkanContext::BindIndexBuffer(const Buffer* buffer)
+	{
+		auto commandBuffer = GetActiveCommandBuffer();
+		auto entry = m_bufferMap[buffer->value];
+		vkCmdBindIndexBuffer(commandBuffer, entry.buffer, 0, VK_INDEX_TYPE_UINT16);
+	}
+
+	void VulkanContext::DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix)
+	{
+		auto commandBuffer = GetActiveCommandBuffer();
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[0], 0, nullptr);
-;
-		MeshPushConstants constants;
-		constants.renderMatrix = model;
 
-		//upload the matrix to the GPU via push constants
+		MeshPushConstants constants;
+		constants.renderMatrix = renderMatrix;
 		vkCmdPushConstants(commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
-		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(entry.indicesCount), 1, 0, 0, 0);
+
+		vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
+	}
+
+	VkCommandBuffer VulkanContext::GetActiveCommandBuffer() const
+	{
+		return m_commandBuffers[m_acticeImageIndex];
 	}
 
 	void VulkanContext::UpdateUniformBuffer(uint32_t currentImage)
@@ -855,7 +848,7 @@ namespace tako
 		ASSERT(false);
 	}
 
-	void VulkanContext::CreateBuffer(VkPhysicalDevice physicalDevice, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
+	void VulkanContext::CreateVulkanBuffer(VkPhysicalDevice physicalDevice, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
 	{
 		VkBufferCreateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -957,6 +950,48 @@ namespace tako
 	void VulkanContext::HandleEvent(Event& evt) {}
 	Texture VulkanContext::CreateTexture(const Bitmap& bitmap) { return {0}; }
 
+	constexpr VkBufferUsageFlagBits ConvertBufferType(BufferType bufferType)
+	{
+		switch (bufferType)
+		{
+		case BufferType::Vertex: return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		case BufferType::Index: return VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		default: ASSERT(false);
+		}
+	}
+
+	Buffer VulkanContext::CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize)
+	{
+		BufferMapEntry entry;
+		//const VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+
+		VkBuffer stagingBuffer;
+		VkDeviceMemory stagingBufferMemory;
+		CreateVulkanBuffer(m_physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+		void* data;
+		auto result = vkMapMemory(m_vkDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
+		ASSERT(result == VK_SUCCESS);
+		memcpy(data, bufferData, static_cast<size_t>(bufferSize));
+		vkUnmapMemory(m_vkDevice, stagingBufferMemory);
+
+		//VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+		CreateVulkanBuffer(m_physicalDevice, bufferSize,
+			VK_BUFFER_USAGE_TRANSFER_DST_BIT | ConvertBufferType(bufferType), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			entry.buffer, entry.bufferMemory);
+
+		CopyBuffer(stagingBuffer, entry.buffer, bufferSize);
+
+		vkDestroyBuffer(m_vkDevice, stagingBuffer, nullptr);
+		vkFreeMemory(m_vkDevice, stagingBufferMemory, nullptr);
+
+		static U64 curIndex = 0;
+		m_bufferMap[curIndex] = entry;
+		curIndex++;
+		return { curIndex - 1 };
+	}
+
+	/*
 	Mesh VulkanContext::CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices)
 	{
 		BufferMapEntry entry;
@@ -965,7 +1000,7 @@ namespace tako
 
 			VkBuffer stagingBuffer;
 			VkDeviceMemory stagingBufferMemory;
-			CreateBuffer(m_physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+			CreateVulkanBuffer(m_physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 
 			void* data;
 			auto result = vkMapMemory(m_vkDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
@@ -973,7 +1008,7 @@ namespace tako
 			memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
 			vkUnmapMemory(m_vkDevice, stagingBufferMemory);
 
-			CreateBuffer(m_physicalDevice, bufferSize,
+			CreateVulkanBuffer(m_physicalDevice, bufferSize,
 				VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 				entry.vertexBuffer, entry.vertexBufferMemory);
 
@@ -988,7 +1023,7 @@ namespace tako
 
 			VkBuffer stagingBuffer;
 			VkDeviceMemory stagingBufferMemory;
-			CreateBuffer(m_physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+			CreateVulkanBuffer(m_physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 
 			void* data;
 			auto result = vkMapMemory(m_vkDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
@@ -996,7 +1031,7 @@ namespace tako
 			memcpy(data, indices.data(), static_cast<size_t>(bufferSize));
 			vkUnmapMemory(m_vkDevice, stagingBufferMemory);
 
-			CreateBuffer(m_physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, entry.indexBuffer, entry.indexBufferMemory);
+			CreateVulkanBuffer(m_physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, entry.indexBuffer, entry.indexBufferMemory);
 
 			CopyBuffer(stagingBuffer, entry.indexBuffer, bufferSize);
 
@@ -1004,10 +1039,12 @@ namespace tako
 			vkFreeMemory(m_vkDevice, stagingBufferMemory, nullptr);
 			entry.indicesCount = indices.size();
 		}
+		
 
 		static U64 curIndex = 0;
 		m_bufferMap[curIndex] = entry;
 		curIndex++;
 		return { curIndex - 1 };
 	}
+	*/
 }

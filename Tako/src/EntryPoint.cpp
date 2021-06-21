@@ -4,6 +4,7 @@
 #include "Timer.hpp"
 #include "Resources.hpp"
 //#include "OpenGLPixelArtDrawer.hpp"
+#include "Renderer3D.hpp";
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
 #endif
@@ -17,9 +18,10 @@ namespace tako
 	{
 		tako::Window& window;
 		tako::GraphicsContext& context;
-		tako::PixelArtDrawer* drawer;
 		tako::Input& input;
 		tako::Resources& resources;
+		void* gameData;
+		GameConfig& config;
 #ifdef TAKO_EDITOR
 		tako::FileWatcher& watcher;
 #endif
@@ -45,12 +47,15 @@ namespace tako
 #endif
 		data->window.Poll();
 		data->input.Update();
-		tako::Update(&data->input, dt);
-		tako::Draw(data->drawer);
+		if (data->config.Update)
+		{
+			data->config.Update(data->gameData, &data->input, dt);
+		}
 		data->context.Begin();
-		data->context.DrawMesh(Matrix4::identity);
-		data->context.DrawMesh(Matrix4::identity.translation(4, 2, 0).scale(0.5f, 0.5f, 0.5f));
-		data->context.DrawMesh(Matrix4::identity.translation(-4, 2, 0).scale(0.5f, 0.5f, 0.5f));
+		if (data->config.Draw)
+		{
+			data->config.Draw(data->gameData);
+		}
 		data->context.End();
 		data->context.Present();
 	}
@@ -58,6 +63,8 @@ namespace tako
 	int RunGameLoop()
 	{
 		LOG("Init!");
+		GameConfig config = {};
+		tako::InitTakoConfig(config);
 		auto api = tako::GraphicsAPI::Vulkan;
 		tako::Window window(api);
 		tako::Input input;
@@ -68,7 +75,11 @@ namespace tako
 		Audio audio;
 		audio.Init();
 		Resources resources(context.get());
-		//tako::Setup(std::nullptr_t, &resources);
+		void* gameData = malloc(config.gameDataSize);
+		if (config.Setup)
+		{
+			config.Setup(gameData, { context.get(), &resources });
+		}
 		tako::Broadcaster broadcaster;
 #ifdef TAKO_EDITOR
 		tako::FileWatcher watcher("./Assets");
@@ -115,9 +126,10 @@ namespace tako
 		{
 			window,
 			*context,
-			nullptr,
 			input,
 			resources,
+			gameData,
+			config,
 #ifdef TAKO_EDITOR
 			watcher
 #endif

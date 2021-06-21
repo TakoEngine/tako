@@ -1,8 +1,15 @@
 #pragma once
+#include "IGraphicsContext.hpp"
 
 namespace tako
 {
-	struct Mesh
+	enum class BufferType
+	{
+		Vertex,
+		Index
+	};
+
+	struct Buffer
 	{
 		U64 value;
 	};

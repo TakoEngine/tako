@@ -11,14 +11,14 @@
 //#include <emscripten.h>
 #include "Audio.hpp"
 #include "PixelArtDrawer.hpp"
+#include "Renderer3D.hpp"
+#include "GameConfig.hpp"
 
 namespace tako
 {
-	extern void Setup(PixelArtDrawer* drawer, Resources* resources);
-	extern void Update(Input* input, float dt);
-	extern void Draw(PixelArtDrawer* drawer);
+	//extern void Setup(PixelArtDrawer* drawer, Resources* resources);
+	//extern void Update(Input* input, float dt);
+	//extern void Draw(PixelArtDrawer* drawer);
 
-#ifdef TAKO_OPENGL
-	static tako::PixelArtDrawer* Graphics;
-#endif
+	extern void InitTakoConfig(GameConfig& config);
 }

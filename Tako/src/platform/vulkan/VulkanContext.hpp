@@ -6,11 +6,8 @@ namespace tako
 {
 	struct BufferMapEntry
 	{
-		VkBuffer vertexBuffer;
-		VkDeviceMemory vertexBufferMemory;
-		VkBuffer indexBuffer;
-		VkDeviceMemory indexBufferMemory;
-		uint32_t indicesCount;
+		VkBuffer buffer;
+		VkDeviceMemory bufferMemory;
 	};
 
 	class VulkanContext final : public IGraphicsContext
@@ -24,20 +21,23 @@ namespace tako
 		virtual void Resize(int width, int height) override;
 		virtual void HandleEvent(Event& evt) override;
 
-		virtual void DrawMesh(const Matrix4& model) override;
+		//void DrawMesh(const Mesh& mesh, const Matrix4& model);
+		virtual void BindVertexBuffer(const Buffer* buffer) override;
+		virtual void BindIndexBuffer(const Buffer* buffer) override;
+		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) override;
 
 		virtual Texture CreateTexture(const Bitmap& bitmap) override;
-		virtual Mesh CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices) override;
+		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) override;
 
 		VkShaderModule CreateShaderModule(const char* codePath);
 		void UpdateUniformBuffer(uint32_t currentImage);
 		uint32_t FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
-		void CreateBuffer(VkPhysicalDevice physicalDevice, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+		void CreateVulkanBuffer(VkPhysicalDevice physicalDevice, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 		void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 		void CreateDescriptorSets();
-	private:
-		void FillCommandBuffer(const VkCommandBuffer& commandBuffer, const VkFramebuffer& swapChainFramebuffer);
 
+		VkCommandBuffer GetActiveCommandBuffer() const;
+	private:
 		VkExtent2D m_swapChainExtent;
 		VkInstance vkInstance;
 		VkDebugUtilsMessengerEXT callback;
@@ -58,7 +58,6 @@ namespace tako
 		uint32_t m_acticeImageIndex;
 		VkSemaphore m_imageAvailableSemaphore;
 		VkSemaphore m_renderFinishedSemaphore;
-		Mesh m_cubeMesh;
 		std::vector<VkBuffer> m_uniformBuffers;
 		std::vector<VkDeviceMemory> m_uniformBuffersMemory;
 		VkDescriptorPool m_descriptorPool;
