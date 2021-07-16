@@ -182,6 +182,7 @@ endif()
 target_include_directories(${TAKO_DLL} PUBLIC "include")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/stb")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/dr_libs")
+target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/tinyobjloader")
 target_include_directories(${TAKO_DLL} PUBLIC "${CMAKE_BINARY_DIR}/shader")
 
 if (TAKO_GLFW)

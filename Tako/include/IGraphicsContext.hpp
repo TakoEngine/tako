@@ -12,7 +12,18 @@ namespace tako
 	struct Vertex
 	{
 		Vector3 pos;
+		Vector3 normal;
 		Vector3 color;
+		Vector2 uv;
+
+		constexpr bool operator==(const Vertex& other) const
+		{
+			return
+				pos == other.pos &&
+				normal == other.normal &&
+				color == other.color &&
+				uv == other.uv;
+		}
 	};
 
 	class IGraphicsContext : public IEventHandler
@@ -27,6 +38,7 @@ namespace tako
 
 		virtual void BindVertexBuffer(const Buffer* buffer) = 0;
 		virtual void BindIndexBuffer(const Buffer* buffer) = 0;
+		virtual void BindTexture(const Texture* texture) = 0;
 		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) = 0;
 
 		virtual Texture CreateTexture(const Bitmap& bitmap) = 0;

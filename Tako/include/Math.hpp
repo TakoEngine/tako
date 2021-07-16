@@ -7,6 +7,8 @@ namespace tako
 {
 	namespace mathf
 	{
+		const float PI = 3.1415927f;
+
 		constexpr float sign(float x)
 		{
 			return x < 0 ? -1 : 1;
@@ -45,7 +47,10 @@ namespace tako
 			return a;
 		}
 
-		const float PI = 3.1415927f;
+		constexpr float toRad(float deg)
+		{
+			return deg * PI / 180;
+		}
 	}
 
 	struct Vector2
@@ -136,6 +141,7 @@ namespace tako
 	{
 		float x, y, z;
 
+		constexpr Vector3() : x(0), y(0), z(0) {}
 		constexpr Vector3(float x, float y, float z) : x(x), y(y), z(z) {}
 
 		constexpr bool operator==(const Vector3& rhs) const
@@ -236,12 +242,13 @@ namespace tako
 			return mat;
 		}
 
-		constexpr Matrix4& scale(float x, float y, float z)
+		constexpr static Matrix4 scale(float x, float y, float z)
 		{
+			Matrix4 m = identity;
 			m[0] *= x;
 			m[5] *= y;
 			m[10] *= z;
-			return *this;
+			return m;
 		}
 
 		constexpr static Matrix4 transpose(const Matrix4& m)
@@ -253,6 +260,25 @@ namespace tako
 				m[2], m[6], m[10], m[14],
 				m[3], m[7], m[11], m[15],
 			};
+		}
+
+		friend constexpr Matrix4 operator*(const Matrix4 lhs, const Matrix4 rhs)
+		{
+			Matrix4 res;
+			for (int i = 0; i < 4; i++)
+			{
+				for (int j = 0; j < 4; j++)
+				{
+					float sum = 0;
+					for (int x = 0; x < 4; x++)
+					{
+						sum += lhs[i * 4 + x] * rhs[j + x * 4];
+					}
+
+					res[i + j * 4] = sum;
+				}
+			}
+			return res;
 		}
 
 		static Matrix4 rotate(float angle)
@@ -331,6 +357,32 @@ namespace tako
 		}
 
 		void Print();
+	};
+
+	struct Quaternion
+	{
+		float x, y, z, w;
+		constexpr Quaternion() : x(0), y(0), z(0), w(0) {}
+		constexpr Quaternion(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
+
+		constexpr Matrix4 ToRotationMatrix() const
+		{
+			return Matrix4
+			(
+				1-2*z*z-2*w*w, 2*y*z-2*x*w,   2*y*w+2*x*z,   0,
+				2*y*z+2*x*w,   1-2*y*y-2*w*w, 2*z*w-2*x*y,   0,
+				2*y*w-2*x*z,   2*z*w+2*x*y,   1-2*y*y-2*z*z, 0,
+				0,0,0,1
+			);
+		}
+
+		static Quaternion Rotation(float deg, Vector3 axis)
+		{
+			axis.normalize();
+			deg = mathf::toRad(deg / 2);
+			float sd = std::sin(deg);
+			return { std::cos(deg), axis.x * sd , axis.y * sd, axis.z * sd };
+		}
 	};
 
 	struct Color

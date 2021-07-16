@@ -20,9 +20,12 @@ namespace tako
 		void Begin();
 		void End();
 
-		void DrawMesh(const Mesh& mesh, const Matrix4& model);
-		void DrawCube(const Matrix4& model);
+		void DrawMesh(const Mesh& mesh, const Texture& texture, const Matrix4& model);
+		void DrawCube(const Matrix4& model, const Texture& texture);
 		Mesh CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices);
+
+		Mesh LoadMesh(const char* file);
+		Texture CreateTexture(const Bitmap& bitmap);
 	protected:
 		GraphicsContext* m_context;
 		Mesh m_cubeMesh;
