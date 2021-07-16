@@ -7,7 +7,7 @@ public:
 	void Setup(const tako::SetupData& setup)
 	{
 		renderer = new tako::Renderer3D(setup.context);
-		golf = renderer->LoadMesh("D:\\git\\tako\\SandboxVulkan\\Assets\\CrossGolf.obj");
+		golf = renderer->LoadMesh("./Assets/CrossGolf.obj");
 		texture = renderer->CreateTexture(tako::Bitmap::FromFile("/CrossGolf.png"));
 	}
 
