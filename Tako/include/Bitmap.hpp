@@ -26,6 +26,7 @@ namespace tako
 
 		Bitmap Clone() const;
 		static Bitmap FromFile(const char* filePath);
+		static Bitmap FromFileData(const U8* data, size_t size);
 	private:
 		I32 m_width, m_height;
 		std::unique_ptr<Color[]> m_data;

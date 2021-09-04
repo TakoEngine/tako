@@ -7,8 +7,7 @@ public:
 	void Setup(const tako::SetupData& setup)
 	{
 		renderer = new tako::Renderer3D(setup.context);
-		golf = renderer->LoadMesh("./Assets/CrossGolf.obj");
-		texture = renderer->CreateTexture(tako::Bitmap::FromFile("/CrossGolf.png"));
+		model = renderer->LoadModel("./Assets/CrossGolf.glb");
 	}
 
 	void Update(tako::Input* input, float dt)
@@ -59,17 +58,18 @@ public:
 	void Draw()
 	{
 		auto roti = tako::Quaternion::Rotation(180, { 0,0,1 }).ToRotationMatrix() * tako::Quaternion::Rotation(rotX, { 1,0,0 }).ToRotationMatrix() * tako::Quaternion::Rotation(rotZ, { 0,1,0 }).ToRotationMatrix();
-		renderer->DrawMesh(golf, texture, tako::Matrix4::translation(trans.x, trans.y, trans.z) * tako::Matrix4::scale(zoom, zoom, zoom) * roti);
+		auto transform = tako::Matrix4::translation(trans.x, trans.y, trans.z) * tako::Matrix4::scale(zoom, zoom, zoom) * roti;
+		//renderer->DrawMesh(golf, texture, );
+		renderer->DrawModel(model, transform);
 	}
 private:
 	tako::Renderer3D* renderer;
-	tako::Mesh golf;
-	tako::Texture texture;
 	float time = 0;
 	float rotX = 0;
 	float rotZ = 0;
 	float zoom = 1;
 	tako::Vector3 trans;
+	tako::Model model;
 };
 
 void Setup(void* gameData, const tako::SetupData& setup)

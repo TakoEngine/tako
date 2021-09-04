@@ -1,6 +1,9 @@
 #include "Renderer3D.hpp"
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "../tinyobjloader/tiny_obj_loader.h" //TODO: why
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 #include <vector>
 
 namespace tako
@@ -55,6 +58,14 @@ namespace tako
 		DrawMesh(m_cubeMesh, texture, model);
 	}
 
+	void Renderer3D::DrawModel(const Model& model, const Matrix4& transform)
+	{
+		for (const Node& node : model.nodes)
+		{
+			DrawMesh(node.mesh, node.mat.texture, transform);
+		}
+	}
+
 	Mesh Renderer3D::CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices)
 	{
 		Mesh mesh;
@@ -62,6 +73,145 @@ namespace tako
 		mesh.indexBuffer = m_context->CreateBuffer(BufferType::Index, indices.data(), sizeof(indices[0]) * indices.size());
 		mesh.indexCount = indices.size();
 		return std::move(mesh);
+	}
+
+	Model Renderer3D::LoadModel(const char* file)
+	{
+		Assimp::Importer importer;
+		const aiScene* scene = importer.ReadFile(file,
+			aiProcess_CalcTangentSpace |
+			aiProcess_Triangulate |
+			aiProcess_JoinIdenticalVertices |
+			aiProcess_SortByPType |
+			aiProcess_FlipUVs);
+
+		std::vector<Texture> textures;
+		textures.resize(scene->mNumTextures);
+		for (int t = 0; t < scene->mNumTextures; t++)
+		{
+			auto tex = scene->mTextures[t];
+			if (tex->mHeight > 0)
+			{
+				Bitmap bmp(tex->mWidth, tex->mHeight);
+				for (int i = 0; i < tex->mWidth * tex->mHeight; i++)
+				{
+					auto& tx = tex->pcData[i];
+					bmp.GetData()[i] = { tx.r, tx.g, tx.b, tx.a };
+				}
+				textures[t] = m_context->CreateTexture(bmp);
+			}
+			else
+			{
+				textures[t] = m_context->CreateTexture(Bitmap::FromFileData(reinterpret_cast<const U8*>(tex->pcData), tex->mWidth));
+			}
+		}
+
+		std::vector<Material> materials;
+		materials.resize(scene->mNumMeshes);
+
+		for (int matIndex = 0; matIndex < scene->mNumMaterials; matIndex++)
+		{
+			auto mat = scene->mMaterials[matIndex];
+			auto diffuseTexCount = mat->GetTextureCount(aiTextureType_DIFFUSE);
+			if (diffuseTexCount > 0)
+			{
+				aiString texPath;
+				mat->GetTexture(aiTextureType_DIFFUSE, 0, &texPath);
+				materials[matIndex] = { textures[(size_t)atoi(&texPath.C_Str()[1])] };
+			}
+			//TODO: handle more cases
+		}
+
+		std::vector<Mesh> meshes;
+		meshes.resize(scene->mNumMeshes);
+
+		std::vector<Node> nodes;
+		nodes.resize(scene->mNumMeshes);
+
+		for (int mIndex = 0; mIndex < scene->mNumMeshes; mIndex++)
+		{
+			auto mesh = scene->mMeshes[mIndex];
+			std::vector<Vertex> vertices;
+			vertices.resize(mesh->mNumVertices);
+			for (int v = 0; v < mesh->mNumVertices; v++)
+			{
+				Vertex vert;
+
+				vert.pos = { mesh->mVertices[v].x, mesh->mVertices[v].y, mesh->mVertices[v].z };
+				vert.normal = { mesh->mNormals[v].x, mesh->mNormals[v].y, mesh->mNormals[v].z };
+				if (mesh->HasVertexColors(0))
+				{
+					vert.color = { mesh->mColors[0][v].r, mesh->mColors[0][v].g, mesh->mColors[0][v].b };
+					LOG("{} {} {}", vert.color.x, vert.color.y, vert.color.z);
+				}
+				else
+				{
+					vert.color = { 1, 1, 1 };
+				}
+				if (mesh->GetNumUVChannels() >= 1)
+				{
+					vert.uv = { mesh->mTextureCoords[0][v].x, mesh->mTextureCoords[0][v].y };
+				}
+				else
+				{
+					vert.uv = { 0, 0 };
+				}
+				vertices[v] = vert;
+			}
+
+			std::vector<U16> indices;
+			indices.resize(mesh->mNumFaces * 3);
+			for (int f = 0; f < mesh->mNumFaces; f++)
+			{
+				indices[f * 3 + 0] = mesh->mFaces[f].mIndices[0];
+				indices[f * 3 + 1] = mesh->mFaces[f].mIndices[1];
+				indices[f * 3 + 2] = mesh->mFaces[f].mIndices[2];
+			}
+
+			auto finalMesh = CreateMesh(vertices, indices);
+			meshes[mIndex] = finalMesh;
+
+			nodes[mIndex] = { finalMesh, materials[mesh->mMaterialIndex]};
+		}
+
+		/*
+		for (int m = 0; m < scene->mNumMaterials; m++)
+		{
+			auto mat = scene->mMaterials[m];
+			LOG("{}", scene->mMaterials[m]->GetName().C_Str());
+			LOG("{}", scene->mMaterials[m]->mNumProperties);
+			auto diffuseTexCount = scene->mMaterials[m]->GetTextureCount(aiTextureType_DIFFUSE);
+			for (int t = 0; t < diffuseTexCount; t++)
+			{
+				aiString texPath;
+				scene->mMaterials[m]->GetTexture(aiTextureType_DIFFUSE, t, &texPath);
+				LOG("{}", texPath.C_Str());
+			}
+			auto baseTexCount = scene->mMaterials[m]->GetTextureCount(aiTextureType_BASE_COLOR);
+			for (int t = 0; t < baseTexCount; t++)
+			{
+				aiString texPath;
+				scene->mMaterials[m]->GetTexture(aiTextureType_BASE_COLOR, t, &texPath);
+				LOG("{}", texPath.C_Str());
+			}
+			for (int p = 0; p < scene->mMaterials[m]->mNumProperties; p++)
+			{
+				auto prop = scene->mMaterials[m]->mProperties[p];
+				switch (prop->mType)
+				{
+
+				case aiPTI_String:
+					LOG("{} {}", prop->mKey.C_Str(), ((aiString*)prop->mData)->C_Str());
+					break;
+				case aiPTI_Float:
+					LOG("{} {} {}", prop->mKey.C_Str(), prop->mDataLength, *((float*)prop->mData));
+				}
+			}
+		}
+		*/
+
+
+		return { meshes, materials, textures, nodes };
 	}
 
 	Mesh Renderer3D::LoadMesh(const char* file)

@@ -523,9 +523,9 @@ namespace tako
 
 			samplerInfo.magFilter = VK_FILTER_LINEAR;
 			samplerInfo.minFilter = VK_FILTER_LINEAR;
-			samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-			samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-			samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+			samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 
 			result = vkCreateSampler(m_vkDevice, &samplerInfo, nullptr, &m_linearSampler);
 			ASSERT(result == VK_SUCCESS);
@@ -978,7 +978,7 @@ namespace tako
 		ubo.view = Matrix4::lookAt(Vector3(0, 0, 7.5f), Vector3(0, 0, 0), Vector3(0, 1, 0));
 		//ubo.model = Matrix4::identity;
 		//ubo.view = Matrix4::identity;
-		ubo.proj = Matrix4::perspective(45, m_swapChainExtent.width / (float)m_swapChainExtent.height, 0.0001f, 100000);
+		ubo.proj = Matrix4::perspective(45, m_swapChainExtent.width / (float)m_swapChainExtent.height, 1, 1000);
 
 		//ubo.proj[1][1] *= -1;
 
