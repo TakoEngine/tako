@@ -19,4 +19,16 @@ namespace tako
 			m[8], m[9], m[10], m[11],
 			m[12], m[13], m[14], m[15]);
 	}
+
+	Matrix4 Matrix4::cameraViewMatrix(const Vector3 position, const Quaternion& rotation)
+	{
+		auto mat = rotation.ToRotationMatrix();
+		mat[12] = -position.x;
+		mat[13] = -position.y;
+		mat[14] = -position.z;
+
+		return Matrix4::inverse(mat);
+	}
+
+
 }

@@ -15,19 +15,21 @@ public:
 		time += dt/10;
 		if (input->GetKey(tako::Key::Down))
 		{
-			rotX += dt*10;
+			//rotX -= dt;
+			rotation = rotation * tako::Quaternion::FromEuler({dt, 0, 0});
 		}
 		if (input->GetKey(tako::Key::Up))
 		{
-			rotX -= dt*10;
+			//rotX += dt;
+			rotation = rotation * tako::Quaternion::FromEuler({-dt, 0, 0});
 		}
 		if (input->GetKey(tako::Key::Left))
 		{
-			rotZ += dt * 10;
+			rotation = rotation * tako::Quaternion::FromEuler({0, dt, 0});
 		}
 		if (input->GetKey(tako::Key::Right))
 		{
-			rotZ -= dt * 10;
+			rotation = rotation * tako::Quaternion::FromEuler({0, -dt, 0});
 		}
 		if (input->GetKey(tako::Key::Right))
 		{
@@ -37,28 +39,31 @@ public:
 		{
 			//zoom -= dt;
 		}
+		tako::Vector3 movAxis;
 		if (input->GetKey(tako::Key::W))
 		{
-			trans.z -= dt;
+			movAxis.z -= dt;
 		}
 		if (input->GetKey(tako::Key::S))
 		{
-			trans.z += dt;
+			movAxis.z += dt;
 		}
 		if (input->GetKey(tako::Key::A))
 		{
-			trans.x -= dt;
+			movAxis.x += dt;
 		}
 		if (input->GetKey(tako::Key::D))
 		{
-			trans.x += dt;
+			movAxis.x -= dt;
 		}
+
+		trans += rotation * movAxis;
 	}
 
 	void Draw()
 	{
-		auto roti = tako::Quaternion::Rotation(180, { 0,0,1 }).ToRotationMatrix() * tako::Quaternion::Rotation(rotX, { 1,0,0 }).ToRotationMatrix() * tako::Quaternion::Rotation(rotZ, { 0,1,0 }).ToRotationMatrix();
-		auto transform = tako::Matrix4::translation(trans.x, trans.y, trans.z) * tako::Matrix4::scale(zoom, zoom, zoom) * roti;
+		renderer->SetCameraView(tako::Matrix4::cameraViewMatrix(trans, rotation));
+		auto transform = tako::Matrix4::scale(zoom, zoom, zoom) * tako::Quaternion::Rotation(180, { 0,0,1 }).ToRotationMatrix();
 		//renderer->DrawMesh(golf, texture, );
 		renderer->DrawModel(model, transform);
 	}
@@ -68,7 +73,8 @@ private:
 	float rotX = 0;
 	float rotZ = 0;
 	float zoom = 1;
-	tako::Vector3 trans;
+	tako::Vector3 trans = {0, 2, 0};
+	tako::Quaternion rotation = tako::Quaternion::Rotation(180, { 0,0,1 });
 	tako::Model model;
 };
 

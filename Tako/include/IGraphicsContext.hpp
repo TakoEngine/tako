@@ -39,6 +39,8 @@ namespace tako
 		virtual void BindVertexBuffer(const Buffer* buffer) = 0;
 		virtual void BindIndexBuffer(const Buffer* buffer) = 0;
 		virtual void BindTexture(const Texture* texture) = 0;
+		virtual void UpdateUniform(const Matrix4& matrix) = 0;
+
 		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) = 0;
 
 		virtual Texture CreateTexture(const Bitmap& bitmap) = 0;

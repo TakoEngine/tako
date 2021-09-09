@@ -151,7 +151,7 @@ namespace tako
 #else
 			createInfo.enabledLayerCount = 0;
 #endif
-			
+
 
 			auto result = vkCreateInstance(&createInfo, nullptr, &vkInstance);
 			ASSERT(result == VK_SUCCESS);
@@ -966,21 +966,24 @@ namespace tako
 		return m_commandBuffers[m_acticeImageIndex];
 	}
 
-	void VulkanContext::UpdateUniformBuffer(uint32_t currentImage)
+	void VulkanContext::UpdateUniform(const Matrix4& matrix)
 	{
-		static auto startTime = std::chrono::high_resolution_clock::now();
-
-		auto currentTime = std::chrono::high_resolution_clock::now();
-		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
 		UniformBufferObject ubo = {};
-		ubo.model = Matrix4::rotate(time);
-		ubo.view = Matrix4::lookAt(Vector3(0, 0, 7.5f), Vector3(0, 0, 0), Vector3(0, 1, 0));
-		//ubo.model = Matrix4::identity;
-		//ubo.view = Matrix4::identity;
+		ubo.view = matrix;
 		ubo.proj = Matrix4::perspective(45, m_swapChainExtent.width / (float)m_swapChainExtent.height, 1, 1000);
 
-		//ubo.proj[1][1] *= -1;
+		void* data;
+		auto result = vkMapMemory(m_vkDevice, m_uniformBuffersMemory[m_acticeImageIndex], 0, sizeof(ubo), 0, &data);
+		ASSERT(result == VK_SUCCESS);
+		memcpy(data, &ubo, sizeof(ubo));
+		vkUnmapMemory(m_vkDevice, m_uniformBuffersMemory[m_acticeImageIndex]);
+	}
+
+	void VulkanContext::UpdateUniformBuffer(uint32_t currentImage)
+	{
+		UniformBufferObject ubo = {};
+		ubo.view = Matrix4::lookAt(Vector3(0, 0, 7.5f), Vector3(0, 0, 0), Vector3(0, 1, 0));
+		ubo.proj = Matrix4::perspective(45, m_swapChainExtent.width / (float)m_swapChainExtent.height, 1, 1000);
 
 		void* data;
 		auto result = vkMapMemory(m_vkDevice, m_uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);

@@ -75,6 +75,11 @@ namespace tako
 		return std::move(mesh);
 	}
 
+	void Renderer3D::SetCameraView(const Matrix4& view)
+	{
+		m_context->UpdateUniform(view);
+	}
+
 	Model Renderer3D::LoadModel(const char* file)
 	{
 		Assimp::Importer importer;
@@ -290,7 +295,7 @@ namespace tako
 						indices.push_back(std::distance(vertices.begin(), find));
 					}
 
-					
+
 				}
 				indexOffset += fv;
 			}

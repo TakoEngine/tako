@@ -4,7 +4,7 @@
 #include "Timer.hpp"
 #include "Resources.hpp"
 //#include "OpenGLPixelArtDrawer.hpp"
-#include "Renderer3D.hpp";
+#include "Renderer3D.hpp"
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
 #endif
@@ -37,12 +37,14 @@ namespace tako
 		{
 			LOG("Change {}", change.path);
 			LOG("Change: {}", change.path.filename());
+#ifdef TAKO_OPENGL
 			if (change.path.extension() == ".png")
 			{
 				auto file = "/" / change.path.filename();
 				auto bitmap = Bitmap::FromFile(file.c_str());
 				data->drawer->UpdateTexture(data->resources.Load<Texture>(file), bitmap);
 			}
+#endif
 		}
 #endif
 		data->window.Poll();

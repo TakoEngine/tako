@@ -44,6 +44,8 @@ namespace tako
 		void DrawModel(const Model& model, const Matrix4& transform);
 		Mesh CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices);
 
+		void SetCameraView(const Matrix4& view);
+
 		Model LoadModel(const char* file);
 		Mesh LoadMesh(const char* file);
 		Texture CreateTexture(const Bitmap& bitmap);

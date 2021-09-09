@@ -74,7 +74,7 @@ set_feature(TAKO_LINUX true)
 endif()
 
 if (TAKO_MAC OR TAKO_LINUX)
-set_feature(TAKO_OPENGL true)
+set_feature(TAKO_OPENGL false)
 set_feature(TAKO_VULKAN true)
 set_feature(TAKO_OPENAL true)
 set_feature(TAKO_GLFW true)

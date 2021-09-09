@@ -7,7 +7,7 @@ namespace tako
 {
 	namespace mathf
 	{
-		const float PI = 3.1415927f;
+		constexpr float PI = 3.1415927f;
 
 		constexpr float sign(float x)
 		{
@@ -154,6 +154,19 @@ namespace tako
 			return !operator==(rhs);
 		}
 
+		constexpr Vector3& operator+=(const Vector3& rhs)
+		{
+			x += rhs.x;
+			y += rhs.y;
+			z += rhs.z;
+			return *this;
+		}
+
+		friend constexpr Vector3 operator+(Vector3 lhs, const Vector3 rhs)
+		{
+			return lhs += rhs;
+		}
+
 		constexpr Vector3& operator-=(const Vector3& rhs)
 		{
 			x -= rhs.x;
@@ -165,6 +178,11 @@ namespace tako
 		friend constexpr Vector3 operator-(Vector3 lhs, const Vector3 rhs)
 		{
 			return lhs -= rhs;
+		}
+
+		friend constexpr Vector3 operator*(const float factor, Vector3 v)
+		{
+			return { v.x * factor, v.y * factor, v.z * factor };
 		}
 
 		constexpr Vector3& operator/=(const float factor)
@@ -204,8 +222,14 @@ namespace tako
 		{
 			return Vector3::cross(*this, rhs);
 		}
+
+		constexpr static float dot(const Vector3& lhs, const Vector3& rhs)
+		{
+			return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
+		}
 	};
 
+	struct Quaternion;
 	struct Matrix4
 	{
 		float m[16];
@@ -260,6 +284,151 @@ namespace tako
 				m[2], m[6], m[10], m[14],
 				m[3], m[7], m[11], m[15],
 			};
+		}
+
+		constexpr static Matrix4 inverse(const Matrix4& m)
+		{
+			Matrix4 inv;
+
+			inv[0] =
+				m[5]  * m[10] * m[15] -
+				m[5]  * m[11] * m[14] -
+				m[9]  * m[6]  * m[15] +
+				m[9]  * m[7]  * m[14] +
+				m[13] * m[6]  * m[11] -
+				m[13] * m[7]  * m[10];
+
+			inv[4] =
+				-m[4]  * m[10] * m[15] +
+				m[4]  * m[11] * m[14] +
+				m[8]  * m[6]  * m[15] -
+				m[8]  * m[7]  * m[14] -
+				m[12] * m[6]  * m[11] +
+				m[12] * m[7]  * m[10];
+
+			inv[8] = m[4]  * m[9] * m[15] -
+				m[4]  * m[11] * m[13] -
+				m[8]  * m[5] * m[15] +
+				m[8]  * m[7] * m[13] +
+				m[12] * m[5] * m[11] -
+				m[12] * m[7] * m[9];
+
+			inv[12] = -m[4]  * m[9] * m[14] +
+				m[4]  * m[10] * m[13] +
+				m[8]  * m[5] * m[14] -
+				m[8]  * m[6] * m[13] -
+				m[12] * m[5] * m[10] +
+				m[12] * m[6] * m[9];
+
+			inv[1] =
+				-m[1]  * m[10] * m[15] +
+				m[1]  * m[11] * m[14] +
+				m[9]  * m[2] * m[15] -
+				m[9]  * m[3] * m[14] -
+				m[13] * m[2] * m[11] +
+				m[13] * m[3] * m[10];
+
+		    inv[5] =
+				m[0]  * m[10] * m[15] -
+				m[0]  * m[11] * m[14] -
+				m[8]  * m[2] * m[15] +
+				m[8]  * m[3] * m[14] +
+				m[12] * m[2] * m[11] -
+				m[12] * m[3] * m[10];
+
+		    inv[9] =
+				-m[0]  * m[9] * m[15] +
+				m[0]  * m[11] * m[13] +
+				m[8]  * m[1] * m[15] -
+				m[8]  * m[3] * m[13] -
+				m[12] * m[1] * m[11] +
+				m[12] * m[3] * m[9];
+
+			inv[13] =
+				m[0]  * m[9] * m[14] -
+				m[0]  * m[10] * m[13] -
+				m[8]  * m[1] * m[14] +
+				m[8]  * m[2] * m[13] +
+				m[12] * m[1] * m[10] -
+				m[12] * m[2] * m[9];
+
+			inv[2] =
+				m[1]  * m[6] * m[15] -
+				m[1]  * m[7] * m[14] -
+				m[5]  * m[2] * m[15] +
+				m[5]  * m[3] * m[14] +
+				m[13] * m[2] * m[7] -
+				m[13] * m[3] * m[6];
+
+			inv[6] =
+				-m[0]  * m[6] * m[15] +
+				m[0]  * m[7] * m[14] +
+				m[4]  * m[2] * m[15] -
+				m[4]  * m[3] * m[14] -
+				m[12] * m[2] * m[7] +
+				m[12] * m[3] * m[6];
+
+			inv[10] =
+				m[0]  * m[5] * m[15] -
+				m[0]  * m[7] * m[13] -
+				m[4]  * m[1] * m[15] +
+				m[4]  * m[3] * m[13] +
+				m[12] * m[1] * m[7] -
+				m[12] * m[3] * m[5];
+
+			inv[14] =
+				-m[0]  * m[5] * m[14] +
+				m[0]  * m[6] * m[13] +
+				m[4]  * m[1] * m[14] -
+				m[4]  * m[2] * m[13] -
+				m[12] * m[1] * m[6] +
+				m[12] * m[2] * m[5];
+
+			inv[3] =
+				-m[1] * m[6] * m[11] +
+				m[1] * m[7] * m[10] +
+				m[5] * m[2] * m[11] -
+				m[5] * m[3] * m[10] -
+				m[9] * m[2] * m[7] +
+				m[9] * m[3] * m[6];
+
+			inv[7] =
+				m[0] * m[6] * m[11] -
+				m[0] * m[7] * m[10] -
+				m[4] * m[2] * m[11] +
+				m[4] * m[3] * m[10] +
+				m[8] * m[2] * m[7] -
+				m[8] * m[3] * m[6];
+
+			inv[11] =
+				-m[0] * m[5] * m[11] +
+				m[0] * m[7] * m[9] +
+				m[4] * m[1] * m[11] -
+				m[4] * m[3] * m[9] -
+				m[8] * m[1] * m[7] +
+				m[8] * m[3] * m[5];
+
+			inv[15] =
+				m[0] * m[5] * m[10] -
+				m[0] * m[6] * m[9] -
+				m[4] * m[1] * m[10] +
+				m[4] * m[2] * m[9] +
+				m[8] * m[1] * m[6] -
+				m[8] * m[2] * m[5];
+
+			float det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+			if (det == 0)
+			{
+				return {};
+			}
+
+			det = 1.0 / det;
+			Matrix4 out;
+			for (int i = 0; i < 16; i++)
+			{
+				out[i] = inv[i] * det;
+			}
+			return out;
 		}
 
 		friend constexpr Matrix4 operator*(const Matrix4 lhs, const Matrix4 rhs)
@@ -321,6 +490,8 @@ namespace tako
 			return matrix;
 		}
 
+		static Matrix4 cameraViewMatrix(const Vector3 position, const Quaternion& rotation);
+
 		constexpr static Matrix4 perspective(float fov, float aspect, float nearDist, float farDist)
 		{
 			if (fov <= 0 || aspect == 0)
@@ -362,7 +533,7 @@ namespace tako
 	struct Quaternion
 	{
 		float x, y, z, w;
-		constexpr Quaternion() : x(0), y(0), z(0), w(0) {}
+		constexpr Quaternion() : x(0), y(0), z(0), w(1) {}
 		constexpr Quaternion(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
 
 		constexpr Matrix4 ToRotationMatrix() const
@@ -376,6 +547,17 @@ namespace tako
 			);
 		}
 
+		static Quaternion FromEuler(const Vector3& euler)
+		{
+			return
+			{
+				std::sin(euler.z/2) * std::cos(euler.y/2) * std::cos(euler.x/2) - std::cos(euler.z/2) * std::sin(euler.y/2) * std::sin(euler.x/2),
+				std::cos(euler.z/2) * std::sin(euler.y/2) * std::cos(euler.x/2) + std::sin(euler.z/2) * std::cos(euler.y/2) * std::sin(euler.x/2),
+				std::cos(euler.z/2) * std::cos(euler.y/2) * std::sin(euler.x/2) - std::sin(euler.z/2) * std::sin(euler.y/2) * std::cos(euler.x/2),
+				std::cos(euler.z/2) * std::cos(euler.y/2) * std::cos(euler.x/2) + std::sin(euler.z/2) * std::sin(euler.y/2) * std::sin(euler.x/2),
+			};
+		}
+
 		static Quaternion Rotation(float deg, Vector3 axis)
 		{
 			axis.normalize();
@@ -383,7 +565,29 @@ namespace tako
 			float sd = std::sin(deg);
 			return { std::cos(deg), axis.x * sd , axis.y * sd, axis.z * sd };
 		}
+
+		friend constexpr Quaternion operator*(const Quaternion& q, const Quaternion& r)
+		{
+			return Quaternion(
+				q.x * r.w + q.w * r.x + q.y * r.z - q.z * r.y,
+				q.y * r.w + q.w * r.y + q.z * r.x - q.x * r.z,
+				q.z * r.w + q.w * r.z + q.x * r.y - q.y * r.x,
+				q.w * r.w - q.x * r.x - q.y * r.y - q.z * r.z
+			);
+		}
+
+
+		friend constexpr Vector3 operator*(const Quaternion& rotation, const Vector3& point)
+		{
+			Vector3 u(rotation.x, rotation.y, rotation.z);
+			float s = rotation.w;
+			return
+				2.0f * Vector3::dot(u, point) * u
+				+ (s*s - Vector3::dot(u, u)) * point
+				+ 2.0f * s * Vector3::cross(u, point);
+		}
 	};
+
 
 	struct Color
 	{

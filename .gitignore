@@ -40,3 +40,7 @@
 /.idea
 /cmake-build*
 .DS_Store
+
+#clangd
+/.cache
+compile_commands.json

@@ -33,6 +33,7 @@ namespace tako
 		virtual void BindVertexBuffer(const Buffer* buffer) override;
 		virtual void BindIndexBuffer(const Buffer* buffer) override;
 		virtual void BindTexture(const Texture* texture) override;
+		virtual void UpdateUniform(const Matrix4& matrix) override;
 		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) override;
 
 		virtual Texture CreateTexture(const Bitmap& bitmap) override;
