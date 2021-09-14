@@ -15,7 +15,11 @@ namespace tako
 		VkImage image;
 		VkDeviceMemory imageMemory;
 		VkImageView imageView;
-		VkDescriptorSet texSet;
+	};
+
+	struct MaterialMapEntry
+	{
+		VkDescriptorSet descriptorSet;
 	};
 
 	class VulkanContext final : public IGraphicsContext
@@ -32,12 +36,13 @@ namespace tako
 		//void DrawMesh(const Mesh& mesh, const Matrix4& model);
 		virtual void BindVertexBuffer(const Buffer* buffer) override;
 		virtual void BindIndexBuffer(const Buffer* buffer) override;
-		virtual void BindTexture(const Texture* texture) override;
+		virtual void BindMaterial(const Material* material) override;
 		virtual void UpdateUniform(const Matrix4& matrix) override;
 		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) override;
 
 		virtual Texture CreateTexture(const Bitmap& bitmap) override;
 		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) override;
+		virtual Material CreateMaterial(const Texture* texture) override;
 
 		VkShaderModule CreateShaderModule(const char* codePath);
 		void UpdateUniformBuffer(uint32_t currentImage);
@@ -86,6 +91,7 @@ namespace tako
 		VkPhysicalDevice m_physicalDevice;
 		std::unordered_map<U64, BufferMapEntry> m_bufferMap;
 		std::unordered_map<U64, TextureMapEntry> m_textureMap;
+		std::unordered_map<U64, MaterialMapEntry> m_materialMap;
 		VkImage m_depthImage;
 		VkDeviceMemory m_depthImageMemory;
 		VkImageView m_depthImageView;

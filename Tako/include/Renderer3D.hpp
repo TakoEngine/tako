@@ -12,11 +12,6 @@ namespace tako
 		uint16_t indexCount;
 	};
 
-	struct Material
-	{
-		Texture texture;
-	};
-
 	struct Node
 	{
 		Mesh mesh;
@@ -39,8 +34,8 @@ namespace tako
 		void Begin();
 		void End();
 
-		void DrawMesh(const Mesh& mesh, const Texture& texture, const Matrix4& model);
-		void DrawCube(const Matrix4& model, const Texture& texture);
+		void DrawMesh(const Mesh& mesh, const Material& material, const Matrix4& model);
+		void DrawCube(const Matrix4& model, const Material& material);
 		void DrawModel(const Model& model, const Matrix4& transform);
 		Mesh CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices);
 

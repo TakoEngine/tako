@@ -5,6 +5,7 @@
 #include "Texture.hpp"
 #include "Bitmap.hpp"
 #include "VertexBuffer.hpp"
+#include "Material.hpp"
 
 namespace tako
 {
@@ -38,12 +39,13 @@ namespace tako
 
 		virtual void BindVertexBuffer(const Buffer* buffer) = 0;
 		virtual void BindIndexBuffer(const Buffer* buffer) = 0;
-		virtual void BindTexture(const Texture* texture) = 0;
+		virtual void BindMaterial(const Material* material) = 0;
 		virtual void UpdateUniform(const Matrix4& matrix) = 0;
 
 		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) = 0;
 
 		virtual Texture CreateTexture(const Bitmap& bitmap) = 0;
 		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) = 0;
+		virtual Material CreateMaterial(const Texture* texture) = 0;
 	};
 }

@@ -45,24 +45,24 @@ namespace tako
 		m_context->End();
 	}
 
-	void Renderer3D::DrawMesh(const Mesh& mesh, const Texture& texture, const Matrix4& model)
+	void Renderer3D::DrawMesh(const Mesh& mesh, const Material& material, const Matrix4& model)
 	{
 		m_context->BindVertexBuffer(&mesh.vertexBuffer);
 		m_context->BindIndexBuffer(&mesh.indexBuffer);
-		m_context->BindTexture(&texture);
+		m_context->BindMaterial(&material);
 		m_context->DrawIndexed(mesh.indexCount, model);
 	}
 
-	void Renderer3D::DrawCube(const Matrix4& model, const Texture& texture)
+	void Renderer3D::DrawCube(const Matrix4& model, const Material& material)
 	{
-		DrawMesh(m_cubeMesh, texture, model);
+		DrawMesh(m_cubeMesh, material, model);
 	}
 
 	void Renderer3D::DrawModel(const Model& model, const Matrix4& transform)
 	{
 		for (const Node& node : model.nodes)
 		{
-			DrawMesh(node.mesh, node.mat.texture, transform);
+			DrawMesh(node.mesh, node.mat, transform);
 		}
 	}
 
@@ -122,7 +122,7 @@ namespace tako
 			{
 				aiString texPath;
 				mat->GetTexture(aiTextureType_DIFFUSE, 0, &texPath);
-				materials[matIndex] = { textures[(size_t)atoi(&texPath.C_Str()[1])] };
+				materials[matIndex] = { m_context->CreateMaterial(&textures[(size_t)atoi(&texPath.C_Str()[1])]) };
 			}
 			//TODO: handle more cases
 		}

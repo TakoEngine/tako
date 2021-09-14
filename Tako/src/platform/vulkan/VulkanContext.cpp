@@ -882,6 +882,7 @@ namespace tako
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipeline);
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[m_acticeImageIndex], 0, nullptr);
 	}
 
 	void VulkanContext::End()
@@ -942,17 +943,17 @@ namespace tako
 		vkCmdBindIndexBuffer(commandBuffer, entry.buffer, 0, VK_INDEX_TYPE_UINT16);
 	}
 
-	void VulkanContext::BindTexture(const Texture* texture)
+	void VulkanContext::BindMaterial(const Material* material)
 	{
 		auto commandBuffer = GetActiveCommandBuffer();
-		const auto& entry = m_textureMap[texture->handle.value];
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 1, 1, &entry.texSet, 0, nullptr);
+		const auto& entry = m_materialMap[material->value];
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 1, 1, &entry.descriptorSet, 0, nullptr);
 	}
 
 	void VulkanContext::DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix)
 	{
 		auto commandBuffer = GetActiveCommandBuffer();
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[0], 0, nullptr);
+		//vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[m_acticeImageIndex], 0, nullptr);
 
 		MeshPushConstants constants;
 		constants.renderMatrix = renderMatrix;
@@ -1268,6 +1269,17 @@ namespace tako
 			ASSERT(result == VK_SUCCESS);
 		}
 
+		static U64 curIndex = 0;
+		m_textureMap[curIndex] = { image, imageMemory, imageView };
+		curIndex++;
+		return { curIndex - 1 };
+	}
+
+	Material VulkanContext::CreateMaterial(const Texture* texture)
+	{
+		auto& tex = m_textureMap[texture->handle.value];
+		VkDescriptorSet descriptorSet;
+
 		VkDescriptorSetAllocateInfo descriptorAlloc = {};
 		descriptorAlloc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		descriptorAlloc.pNext = nullptr;
@@ -1275,19 +1287,19 @@ namespace tako
 		descriptorAlloc.descriptorSetCount = 1;
 		descriptorAlloc.pSetLayouts = &m_descriptorSetLayoutSampler;
 
-		result = vkAllocateDescriptorSets(m_vkDevice, &descriptorAlloc, &texSet);
+		auto result = vkAllocateDescriptorSets(m_vkDevice, &descriptorAlloc, &descriptorSet);
 		ASSERT(result == VK_SUCCESS);
 
 		VkDescriptorImageInfo imageBufferInfo;
 		imageBufferInfo.sampler = m_linearSampler;
-		imageBufferInfo.imageView = imageView;
+		imageBufferInfo.imageView = tex.imageView;
 		imageBufferInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 		VkWriteDescriptorSet write = {};
 		write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		write.pNext = nullptr;
 		write.dstBinding = 0;
-		write.dstSet = texSet;
+		write.dstSet = descriptorSet;
 		write.descriptorCount = 1;
 		write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		write.pImageInfo = &imageBufferInfo;
@@ -1295,7 +1307,7 @@ namespace tako
 		vkUpdateDescriptorSets(m_vkDevice, 1, &write, 0, nullptr);
 
 		static U64 curIndex = 0;
-		m_textureMap[curIndex] = { image, imageMemory, imageView, texSet };
+		m_materialMap[curIndex] = { descriptorSet };
 		curIndex++;
 		return { curIndex - 1 };
 	}

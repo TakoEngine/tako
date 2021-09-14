@@ -25,19 +25,11 @@ public:
 		}
 		if (input->GetKey(tako::Key::Left))
 		{
-			rotation = rotation * tako::Quaternion::FromEuler({0, dt, 0});
-		}
-		if (input->GetKey(tako::Key::Right))
-		{
 			rotation = rotation * tako::Quaternion::FromEuler({0, -dt, 0});
 		}
 		if (input->GetKey(tako::Key::Right))
 		{
-			//zoom += dt;
-		}
-		if (input->GetKey(tako::Key::Left))
-		{
-			//zoom -= dt;
+			rotation = rotation * tako::Quaternion::FromEuler({0, dt, 0});
 		}
 		tako::Vector3 movAxis;
 		if (input->GetKey(tako::Key::W))
@@ -74,7 +66,7 @@ private:
 	float rotZ = 0;
 	float zoom = 1;
 	tako::Vector3 trans = {0, 2, 0};
-	tako::Quaternion rotation = tako::Quaternion::Rotation(180, { 0,0,1 });
+	tako::Quaternion rotation = tako::Quaternion::Rotation(180, { 0,1,0 });
 	tako::Model model;
 };
 

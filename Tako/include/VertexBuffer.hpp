@@ -1,5 +1,4 @@
 #pragma once
-#include "IGraphicsContext.hpp"
 
 namespace tako
 {
