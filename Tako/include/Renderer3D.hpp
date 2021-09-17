@@ -47,5 +47,6 @@ namespace tako
 	protected:
 		GraphicsContext* m_context;
 		Mesh m_cubeMesh;
+		Pipeline m_pipeline;
 	};
 }

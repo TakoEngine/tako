@@ -22,6 +22,11 @@ namespace tako
 		VkDescriptorSet descriptorSet;
 	};
 
+	struct PipelineMapEntry
+	{
+		VkPipeline pipeline;
+	};
+
 	class VulkanContext final : public IGraphicsContext
 	{
 	public:
@@ -33,18 +38,19 @@ namespace tako
 		virtual void Resize(int width, int height) override;
 		virtual void HandleEvent(Event& evt) override;
 
-		//void DrawMesh(const Mesh& mesh, const Matrix4& model);
+		virtual void BindPipeline(const Pipeline* pipeline) override;
 		virtual void BindVertexBuffer(const Buffer* buffer) override;
 		virtual void BindIndexBuffer(const Buffer* buffer) override;
 		virtual void BindMaterial(const Material* material) override;
 		virtual void UpdateUniform(const Matrix4& matrix) override;
 		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) override;
 
+		virtual Pipeline CreatePipeline(U8* vertCode, size_t vertSize, U8* fragCode, size_t fragSize) override;
 		virtual Texture CreateTexture(const Bitmap& bitmap) override;
 		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) override;
 		virtual Material CreateMaterial(const Texture* texture) override;
 
-		VkShaderModule CreateShaderModule(const char* codePath);
+		VkShaderModule CreateShaderModule(U8* codeData, size_t codeSize);
 		void UpdateUniformBuffer(uint32_t currentImage);
 		uint32_t FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
 		void CreateVulkanBuffer(VkPhysicalDevice physicalDevice, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
@@ -76,7 +82,7 @@ namespace tako
 		VkDescriptorSetLayout m_descriptorSetLayoutUniform;
 		VkDescriptorSetLayout m_descriptorSetLayoutSampler;
 		VkPipelineLayout m_pipelineLayout;
-		VkPipeline m_graphicsPipeline;
+		//VkPipeline m_graphicsPipeline;
 		VkCommandPool m_commandPool;
 		std::vector<VkCommandBuffer> m_commandBuffers;
 		uint32_t m_acticeImageIndex;
@@ -92,6 +98,7 @@ namespace tako
 		std::unordered_map<U64, BufferMapEntry> m_bufferMap;
 		std::unordered_map<U64, TextureMapEntry> m_textureMap;
 		std::unordered_map<U64, MaterialMapEntry> m_materialMap;
+		std::unordered_map<U64, PipelineMapEntry> m_pipelineMap;
 		VkImage m_depthImage;
 		VkDeviceMemory m_depthImageMemory;
 		VkImageView m_depthImageView;

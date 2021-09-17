@@ -5,6 +5,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <vector>
+#include "FileSystem.hpp"
 
 namespace tako
 {
@@ -30,14 +31,35 @@ namespace tako
 		4, 5, 0, 0, 5, 1
 	};
 
+	std::vector<U8> LoadShaderCode(const char* codePath)
+	{
+		size_t fileSize = FileSystem::GetFileSize(codePath);
+		std::vector<U8> code(fileSize);
+		size_t bytesRead = 0;
+		bool readSuccess = FileSystem::ReadFile(codePath, code.data(), code.size(), bytesRead);
+		ASSERT(readSuccess && fileSize == bytesRead);
+
+		return code;
+	}
+
 	Renderer3D::Renderer3D(GraphicsContext* context) : m_context(context)
 	{
+		const char* vertPath = "/shader.vert.spv";
+		const char* fragPath = "/shader.frag.spv";
+
+		auto vertCode = LoadShaderCode(vertPath);
+		auto fragCode = LoadShaderCode(fragPath);
+
+		m_pipeline = m_context->CreatePipeline(vertCode.data(), vertCode.size(), fragCode.data(), fragCode.size());
+
+
 		m_cubeMesh = CreateMesh(cubeVertices, cubeIndices);
 	}
 
 	void Renderer3D::Begin()
 	{
 		m_context->Begin();
+		m_context->BindPipeline(&m_pipeline);
 	}
 
 	void Renderer3D::End()

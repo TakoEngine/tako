@@ -53,12 +53,13 @@ namespace tako
 		{
 			data->config.Update(data->gameData, &data->input, dt);
 		}
-		data->context.Begin();
+		//data->context.Begin();
+		//data->gameData->
 		if (data->config.Draw)
 		{
 			data->config.Draw(data->gameData);
 		}
-		data->context.End();
+		//data->context.End();
 		data->context.Present();
 	}
 

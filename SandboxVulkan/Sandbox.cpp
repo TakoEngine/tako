@@ -54,10 +54,12 @@ public:
 
 	void Draw()
 	{
+		renderer->Begin();
 		renderer->SetCameraView(tako::Matrix4::cameraViewMatrix(trans, rotation));
 		auto transform = tako::Matrix4::scale(zoom, zoom, zoom) * tako::Quaternion::Rotation(180, { 0,0,1 }).ToRotationMatrix();
 		//renderer->DrawMesh(golf, texture, );
 		renderer->DrawModel(model, transform);
+		renderer->End();
 	}
 private:
 	tako::Renderer3D* renderer;
