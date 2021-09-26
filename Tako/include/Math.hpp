@@ -229,6 +229,14 @@ namespace tako
 		}
 	};
 
+	struct Vector4
+	{
+		float x, y, z, w;
+
+		constexpr Vector4() : x(0), y(0), z(0), w(0) {}
+		constexpr Vector4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
+	};
+
 	struct Quaternion;
 	struct Matrix4
 	{
@@ -514,15 +522,13 @@ namespace tako
 
 		constexpr static Matrix4 ortho(float left, float right, float bottom, float top, float nearDistance, float farDistance)
 		{
-			Matrix4 m;
-
+			Matrix4 m = Matrix4::identity;
 			m[0] = 2 / (right - left);
 			m[3] = -(right + left) / (right - left);
 			m[5] = 2 / (top - bottom);
 			m[7] = -(top + bottom) / (top - bottom);
 			m[10] = -2 / (farDistance - nearDistance);
 			m[11] = -(farDistance + nearDistance) / (farDistance - nearDistance);
-			m[15] = 1;
 
 			return m;
 		}

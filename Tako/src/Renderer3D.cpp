@@ -5,6 +5,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <vector>
+#include <array>
 #include "FileSystem.hpp"
 
 namespace tako
@@ -31,6 +32,13 @@ namespace tako
 		4, 5, 0, 0, 5, 1
 	};
 
+	struct UniformBufferObject
+	{
+		Matrix4 model;
+		Matrix4 view;
+		Matrix4 proj;
+	};
+
 	std::vector<U8> LoadShaderCode(const char* codePath)
 	{
 		size_t fileSize = FileSystem::GetFileSize(codePath);
@@ -50,8 +58,20 @@ namespace tako
 		auto vertCode = LoadShaderCode(vertPath);
 		auto fragCode = LoadShaderCode(fragPath);
 
-		m_pipeline = m_context->CreatePipeline(vertCode.data(), vertCode.size(), fragCode.data(), fragCode.size());
+		std::array<PipelineVectorAttribute, 4> vertexAttributes = { PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec2 };
+		size_t pushConstant = sizeof(Matrix4);
 
+		PipelineDescriptor pipelineDescriptor;
+		pipelineDescriptor.vertCode = vertCode.data();
+		pipelineDescriptor.vertSize = vertCode.size();
+		pipelineDescriptor.fragCode = fragCode.data();
+		pipelineDescriptor.fragSize = fragCode.size();
+		pipelineDescriptor.vertexAttributes = vertexAttributes.data();
+		pipelineDescriptor.vertexAttributeSize = vertexAttributes.size();
+		pipelineDescriptor.pushConstants = &pushConstant;
+		pipelineDescriptor.pushConstantsSize = 1;
+
+		m_pipeline = m_context->CreatePipeline(pipelineDescriptor);
 
 		m_cubeMesh = CreateMesh(cubeVertices, cubeIndices);
 	}
@@ -99,7 +119,10 @@ namespace tako
 
 	void Renderer3D::SetCameraView(const Matrix4& view)
 	{
-		m_context->UpdateUniform(view);
+		UniformBufferObject ubo;
+		ubo.view = view;
+		ubo.proj = Matrix4::perspective(45, 1024 / (float)768, 1, 1000);
+		m_context->UpdateUniform(&ubo, sizeof(ubo));
 	}
 
 	Model Renderer3D::LoadModel(const char* file)

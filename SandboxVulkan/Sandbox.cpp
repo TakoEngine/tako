@@ -59,6 +59,7 @@ public:
 		auto transform = tako::Matrix4::scale(zoom, zoom, zoom) * tako::Quaternion::Rotation(180, { 0,0,1 }).ToRotationMatrix();
 		//renderer->DrawMesh(golf, texture, );
 		renderer->DrawModel(model, transform);
+		//renderer->DrawCube(tako::Matrix4::translation(0, -5, 0), model.materials[0]);
 		renderer->End();
 	}
 private:

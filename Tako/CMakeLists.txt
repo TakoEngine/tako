@@ -14,6 +14,7 @@ add_library(${TAKO_DLL}
 	"src/GraphicsContext.cpp"
 	"include/Texture.hpp"
 	"include/PixelArtDrawer.hpp"
+	"src/PixelArtDrawer.cpp"
 	"include/Tako.hpp"
 	"include/Event.hpp"
 	"src/Event.cpp"
@@ -35,6 +36,8 @@ add_library(${TAKO_DLL}
 	"include/IGraphicsContext.hpp"
 	"include/SmallVec.hpp"
 	"include/VertexBuffer.hpp"
+	"include/Material.hpp"
+	"include/Pipeline.hpp"
 	"include/Renderer3D.hpp"
 	"src/Renderer3D.cpp"
 	"include/GameConfig.hpp")

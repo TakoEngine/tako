@@ -22,22 +22,22 @@ static tako::PixelArtDrawer* g_drawer;
 static std::string exampleText = "The quick brown fox jumps over the lazy dog!?";
 static tako::Vector2 mousePos = tako::Vector2(0, 0);
 
-void tako::Setup(tako::PixelArtDrawer* drawer, tako::Resources* resources)
+void Setup(void* gameData, const tako::SetupData& setup)
 {
 	LOG("SANDBOX SETUP");
-	g_drawer = drawer;
-	clipBump = new AudioClip("/Bump.wav");
-	clipMiss = new AudioClip("/Miss.wav");
-	clipMusic = new AudioClip("/garden-of-kittens.mp3");
+	g_drawer = new tako::PixelArtDrawer(setup.context);
+	clipBump = new tako::AudioClip("/Bump.wav");
+	clipMiss = new tako::AudioClip("/Miss.wav");
+	clipMusic = new tako::AudioClip("/garden-of-kittens.mp3");
 	tako::Audio::Play(*clipMusic, true);
-	tree = resources->Load<Texture>("/tree.png");
-	tileset = resources->Load<Texture>("/Tileset.png");
-	sprite = drawer->CreateSprite(tileset, 16, 0, 16, 16);
+	tree = setup.resources->Load<tako::Texture>("/tree.png");
+	tileset = setup.resources->Load<tako::Texture>("/Tileset.png");
+	sprite = g_drawer->CreateSprite(tileset, 16, 0, 16, 16);
 	font = new tako::Font("/charmap-cellphone.png", 5, 7, 1, 1, 2, 2, " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]\a_`abcdefghijklmnopqrstuvwxyz{|}~");//" !\"#$%&'()*,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]ˆ_`abcdefghijklmnopqrstuvwxyz{|}~");
 	auto textBitmap = font->RenderText(exampleText, 1, 5);
 	std::tie(helloTextSizeX, helloTextSizeY) = font->CalculateDimensions(exampleText, 1, 5);
-	helloText = drawer->CreateTexture(textBitmap);
-	bufferTex = drawer->CreateTexture(bitmap);
+	helloText = g_drawer->CreateTexture(textBitmap);
+	bufferTex = g_drawer->CreateTexture(bitmap);
 }
 
 int PingPong(int val, int max)
@@ -52,11 +52,11 @@ int PingPong(int val, int max)
 	}
 }
 
-void tako::Update(tako::Input* input, float dt)
+void Update(void* gameData, tako::Input* input, float dt)
 {
 	delta += dt;
 	if (delta > 1) {
-		Audio::Play(*clipMiss);
+		tako::Audio::Play(*clipMiss);
 		delta = 0;
 	}
 	float speed = 60;
@@ -82,7 +82,7 @@ void tako::Update(tako::Input* input, float dt)
 	}
 	if (input->GetKeyDown(tako::Key::Space))
 	{
-		Audio::Play(*clipBump);
+		tako::Audio::Play(*clipBump);
 	}
 
 	static float gradOff = 0;
@@ -104,9 +104,12 @@ void tako::Update(tako::Input* input, float dt)
 	mousePos = input->GetMousePosition();
 }
 
-void tako::Draw(tako::PixelArtDrawer* drawer)
+void Draw(void* gameData)
 {
 	auto alpha = static_cast<tako::U8>(PingPong(a, 255));
+	auto drawer = g_drawer;
+
+	drawer->Begin();
 	drawer->Clear();
 
 	drawer->DrawImage(-200, -200, 48 * 2, 64 * 2, tileset.handle);
@@ -122,4 +125,13 @@ void tako::Draw(tako::PixelArtDrawer* drawer)
 
 	auto cursorPos = mousePos + drawer->GetCameraPosition() - drawer->GetCameraViewSize() / 2;
 	drawer->DrawRectangle(cursorPos.x, cursorPos.y, 16, 16, {128, 128, 128, 255});
+	drawer->End();
+}
+
+void tako::InitTakoConfig(GameConfig& config)
+{
+	config.Setup = Setup;
+	config.Update = Update;
+	config.Draw = Draw;
+	config.gameDataSize = 0;
 }

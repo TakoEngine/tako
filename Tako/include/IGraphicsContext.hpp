@@ -10,22 +10,22 @@
 
 namespace tako
 {
-
-	struct Vertex
+	enum class PipelineVectorAttribute
 	{
-		Vector3 pos;
-		Vector3 normal;
-		Vector3 color;
-		Vector2 uv;
+		Vec2,
+		Vec3
+	};
 
-		constexpr bool operator==(const Vertex& other) const
-		{
-			return
-				pos == other.pos &&
-				normal == other.normal &&
-				color == other.color &&
-				uv == other.uv;
-		}
+	struct PipelineDescriptor
+	{
+		U8* vertCode;
+		size_t vertSize;
+		U8* fragCode;
+		size_t fragSize;
+		PipelineVectorAttribute* vertexAttributes;
+		size_t vertexAttributeSize;
+		size_t* pushConstants;
+		size_t pushConstantsSize;
 	};
 
 	class IGraphicsContext : public IEventHandler
@@ -42,11 +42,11 @@ namespace tako
 		virtual void BindVertexBuffer(const Buffer* buffer) = 0;
 		virtual void BindIndexBuffer(const Buffer* buffer) = 0;
 		virtual void BindMaterial(const Material* material) = 0;
-		virtual void UpdateUniform(const Matrix4& matrix) = 0;
+		virtual void UpdateUniform(const void* uniformData, size_t uniformSize) = 0;
 
 		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) = 0;
 
-		virtual Pipeline CreatePipeline(U8* vertCode, size_t vertSize, U8* fragCode, size_t fragSize) = 0;
+		virtual Pipeline CreatePipeline(const PipelineDescriptor& pipelineDescriptor) = 0;
 		virtual Material CreateMaterial(const Texture* texture) = 0;
 		virtual Texture CreateTexture(const Bitmap& bitmap) = 0;
 		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) = 0;

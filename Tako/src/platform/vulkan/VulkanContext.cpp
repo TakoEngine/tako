@@ -21,37 +21,55 @@ static std::array<const char*, 1> vkWinValidationLayers = { "VK_LAYER_KHRONOS_va
 
 namespace tako
 {
-	static constexpr VkVertexInputBindingDescription GetVertexBindingDescription() {
+	
+
+	VkFormat PipelineAttributeToVkFormat(PipelineVectorAttribute att)
+	{
+		switch (att)
+		{
+		case PipelineVectorAttribute::Vec2: return VK_FORMAT_R32G32_SFLOAT;
+		case PipelineVectorAttribute::Vec3: return VK_FORMAT_R32G32B32_SFLOAT;
+		}
+		ASSERT(false);
+	}
+
+	size_t PipelineAttributeToSize(PipelineVectorAttribute att)
+	{
+		switch (att)
+		{
+		case PipelineVectorAttribute::Vec2: return sizeof(Vector2);
+		case PipelineVectorAttribute::Vec3: return sizeof(Vector3);
+		}
+		ASSERT(false);
+	}
+
+	static VkVertexInputBindingDescription GetVertexBindingDescription(const PipelineDescriptor& pipelineDescriptor) {
+		uint32_t stride = 0;
+		for (int i = 0; i < pipelineDescriptor.vertexAttributeSize; i++)
+		{
+			stride += PipelineAttributeToSize(pipelineDescriptor.vertexAttributes[i]);
+		}
 		VkVertexInputBindingDescription bindingDescription = {};
 		bindingDescription.binding = 0;
-		bindingDescription.stride = sizeof(Vertex);
+		bindingDescription.stride = stride;
 		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 		return bindingDescription;
 	}
 
-	static std::array<VkVertexInputAttributeDescription, 4> GetVertexAttributeDescriptions() {
-		std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions = {};
+	static std::vector<VkVertexInputAttributeDescription> GetVertexAttributeDescriptions(const PipelineDescriptor& pipelineDescriptor) {
+		std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
+		attributeDescriptions.resize(pipelineDescriptor.vertexAttributeSize);
 
-		attributeDescriptions[0].binding = 0;
-		attributeDescriptions[0].location = 0;
-		attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-		attributeDescriptions[0].offset = offsetof(Vertex, pos);
-
-		attributeDescriptions[1].binding = 0;
-		attributeDescriptions[1].location = 1;
-		attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-		attributeDescriptions[1].offset = offsetof(Vertex, normal);
-
-		attributeDescriptions[2].binding = 0;
-		attributeDescriptions[2].location = 2;
-		attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
-		attributeDescriptions[2].offset = offsetof(Vertex, color);
-
-		attributeDescriptions[3].binding = 0;
-		attributeDescriptions[3].location = 3;
-		attributeDescriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
-		attributeDescriptions[3].offset = offsetof(Vertex, uv);
+		size_t offset = 0;
+		for (int i = 0; i < pipelineDescriptor.vertexAttributeSize; i++)
+		{
+			attributeDescriptions[i].binding = 0;
+			attributeDescriptions[i].location = i;
+			attributeDescriptions[i].format = PipelineAttributeToVkFormat(pipelineDescriptor.vertexAttributes[i]);
+			attributeDescriptions[i].offset = offset;
+			offset += PipelineAttributeToSize(pipelineDescriptor.vertexAttributes[i]);
+		}
 
 		return attributeDescriptions;
 	}
@@ -635,12 +653,10 @@ namespace tako
 		}
 	}
 
-	Pipeline VulkanContext::CreatePipeline(U8* vertCode, size_t vertSize, U8* fragCode, size_t fragSize)
+	Pipeline VulkanContext::CreatePipeline(const PipelineDescriptor& pipelineDescriptor)
 	{
-		const char* vertPath = "/shader.vert.spv";
-		const char* fragPath = "/shader.frag.spv";
-		VkShaderModule vertShaderModule = CreateShaderModule(vertCode, vertSize);
-		VkShaderModule fragShaderModule = CreateShaderModule(fragCode, fragSize);
+		VkShaderModule vertShaderModule = CreateShaderModule(pipelineDescriptor.vertCode, pipelineDescriptor.vertSize);
+		VkShaderModule fragShaderModule = CreateShaderModule(pipelineDescriptor.fragCode, pipelineDescriptor.fragSize);
 
 		VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
 		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -656,8 +672,8 @@ namespace tako
 
 		VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
 
-		auto bindingDescription = GetVertexBindingDescription();
-		auto attributeDescriptions = GetVertexAttributeDescriptions();
+		auto bindingDescription = GetVertexBindingDescription(pipelineDescriptor);
+		auto attributeDescriptions = GetVertexAttributeDescriptions(pipelineDescriptor);
 
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -696,8 +712,8 @@ namespace tako
 		rasterizer.rasterizerDiscardEnable = VK_FALSE;
 		rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 		rasterizer.lineWidth = 1.0f;
-		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-		rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+		rasterizer.cullMode = VK_CULL_MODE_NONE;
+		rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 		rasterizer.depthBiasEnable = VK_FALSE;
 		rasterizer.depthBiasConstantFactor = 0.0f;
 		rasterizer.depthBiasClamp = 0.0f;
@@ -711,6 +727,15 @@ namespace tako
 		VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
 		colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 		colorBlendAttachment.blendEnable = VK_FALSE;
+		/*
+		colorBlendAttachment.blendEnable = VK_TRUE;
+		colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+		colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+		colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+		colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+		*/
 
 		VkPipelineColorBlendStateCreateInfo colorBlending = {};
 		colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -729,18 +754,26 @@ namespace tako
 		depthStencilState.maxDepthBounds = 1.0f;
 		depthStencilState.stencilTestEnable = VK_FALSE;
 
-		VkPushConstantRange pushConstant;
-		pushConstant.offset = 0;
-		pushConstant.size = sizeof(MeshPushConstants);
-		pushConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+		std::vector<VkPushConstantRange> pushConstants;
+		pushConstants.resize(pipelineDescriptor.pushConstantsSize);
+		{
+			auto offset = 0;
+			for (int i = 0; i < pipelineDescriptor.pushConstantsSize; i++)
+			{
+				pushConstants[i].offset = offset;
+				pushConstants[i].size = pipelineDescriptor.pushConstants[i];
+				pushConstants[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+				offset += pipelineDescriptor.pushConstants[i];
+			}
+		}
 
 		VkDescriptorSetLayout layouts[] = { m_descriptorSetLayoutUniform, m_descriptorSetLayoutSampler };
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipelineLayoutInfo.setLayoutCount = 2;
 		pipelineLayoutInfo.pSetLayouts = &layouts[0];
-		pipelineLayoutInfo.pPushConstantRanges = &pushConstant;
-		pipelineLayoutInfo.pushConstantRangeCount = 1;
+		pipelineLayoutInfo.pPushConstantRanges = pushConstants.data();
+		pipelineLayoutInfo.pushConstantRangeCount = pushConstants.size();
 
 		auto result = vkCreatePipelineLayout(m_vkDevice, &pipelineLayoutInfo, nullptr, &m_pipelineLayout);
 		ASSERT(result == VK_SUCCESS);
@@ -960,9 +993,11 @@ namespace tako
 	{
 		auto commandBuffer = GetActiveCommandBuffer();
 
+		
 		MeshPushConstants constants;
 		constants.renderMatrix = renderMatrix;
 		vkCmdPushConstants(commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
+		
 
 		vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
 	}
@@ -972,16 +1007,18 @@ namespace tako
 		return m_commandBuffers[m_acticeImageIndex];
 	}
 
-	void VulkanContext::UpdateUniform(const Matrix4& matrix)
+	void VulkanContext::UpdateUniform(const void* uniformData, size_t uniformSize)
 	{
+		/*
 		UniformBufferObject ubo = {};
 		ubo.view = matrix;
 		ubo.proj = Matrix4::perspective(45, m_swapChainExtent.width / (float)m_swapChainExtent.height, 1, 1000);
+		*/
 
 		void* data;
-		auto result = vkMapMemory(m_vkDevice, m_uniformBuffersMemory[m_acticeImageIndex], 0, sizeof(ubo), 0, &data);
+		auto result = vkMapMemory(m_vkDevice, m_uniformBuffersMemory[m_acticeImageIndex], 0, uniformSize, 0, &data);
 		ASSERT(result == VK_SUCCESS);
-		memcpy(data, &ubo, sizeof(ubo));
+		memcpy(data, uniformData, uniformSize);
 		vkUnmapMemory(m_vkDevice, m_uniformBuffersMemory[m_acticeImageIndex]);
 	}
 

@@ -42,10 +42,10 @@ namespace tako
 		virtual void BindVertexBuffer(const Buffer* buffer) override;
 		virtual void BindIndexBuffer(const Buffer* buffer) override;
 		virtual void BindMaterial(const Material* material) override;
-		virtual void UpdateUniform(const Matrix4& matrix) override;
+		virtual void UpdateUniform(const void* uniformData, size_t uniformSize) override;
 		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) override;
 
-		virtual Pipeline CreatePipeline(U8* vertCode, size_t vertSize, U8* fragCode, size_t fragSize) override;
+		virtual Pipeline CreatePipeline(const PipelineDescriptor& pipelineDescriptor) override;
 		virtual Texture CreateTexture(const Bitmap& bitmap) override;
 		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) override;
 		virtual Material CreateMaterial(const Texture* texture) override;

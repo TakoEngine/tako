@@ -4,6 +4,22 @@
 
 namespace tako
 {
+	struct Vertex
+	{
+		Vector3 pos;
+		Vector3 normal;
+		Vector3 color;
+		Vector2 uv;
+
+		constexpr bool operator==(const Vertex& other) const
+		{
+			return
+				pos == other.pos &&
+				normal == other.normal &&
+				color == other.color &&
+				uv == other.uv;
+		}
+	};
 
 	struct Mesh
 	{
