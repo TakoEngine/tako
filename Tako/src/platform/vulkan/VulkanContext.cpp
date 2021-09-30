@@ -78,13 +78,6 @@ namespace tako
 		Matrix4 renderMatrix;
 	};
 
-	struct UniformBufferObject
-	{
-		Matrix4 model;
-		Matrix4 view;
-		Matrix4 proj;
-	};
-
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 		VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -486,6 +479,8 @@ namespace tako
 			ASSERT(result == VK_SUCCESS);
 		}
 
+
+		// Create Camera Buffer Layout
 		{
 			VkDescriptorSetLayoutBinding uboLayoutBinding = {};
 			uboLayoutBinding.binding = 0;
@@ -583,7 +578,7 @@ namespace tako
 		}
 
 		{
-			VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+			VkDeviceSize bufferSize = sizeof(CameraUniformData);
 
 			m_uniformBuffers.resize(m_swapChainImages.size());
 			m_uniformBuffersMemory.resize(m_swapChainImages.size());
@@ -598,7 +593,7 @@ namespace tako
 		{
 			VkDescriptorPoolSize poolSize = {};
 			poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			poolSize.descriptorCount = static_cast<uint32_t>(m_swapChainImages.size());
+			poolSize.descriptorCount = 10;//static_cast<uint32_t>(m_swapChainImages.size());
 
 			VkDescriptorPoolSize texSize = {};
 			texSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -617,6 +612,7 @@ namespace tako
 		}
 
 		CreateDescriptorSets();
+		m_currentCameraUniform = MakeCameraDescriptor({ Matrix4::identity, Matrix4::identity, Matrix4::identity });
 
 		{
 			m_commandBuffers.resize(m_swapChainFramebuffers.size());
@@ -873,6 +869,8 @@ namespace tako
 
 	void VulkanContext::Begin()
 	{
+		m_cameraUniformFreeList.insert(m_cameraUniformFreeList.end(), m_cameraUniformUsedList.begin(), m_cameraUniformUsedList.end());
+		m_cameraUniformUsedList.clear();
 		m_acticeImageIndex = 0;
 		//auto result = vkQueueWaitIdle(m_presentQueue);
 		auto result = vkWaitForFences(m_vkDevice, 1, &GetCurrentFrame().renderFence, true, 10000000000);
@@ -912,6 +910,7 @@ namespace tako
 		renderPassInfo.pClearValues = &clearValues[0];
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_currentCameraUniform.descriptor, 0, nullptr);
 	}
 
 	void VulkanContext::End()
@@ -963,7 +962,7 @@ namespace tako
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, entry.pipeline);
 
 		//TODO
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[m_acticeImageIndex], 0, nullptr);
+		//vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[m_acticeImageIndex], 0, nullptr);
 	}
 
 	void VulkanContext::BindVertexBuffer(const Buffer* buffer)
@@ -1007,32 +1006,37 @@ namespace tako
 		return m_commandBuffers[m_acticeImageIndex];
 	}
 
+	void VulkanContext::UpdateCamera(const CameraUniformData& cameraData)
+	{
+		m_cameraUniformUsedList.push_back(m_currentCameraUniform);
+		if (m_cameraUniformFreeList.size() > 0)
+		{
+			m_currentCameraUniform = m_cameraUniformFreeList.back();
+			m_cameraUniformFreeList.pop_back();
+
+			void* data;
+			auto result = vkMapMemory(m_vkDevice, m_currentCameraUniform.memory, 0, sizeof(CameraUniformData), 0, &data);
+			ASSERT(result == VK_SUCCESS);
+			memcpy(data, &cameraData, sizeof(CameraUniformData));
+			vkUnmapMemory(m_vkDevice, m_currentCameraUniform.memory);
+		}
+		else
+		{
+			LOG("a new descritpor is mde");
+			m_currentCameraUniform = MakeCameraDescriptor(cameraData);
+		}
+
+		auto commandBuffer = GetActiveCommandBuffer();
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_currentCameraUniform.descriptor, 0, nullptr);
+	}
+
 	void VulkanContext::UpdateUniform(const void* uniformData, size_t uniformSize)
 	{
-		/*
-		UniformBufferObject ubo = {};
-		ubo.view = matrix;
-		ubo.proj = Matrix4::perspective(45, m_swapChainExtent.width / (float)m_swapChainExtent.height, 1, 1000);
-		*/
-
 		void* data;
 		auto result = vkMapMemory(m_vkDevice, m_uniformBuffersMemory[m_acticeImageIndex], 0, uniformSize, 0, &data);
 		ASSERT(result == VK_SUCCESS);
 		memcpy(data, uniformData, uniformSize);
 		vkUnmapMemory(m_vkDevice, m_uniformBuffersMemory[m_acticeImageIndex]);
-	}
-
-	void VulkanContext::UpdateUniformBuffer(uint32_t currentImage)
-	{
-		UniformBufferObject ubo = {};
-		ubo.view = Matrix4::lookAt(Vector3(0, 0, 7.5f), Vector3(0, 0, 0), Vector3(0, 1, 0));
-		ubo.proj = Matrix4::perspective(45, m_swapChainExtent.width / (float)m_swapChainExtent.height, 1, 1000);
-
-		void* data;
-		auto result = vkMapMemory(m_vkDevice, m_uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
-		ASSERT(result == VK_SUCCESS);
-		memcpy(data, &ubo, sizeof(ubo));
-		vkUnmapMemory(m_vkDevice, m_uniformBuffersMemory[currentImage]);
 	}
 
 	uint32_t VulkanContext::FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties)
@@ -1114,6 +1118,46 @@ namespace tako
 		vkQueueWaitIdle(m_graphicsQueue);
 
 		vkFreeCommandBuffers(m_vkDevice, m_commandPool, 1, &commandBuffer);
+	}
+
+	CameraUniformDescriptor VulkanContext::MakeCameraDescriptor(const CameraUniformData& cameraData)
+	{
+		CameraUniformDescriptor camUniform;
+
+		CreateVulkanBuffer(m_physicalDevice, sizeof(CameraUniformData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, camUniform.buffer, camUniform.memory);
+
+		VkDescriptorSetAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.descriptorPool = m_descriptorPool;
+		allocInfo.descriptorSetCount = 1;
+		allocInfo.pSetLayouts = &m_descriptorSetLayoutUniform;
+
+		auto result = vkAllocateDescriptorSets(m_vkDevice, &allocInfo, &camUniform.descriptor);
+		ASSERT(result == VK_SUCCESS);
+
+		VkDescriptorBufferInfo bufferInfo = {};
+		bufferInfo.buffer = camUniform.buffer;
+		bufferInfo.offset = 0;
+		bufferInfo.range = VK_WHOLE_SIZE;
+
+		VkWriteDescriptorSet descriptorWrite = {};
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = camUniform.descriptor;
+		descriptorWrite.dstBinding = 0;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrite.descriptorCount = 1;
+		descriptorWrite.pBufferInfo = &bufferInfo;
+
+		vkUpdateDescriptorSets(m_vkDevice, 1, &descriptorWrite, 0, nullptr);
+
+		void* data;
+		result = vkMapMemory(m_vkDevice, camUniform.memory, 0, sizeof(CameraUniformData), 0, &data);
+		ASSERT(result == VK_SUCCESS);
+		memcpy(data, &cameraData, sizeof(CameraUniformData));
+		vkUnmapMemory(m_vkDevice, camUniform.memory);
+
+		return camUniform;
 	}
 
 	void VulkanContext::CreateDescriptorSets()

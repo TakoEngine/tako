@@ -27,6 +27,13 @@ namespace tako
 		VkPipeline pipeline;
 	};
 
+	struct CameraUniformDescriptor
+	{
+		VkBuffer buffer;
+		VkDeviceMemory memory;
+		VkDescriptorSet descriptor;
+	};
+
 	class VulkanContext final : public IGraphicsContext
 	{
 	public:
@@ -42,6 +49,7 @@ namespace tako
 		virtual void BindVertexBuffer(const Buffer* buffer) override;
 		virtual void BindIndexBuffer(const Buffer* buffer) override;
 		virtual void BindMaterial(const Material* material) override;
+		virtual void UpdateCamera(const CameraUniformData& cameraData) override;
 		virtual void UpdateUniform(const void* uniformData, size_t uniformSize) override;
 		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) override;
 
@@ -51,7 +59,6 @@ namespace tako
 		virtual Material CreateMaterial(const Texture* texture) override;
 
 		VkShaderModule CreateShaderModule(U8* codeData, size_t codeSize);
-		void UpdateUniformBuffer(uint32_t currentImage);
 		uint32_t FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
 		void CreateVulkanBuffer(VkPhysicalDevice physicalDevice, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 		void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
@@ -66,6 +73,7 @@ namespace tako
 		};
 
 		FrameProgress& GetCurrentFrame();
+		CameraUniformDescriptor MakeCameraDescriptor(const CameraUniformData& cameraData);
 
 		VkExtent2D m_swapChainExtent;
 		VkInstance vkInstance;
@@ -90,10 +98,15 @@ namespace tako
 		VkSampler m_pixelSampler;
 		VkSampler m_linearSampler;
 		std::vector<FrameProgress> m_frameProgresses;
+		//remove when done with cameraUniform
 		std::vector<VkBuffer> m_uniformBuffers;
 		std::vector<VkDeviceMemory> m_uniformBuffersMemory;
-		VkDescriptorPool m_descriptorPool;
 		std::vector<VkDescriptorSet> m_descriptorSets;
+
+		VkDescriptorPool m_descriptorPool;
+		CameraUniformDescriptor m_currentCameraUniform;
+		std::vector<CameraUniformDescriptor> m_cameraUniformFreeList;
+		std::vector<CameraUniformDescriptor> m_cameraUniformUsedList;
 		VkPhysicalDevice m_physicalDevice;
 		std::unordered_map<U64, BufferMapEntry> m_bufferMap;
 		std::unordered_map<U64, TextureMapEntry> m_textureMap;

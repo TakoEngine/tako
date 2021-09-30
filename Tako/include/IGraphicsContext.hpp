@@ -28,6 +28,13 @@ namespace tako
 		size_t pushConstantsSize;
 	};
 
+	struct CameraUniformData
+	{
+		Matrix4 view;
+		Matrix4 proj;
+		Matrix4 viewProj;
+	};
+
 	class IGraphicsContext : public IEventHandler
 	{
 	public:
@@ -42,6 +49,8 @@ namespace tako
 		virtual void BindVertexBuffer(const Buffer* buffer) = 0;
 		virtual void BindIndexBuffer(const Buffer* buffer) = 0;
 		virtual void BindMaterial(const Material* material) = 0;
+
+		virtual void UpdateCamera(const CameraUniformData& cameraData) = 0;
 		virtual void UpdateUniform(const void* uniformData, size_t uniformSize) = 0;
 
 		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) = 0;

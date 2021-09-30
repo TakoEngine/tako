@@ -119,10 +119,11 @@ namespace tako
 
 	void Renderer3D::SetCameraView(const Matrix4& view)
 	{
-		UniformBufferObject ubo;
-		ubo.view = view;
-		ubo.proj = Matrix4::perspective(45, 1024 / (float)768, 1, 1000);
-		m_context->UpdateUniform(&ubo, sizeof(ubo));
+		CameraUniformData cam;
+		cam.view = view;
+		cam.proj = Matrix4::perspective(45, 1024 / (float)768, 1, 1000);
+		cam.viewProj = cam.proj * cam.view;
+		m_context->UpdateCamera(cam);
 	}
 
 	Model Renderer3D::LoadModel(const char* file)
