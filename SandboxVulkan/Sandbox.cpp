@@ -1,6 +1,22 @@
 #include "Tako.hpp"
 #include "Renderer3D.hpp"
 
+float PingPong(float val, float max)
+{
+	if (val > 2 * max)
+	{
+		return PingPong(val - 2 * max, max);
+	}
+	else if (val > max)
+	{
+		return 2 * max - val;
+	}
+	else
+	{
+		return val;
+	}
+}
+
 class SandBoxGame
 {
 public:
@@ -34,29 +50,33 @@ public:
 		tako::Vector3 movAxis;
 		if (input->GetKey(tako::Key::W))
 		{
-			movAxis.z -= dt;
+			movAxis.z += dt;
 		}
 		if (input->GetKey(tako::Key::S))
 		{
-			movAxis.z += dt;
+			movAxis.z -= dt;
 		}
 		if (input->GetKey(tako::Key::A))
 		{
-			movAxis.x += dt;
+			movAxis.x -= dt;
 		}
 		if (input->GetKey(tako::Key::D))
 		{
-			movAxis.x -= dt;
+			movAxis.x += dt;
 		}
 
 		trans += rotation * movAxis;
+		static float passed = 0;
+		passed += dt;
+		lightPos.x = PingPong(passed, 20) - 10;
 	}
 
 	void Draw()
 	{
 		renderer->Begin();
+		renderer->SetLightPosition(lightPos);
 		renderer->SetCameraView(tako::Matrix4::cameraViewMatrix(trans, rotation));
-		auto transform = tako::Matrix4::scale(zoom, zoom, zoom) * tako::Quaternion::Rotation(180, { 0,0,1 }).ToRotationMatrix();
+		auto transform = tako::Matrix4::scale(zoom, zoom, zoom);
 		//renderer->DrawMesh(golf, texture, );
 
 		renderer->DrawModel(model, transform);
@@ -71,8 +91,9 @@ private:
 	float rotX = 0;
 	float rotZ = 0;
 	float zoom = 1;
-	tako::Vector3 trans = {0, 2, 0};
-	tako::Quaternion rotation = tako::Quaternion::Rotation(180, { 0,1,0 });
+	tako::Vector3 trans = {0, -2, 0};
+	tako::Vector3 lightPos = { 0, 10, -3 };
+	tako::Quaternion rotation;
 	tako::Model model;
 };
 

@@ -56,6 +56,7 @@ namespace tako
 		Mesh CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices);
 
 		void SetCameraView(const Matrix4& view);
+		void SetLightPosition(Vector3 lightPos);
 
 		Model LoadModel(const char* file);
 		Mesh LoadMesh(const char* file);

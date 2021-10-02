@@ -8,6 +8,11 @@ layout(set = 0, binding = 0) uniform UniformBufferObject
 	mat4 viewProj;
 } ubo;
 
+layout(set = 1, binding = 0) uniform LightSettings
+{
+	vec3 lightPos;
+} lightUBO;
+
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec3 inColor;
@@ -39,7 +44,7 @@ void main() {
 	vec3 vertexPosCamera = (ubo.view * PushConstants.model * vec4(inPosition,1)).xyz;
 	eyeDirection = vec3(0,0,0) - vertexPosCamera;
 
-	vec3 lightPosCamera = (ubo.view * vec4(-2, -10, 0, 1)).xyz;
+	vec3 lightPosCamera = (ubo.view * vec4(lightUBO.lightPos, 1)).xyz;
 	lightDirection = lightPosCamera + eyeDirection;
 
 	normalCamera = ( ubo.view * PushConstants.model * vec4(inNormal, 0)).xyz;

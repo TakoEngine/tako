@@ -1,6 +1,11 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
+layout(set = 1, binding = 0) uniform LightSettings
+{
+	vec3 lightPos;
+} lightUBO;
+
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec2 texCoord;
 layout(location = 2) in vec3 positionWorld;
@@ -10,11 +15,11 @@ layout(location = 5) in vec3 lightDirection;
 
 layout(location = 0) out vec4 outColor;
 
-layout(set = 1, binding = 0) uniform sampler2D tex;
+layout(set = 2, binding = 0) uniform sampler2D tex;
 
 void main() {
     vec3 texColor = texture(tex, texCoord).xyz;
-    float dist = length(vec3(-2, -10, 0) - positionWorld);
+    float dist = length(lightUBO.lightPos - positionWorld);
     vec3 n = normalize(normalCamera);
     vec3 l = normalize(lightDirection);
     float cosTheta = clamp( dot(n,l), 0, 1);

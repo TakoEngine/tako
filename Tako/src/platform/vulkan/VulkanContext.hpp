@@ -25,6 +25,12 @@ namespace tako
 	struct PipelineMapEntry
 	{
 		VkPipeline pipeline;
+		VkPipelineLayout layout;
+		//Pipeline uniform
+		bool uniformUsed;
+		VkBuffer buffer;
+		VkDeviceMemory memory;
+		VkDescriptorSet descriptor;
 	};
 
 	struct CameraUniformDescriptor
@@ -87,9 +93,9 @@ namespace tako
 		std::vector<VkImageView> m_swapChainImageViews;
 		std::vector<VkFramebuffer> m_swapChainFramebuffers;
 		VkRenderPass m_renderPass;
+		PipelineMapEntry* m_currentPipeline = nullptr;
 		VkDescriptorSetLayout m_descriptorSetLayoutUniform;
 		VkDescriptorSetLayout m_descriptorSetLayoutSampler;
-		VkPipelineLayout m_pipelineLayout;
 		//VkPipeline m_graphicsPipeline;
 		VkCommandPool m_commandPool;
 		std::vector<VkCommandBuffer> m_commandBuffers;

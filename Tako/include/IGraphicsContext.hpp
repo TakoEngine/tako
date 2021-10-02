@@ -22,10 +22,15 @@ namespace tako
 		size_t vertSize;
 		U8* fragCode;
 		size_t fragSize;
+
 		PipelineVectorAttribute* vertexAttributes;
 		size_t vertexAttributeSize;
+
+		size_t pipelineUniformSize;
+
 		size_t* pushConstants;
 		size_t pushConstantsSize;
+
 	};
 
 	struct CameraUniformData

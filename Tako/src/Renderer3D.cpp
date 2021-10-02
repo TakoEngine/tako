@@ -39,6 +39,11 @@ namespace tako
 		Matrix4 proj;
 	};
 
+	struct LightSettings
+	{
+		Vector3 lightPos;
+	};
+
 	std::vector<U8> LoadShaderCode(const char* codePath)
 	{
 		size_t fileSize = FileSystem::GetFileSize(codePath);
@@ -68,6 +73,9 @@ namespace tako
 		pipelineDescriptor.fragSize = fragCode.size();
 		pipelineDescriptor.vertexAttributes = vertexAttributes.data();
 		pipelineDescriptor.vertexAttributeSize = vertexAttributes.size();
+
+		pipelineDescriptor.pipelineUniformSize = sizeof(LightSettings);
+
 		pipelineDescriptor.pushConstants = &pushConstant;
 		pipelineDescriptor.pushConstantsSize = 1;
 
@@ -124,6 +132,11 @@ namespace tako
 		cam.proj = Matrix4::perspective(45, 1024 / (float)768, 1, 1000);
 		cam.viewProj = cam.proj * cam.view;
 		m_context->UpdateCamera(cam);
+	}
+
+	void Renderer3D::SetLightPosition(Vector3 lightPos)
+	{
+		m_context->UpdateUniform(&lightPos, sizeof(Vector3));
 	}
 
 	Model Renderer3D::LoadModel(const char* file)

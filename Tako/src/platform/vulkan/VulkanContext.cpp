@@ -486,7 +486,7 @@ namespace tako
 			uboLayoutBinding.binding = 0;
 			uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 			uboLayoutBinding.descriptorCount = 1;
-			uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+			uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
 			VkDescriptorSetLayoutCreateInfo layoutInfo = {};
 			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -651,6 +651,7 @@ namespace tako
 
 	Pipeline VulkanContext::CreatePipeline(const PipelineDescriptor& pipelineDescriptor)
 	{
+		PipelineMapEntry entry;
 		VkShaderModule vertShaderModule = CreateShaderModule(pipelineDescriptor.vertCode, pipelineDescriptor.vertSize);
 		VkShaderModule fragShaderModule = CreateShaderModule(pipelineDescriptor.fragCode, pipelineDescriptor.fragSize);
 
@@ -763,15 +764,24 @@ namespace tako
 			}
 		}
 
-		VkDescriptorSetLayout layouts[] = { m_descriptorSetLayoutUniform, m_descriptorSetLayoutSampler };
+		entry.uniformUsed = pipelineDescriptor.pipelineUniformSize > 0;
+
+		SmallVec<VkDescriptorSetLayout, 4> layouts;
+		layouts.Push(m_descriptorSetLayoutUniform);
+		if (entry.uniformUsed)
+		{
+			layouts.Push(m_descriptorSetLayoutUniform);
+		}
+
+		layouts.Push(m_descriptorSetLayoutSampler);
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount = 2;
-		pipelineLayoutInfo.pSetLayouts = &layouts[0];
+		pipelineLayoutInfo.setLayoutCount = layouts.GetLength();
+		pipelineLayoutInfo.pSetLayouts = layouts.GetData();
 		pipelineLayoutInfo.pPushConstantRanges = pushConstants.data();
 		pipelineLayoutInfo.pushConstantRangeCount = pushConstants.size();
 
-		auto result = vkCreatePipelineLayout(m_vkDevice, &pipelineLayoutInfo, nullptr, &m_pipelineLayout);
+		auto result = vkCreatePipelineLayout(m_vkDevice, &pipelineLayoutInfo, nullptr, &entry.layout);
 		ASSERT(result == VK_SUCCESS);
 
 		VkGraphicsPipelineCreateInfo pipelineInfo = {};
@@ -783,21 +793,50 @@ namespace tako
 		pipelineInfo.pViewportState = &viewportState;
 		pipelineInfo.pRasterizationState = &rasterizer;
 		pipelineInfo.pMultisampleState = &multisampling;
-		pipelineInfo.layout = m_pipelineLayout;
+		pipelineInfo.layout = entry.layout;
 		pipelineInfo.pColorBlendState = &colorBlending;
 		pipelineInfo.pDepthStencilState = &depthStencilState;
 		pipelineInfo.renderPass = m_renderPass;
 		pipelineInfo.subpass = 0;
 
-		VkPipeline pipeline;
-		result = vkCreateGraphicsPipelines(m_vkDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline);
+		result = vkCreateGraphicsPipelines(m_vkDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &entry.pipeline);
 		ASSERT(result == VK_SUCCESS);
 
 		vkDestroyShaderModule(m_vkDevice, vertShaderModule, nullptr);
 		vkDestroyShaderModule(m_vkDevice, fragShaderModule, nullptr);
 
+		if (pipelineDescriptor.pipelineUniformSize > 0)
+		{
+			CreateVulkanBuffer(m_physicalDevice, sizeof(pipelineDescriptor.pipelineUniformSize), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, entry.buffer, entry.memory);
+
+			VkDescriptorSetAllocateInfo allocInfo = {};
+			allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+			allocInfo.descriptorPool = m_descriptorPool;
+			allocInfo.descriptorSetCount = 1;
+			allocInfo.pSetLayouts = &m_descriptorSetLayoutUniform;
+
+			result = vkAllocateDescriptorSets(m_vkDevice, &allocInfo, &entry.descriptor);
+			ASSERT(result == VK_SUCCESS);
+
+			VkDescriptorBufferInfo bufferInfo = {};
+			bufferInfo.buffer = entry.buffer;
+			bufferInfo.offset = 0;
+			bufferInfo.range = VK_WHOLE_SIZE;
+
+			VkWriteDescriptorSet descriptorWrite = {};
+			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrite.dstSet = entry.descriptor;
+			descriptorWrite.dstBinding = 0;
+			descriptorWrite.dstArrayElement = 0;
+			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptorWrite.descriptorCount = 1;
+			descriptorWrite.pBufferInfo = &bufferInfo;
+
+			vkUpdateDescriptorSets(m_vkDevice, 1, &descriptorWrite, 0, nullptr);
+		}
+
 		static U64 curIndex = 0;
-		m_pipelineMap[curIndex] = { pipeline };
+		m_pipelineMap[curIndex] = entry;
 		curIndex++;
 		return { curIndex - 1 };
 	}
@@ -836,7 +875,7 @@ namespace tako
 		}
 
 		//vkDestroyPipeline(m_vkDevice, m_graphicsPipeline, nullptr);
-		vkDestroyPipelineLayout(m_vkDevice, m_pipelineLayout, nullptr);
+		//vkDestroyPipelineLayout(m_vkDevice, m_pipelineLayout, nullptr);
 		vkDestroyRenderPass(m_vkDevice, m_renderPass, nullptr);
 		for (auto imageView : m_swapChainImageViews)
 		{
@@ -910,7 +949,7 @@ namespace tako
 		renderPassInfo.pClearValues = &clearValues[0];
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_currentCameraUniform.descriptor, 0, nullptr);
+		//vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_currentCameraUniform.descriptor, 0, nullptr);
 	}
 
 	void VulkanContext::End()
@@ -958,10 +997,16 @@ namespace tako
 	void VulkanContext::BindPipeline(const Pipeline* pipeline)
 	{
 		auto commandBuffer = GetActiveCommandBuffer();
-		auto entry = m_pipelineMap[pipeline->value];
+		auto& entry = m_pipelineMap[pipeline->value];
+		m_currentPipeline = &entry;
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, entry.pipeline);
 
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, entry.layout, 0, 1, &m_currentCameraUniform.descriptor, 0, nullptr);
 		//TODO
+		if (entry.uniformUsed)
+		{
+			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, entry.layout, 1, 1, &entry.descriptor, 0, nullptr);
+		}
 		//vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[m_acticeImageIndex], 0, nullptr);
 	}
 
@@ -985,7 +1030,7 @@ namespace tako
 	{
 		auto commandBuffer = GetActiveCommandBuffer();
 		const auto& entry = m_materialMap[material->value];
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 1, 1, &entry.descriptorSet, 0, nullptr);
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_currentPipeline->layout, 1 + m_currentPipeline->uniformUsed, 1, &entry.descriptorSet, 0, nullptr);
 	}
 
 	void VulkanContext::DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix)
@@ -995,7 +1040,7 @@ namespace tako
 		
 		MeshPushConstants constants;
 		constants.renderMatrix = renderMatrix;
-		vkCmdPushConstants(commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
+		vkCmdPushConstants(commandBuffer, m_currentPipeline->layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
 		
 
 		vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
@@ -1022,21 +1067,24 @@ namespace tako
 		}
 		else
 		{
-			LOG("a new descritpor is mde");
 			m_currentCameraUniform = MakeCameraDescriptor(cameraData);
 		}
 
 		auto commandBuffer = GetActiveCommandBuffer();
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_currentCameraUniform.descriptor, 0, nullptr);
+		if (&m_currentPipeline)
+		{
+			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_currentPipeline->layout, 0, 1, &m_currentCameraUniform.descriptor, 0, nullptr);
+		}
 	}
 
 	void VulkanContext::UpdateUniform(const void* uniformData, size_t uniformSize)
 	{
+		ASSERT(m_currentPipeline);
 		void* data;
-		auto result = vkMapMemory(m_vkDevice, m_uniformBuffersMemory[m_acticeImageIndex], 0, uniformSize, 0, &data);
+		auto result = vkMapMemory(m_vkDevice, m_currentPipeline->memory, 0, uniformSize, 0, &data);
 		ASSERT(result == VK_SUCCESS);
 		memcpy(data, uniformData, uniformSize);
-		vkUnmapMemory(m_vkDevice, m_uniformBuffersMemory[m_acticeImageIndex]);
+		vkUnmapMemory(m_vkDevice, m_currentPipeline->memory);
 	}
 
 	uint32_t VulkanContext::FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties)
