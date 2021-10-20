@@ -857,6 +857,8 @@ namespace tako
 
 	VulkanContext::~VulkanContext() noexcept
 	{
+		ASSERT(vkQueueWaitIdle(m_graphicsQueue) == VK_SUCCESS);
+		ASSERT(vkQueueWaitIdle(m_presentQueue) == VK_SUCCESS);
 		ASSERT(vkDeviceWaitIdle(m_vkDevice) == VK_SUCCESS); //TODO: wait somewhere else
 
 		for (int i = 0; i < m_frameProgresses.size(); i++)
@@ -868,7 +870,7 @@ namespace tako
 		vkDestroyImageView(m_vkDevice, m_depthImageView, nullptr);
 		vkDestroyImage(m_vkDevice, m_depthImage, nullptr);
 		vkFreeMemory(m_vkDevice, m_depthImageMemory, nullptr);
-		vkDestroyCommandPool(m_vkDevice, m_commandPool, nullptr);
+		//vkDestroyCommandPool(m_vkDevice, m_commandPool, nullptr);
 		for (auto framebuffer : m_swapChainFramebuffers)
 		{
 			vkDestroyFramebuffer(m_vkDevice, framebuffer, nullptr);
@@ -881,8 +883,13 @@ namespace tako
 		{
 			vkDestroyImageView(m_vkDevice, imageView, nullptr);
 		}
+		for (auto image : m_swapChainImages)
+		{
+			vkDestroyImage(m_vkDevice, image, nullptr);
+		}
 		vkDestroySwapchainKHR(m_vkDevice, m_swapChain, nullptr);
 		vkDestroyDescriptorSetLayout(m_vkDevice, m_descriptorSetLayoutUniform, nullptr);
+		vkDestroyDescriptorSetLayout(m_vkDevice, m_descriptorSetLayoutSampler, nullptr);
 		for (size_t i = 0; i < m_uniformBuffers.size(); i++)
 		{
 			vkDestroyBuffer(m_vkDevice, m_uniformBuffers[i], nullptr);
@@ -893,6 +900,47 @@ namespace tako
 			vkDestroyBuffer(m_vkDevice, buffer.buffer, nullptr);
 			vkFreeMemory(m_vkDevice, buffer.bufferMemory, nullptr);
 		}
+
+		for (auto uniformDescriptor : m_cameraUniformFreeList)
+		{
+			//TODO: descriptor set?
+			vkDestroyBuffer(m_vkDevice, uniformDescriptor.buffer, nullptr);
+			vkFreeMemory(m_vkDevice, uniformDescriptor.memory, nullptr);
+		}
+		for (auto uniformDescriptor : m_cameraUniformUsedList)
+		{
+			//TODO: descriptor set?
+			vkDestroyBuffer(m_vkDevice, uniformDescriptor.buffer, nullptr);
+			vkFreeMemory(m_vkDevice, uniformDescriptor.memory, nullptr);
+		}
+
+		for (auto [_, texture] : m_textureMap)
+		{
+			vkDestroyImageView(m_vkDevice, texture.imageView, nullptr);
+			vkDestroyImage(m_vkDevice, texture.image, nullptr);
+			vkFreeMemory(m_vkDevice, texture.imageMemory, nullptr);
+		}
+
+		for (auto [_, material] : m_materialMap)
+		{
+			//TODO:
+		}
+
+		for (auto [_, pipeline] : m_pipelineMap)
+		{
+			vkDestroyPipelineLayout(m_vkDevice, pipeline.layout, nullptr);
+			//TODO: descriptor set?
+			vkDestroyBuffer(m_vkDevice, pipeline.buffer, nullptr);
+			vkFreeMemory(m_vkDevice, pipeline.memory, nullptr);
+			vkDestroyPipeline(m_vkDevice, pipeline.pipeline, nullptr);
+		}
+
+
+		vkDestroySampler(m_vkDevice, m_pixelSampler, nullptr);
+		vkDestroySampler(m_vkDevice, m_linearSampler, nullptr);
+
+		vkDestroyCommandPool(m_vkDevice, m_commandPool, nullptr);
+
 		vkDestroyDescriptorPool(m_vkDevice, m_descriptorPool, nullptr);
 		vkDestroyDevice(m_vkDevice, nullptr);
 		vkDestroySurfaceKHR(vkInstance, m_surface, nullptr);
@@ -911,8 +959,9 @@ namespace tako
 		m_cameraUniformFreeList.insert(m_cameraUniformFreeList.end(), m_cameraUniformUsedList.begin(), m_cameraUniformUsedList.end());
 		m_cameraUniformUsedList.clear();
 		m_acticeImageIndex = 0;
-		//auto result = vkQueueWaitIdle(m_presentQueue);
-		auto result = vkWaitForFences(m_vkDevice, 1, &GetCurrentFrame().renderFence, true, 10000000000);
+		auto result = vkQueueWaitIdle(m_graphicsQueue);
+		result = vkQueueWaitIdle(m_presentQueue);
+		result = vkWaitForFences(m_vkDevice, 1, &GetCurrentFrame().renderFence, true, 10000000000);
 		ASSERT(result == VK_SUCCESS);
 		result = vkResetFences(m_vkDevice, 1, &GetCurrentFrame().renderFence);
 		ASSERT(result == VK_SUCCESS);
@@ -1071,7 +1120,7 @@ namespace tako
 		}
 
 		auto commandBuffer = GetActiveCommandBuffer();
-		if (&m_currentPipeline)
+		if (m_currentPipeline)
 		{
 			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_currentPipeline->layout, 0, 1, &m_currentCameraUniform.descriptor, 0, nullptr);
 		}
@@ -1081,7 +1130,7 @@ namespace tako
 	{
 		ASSERT(m_currentPipeline);
 		void* data;
-		auto result = vkMapMemory(m_vkDevice, m_currentPipeline->memory, 0, uniformSize, 0, &data);
+		auto result = vkMapMemory(m_vkDevice, m_currentPipeline->memory, 0, VK_WHOLE_SIZE, 0, &data); //TODO: figure out offset?
 		ASSERT(result == VK_SUCCESS);
 		memcpy(data, uniformData, uniformSize);
 		vkUnmapMemory(m_vkDevice, m_currentPipeline->memory);

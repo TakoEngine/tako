@@ -1,6 +1,7 @@
 #pragma once
 #include <IGraphicsContext.hpp>
 #include <vulkan/vulkan.h>
+#include <unordered_map>
 
 namespace tako
 {
@@ -85,8 +86,8 @@ namespace tako
 		VkInstance vkInstance;
 		VkDebugUtilsMessengerEXT callback;
 		VkDevice m_vkDevice;
-		VkQueue m_graphicsQueue; //TODO: maybe prefer merged graphics and present queue
-		VkQueue m_presentQueue;
+		VkQueue m_graphicsQueue;//* //TODO: maybe prefer merged graphics and present queue
+		VkQueue m_presentQueue;//*
 		VkSurfaceKHR m_surface;
 		VkSwapchainKHR m_swapChain;
 		std::vector<VkImage> m_swapChainImages;
@@ -98,7 +99,7 @@ namespace tako
 		VkDescriptorSetLayout m_descriptorSetLayoutSampler;
 		//VkPipeline m_graphicsPipeline;
 		VkCommandPool m_commandPool;
-		std::vector<VkCommandBuffer> m_commandBuffers;
+		std::vector<VkCommandBuffer> m_commandBuffers; //*
 		uint32_t m_acticeImageIndex;
 		uint32_t m_currentFrame = 0;
 		VkSampler m_pixelSampler;
@@ -107,7 +108,7 @@ namespace tako
 		//remove when done with cameraUniform
 		std::vector<VkBuffer> m_uniformBuffers;
 		std::vector<VkDeviceMemory> m_uniformBuffersMemory;
-		std::vector<VkDescriptorSet> m_descriptorSets;
+		std::vector<VkDescriptorSet> m_descriptorSets; //*
 
 		VkDescriptorPool m_descriptorPool;
 		CameraUniformDescriptor m_currentCameraUniform;

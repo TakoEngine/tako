@@ -136,7 +136,7 @@ namespace tako
 
 	void Renderer3D::SetLightPosition(Vector3 lightPos)
 	{
-		m_context->UpdateUniform(&lightPos, sizeof(Vector3));
+		m_context->UpdateUniform(&lightPos, sizeof(LightSettings));
 	}
 
 	Model Renderer3D::LoadModel(const char* file)
