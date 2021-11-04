@@ -185,6 +185,14 @@ namespace tako
 			return { v.x * factor, v.y * factor, v.z * factor };
 		}
 
+		constexpr Vector3& operator*=(const float factor)
+		{
+			x *= factor;
+			y *= factor;
+			z *= factor;
+			return *this;
+		}
+
 		constexpr Vector3& operator/=(const float factor)
 		{
 			x /= factor;
@@ -553,8 +561,9 @@ namespace tako
 			);
 		}
 
-		static Quaternion FromEuler(const Vector3& euler)
+		static Quaternion FromEuler(Vector3 euler)
 		{
+			euler *= mathf::PI / 180;
 			return
 			{
 				std::sin(euler.z/2) * std::cos(euler.y/2) * std::cos(euler.x/2) - std::cos(euler.z/2) * std::sin(euler.y/2) * std::sin(euler.x/2),
@@ -591,6 +600,68 @@ namespace tako
 				2.0f * Vector3::dot(u, point) * u
 				+ (s*s - Vector3::dot(u, u)) * point
 				+ 2.0f * s * Vector3::cross(u, point);
+		}
+
+		static Quaternion Normalize(const Quaternion& q)
+		{
+			float normal = std::sqrt(Dot(q, q));
+			return {q.x / normal, q.y / normal, q.z / normal, q.w / normal};
+		}
+
+		static constexpr float Dot(const Quaternion& q1, const Quaternion& q2)
+		{
+			return q1.x * q2.x + q1.y * q2.y + q1.z * q2.z + q1.w * q2.w;
+		}
+
+		static Quaternion RotateTowards(const Quaternion& a, const Quaternion& b, float maxDelta)
+		{
+			float dot = Dot(a, b);
+			float angle = std::acos(std::min(std::abs(dot), 1.0f)) * 2;
+
+			if (angle == 0)
+			{
+				return b;
+			}
+			return Slerp(a, b, maxDelta / angle);
+		}
+
+		static Quaternion Slerp(const Quaternion& from, const Quaternion& target, float t)
+		{
+			auto a = Normalize(from);
+			auto b = Normalize(target);
+
+			float dot = Dot(a, b);
+
+			if (dot < 0)
+			{
+				b.x *= -1;
+				b.y *= -1;
+				b.z *= -1;
+				b.w *= -1;
+				dot *= -1;
+			}
+
+			if (dot > 0.999999f)
+			{
+				//TODO: linear interpolate
+				return b;
+			}
+
+			float theta0 = std::acos(dot);
+			float theta = theta0 * t;
+			float sinTheta = std::sin(theta);
+			float sinTheta0 = std::sin(theta0);
+
+			float s0 = std::cos(theta) - dot * sinTheta / sinTheta0;
+			float s1 = sinTheta / sinTheta0;
+
+			return
+			{
+				a.x * s0 + b.x * s1,
+				a.y * s0 + b.y * s1,
+				a.z * s0 + b.z * s1,
+				a.w * s0 + b.w * s1,
+			};
 		}
 	};
 
