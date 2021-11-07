@@ -573,6 +573,19 @@ namespace tako
 			};
 		}
 
+		static Quaternion AngleAxis(float degrees, Vector3 axis)
+		{
+			Quaternion res;
+			auto radians = degrees * mathf::PI / 180;
+			auto ax = std::sin(radians * 0.5f) * axis.normalize();
+			res.x = ax.x;
+			res.y = ax.y;
+			res.z = ax.z;
+			res.w = std::cos(radians * 0.5f);
+
+			return Normalize(res);
+		}
+
 		static Quaternion Rotation(float deg, Vector3 axis)
 		{
 			axis.normalize();
