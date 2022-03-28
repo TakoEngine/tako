@@ -96,6 +96,16 @@ namespace tako
 		return t;
 	}
 
+	void OpenGLContext::Begin()
+	{
+
+	}
+
+	void OpenGLContext::End()
+	{
+
+	}
+
 	void OpenGLContext::Present()
 	{
 		//m_impl->Draw();
@@ -108,4 +118,54 @@ namespace tako
 #endif
 	}
 
+	//TODO: implement
+	void OpenGLContext::BindPipeline(const Pipeline *pipeline)
+	{
+
+	}
+
+	void OpenGLContext::BindVertexBuffer(const Buffer *buffer)
+	{
+
+	}
+
+	void OpenGLContext::BindIndexBuffer(const Buffer *buffer)
+	{
+
+	}
+
+	void OpenGLContext::BindMaterial(const Material *material)
+	{
+
+	}
+
+	void OpenGLContext::UpdateCamera(const CameraUniformData &cameraData)
+	{
+
+	}
+
+	void OpenGLContext::UpdateUniform(const void *uniformData, size_t uniformSize)
+	{
+
+	}
+
+	void OpenGLContext::DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix)
+	{
+
+	}
+
+	Pipeline OpenGLContext::CreatePipeline(const PipelineDescriptor &pipelineDescriptor)
+	{
+		return Pipeline();
+	}
+
+	Material OpenGLContext::CreateMaterial(const Texture *texture)
+	{
+		return Material();
+	}
+
+	Buffer OpenGLContext::CreateBuffer(BufferType bufferType, const void *bufferData, size_t bufferSize)
+	{
+		return Buffer();
+	}
 }

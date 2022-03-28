@@ -1,33 +1,32 @@
 #pragma once
-
-#include "PixelArtDrawer.hpp"
+#include "GraphicsContext.hpp"
 #include "OpenGLSprite.hpp"
 #include "OpenGL.hpp"
 
 namespace tako
 {
-	class OpenGLPixelArtDrawer final : public PixelArtDrawer
+	class OpenGLPixelArtDrawer
 	{
 	public:
 		OpenGLPixelArtDrawer(GraphicsContext* context);
-		~OpenGLPixelArtDrawer() override;
+		~OpenGLPixelArtDrawer();
 
-		void SetClearColor(Color c) override;
-		void SetTargetSize(int width, int height) override;
-		void AutoScale() override;
-		void SetCameraPosition(Vector2 position) override;
-		Vector2 GetCameraPosition() override;
-		Vector2 GetCameraViewSize() override;
+		void SetClearColor(Color c);
+		void SetTargetSize(int width, int height);
+		void AutoScale();
+		void SetCameraPosition(Vector2 position);
+		Vector2 GetCameraPosition();
+		Vector2 GetCameraViewSize();
 
-		void Clear() override;
-		void DrawRectangle(float x, float y, float w, float h, Color c) override;
-		void DrawImage(float x, float y, float w, float h, const TextureHandle img, Color color = {255, 255, 255, 255}) override;
-		void DrawSprite(float x, float y, float w, float h, const Sprite* sprite, Color color = {255, 255, 255, 255}) override ;
+		void Clear();
+		void DrawRectangle(float x, float y, float w, float h, Color c);
+		void DrawImage(float x, float y, float w, float h, const TextureHandle img, Color color = {255, 255, 255, 255});
+		void DrawSprite(float x, float y, float w, float h, const Sprite* sprite, Color color = {255, 255, 255, 255});
 
-		Texture CreateTexture(const Bitmap& bitmap) override;
-		Sprite* CreateSprite(const Texture texture, float x, float y, float w, float h) override;
+		Texture CreateTexture(const Bitmap& bitmap);
+		Sprite* CreateSprite(const Texture texture, float x, float y, float w, float h);
 
-		void UpdateTexture(Texture texture, const Bitmap& bitmap) override;
+		void UpdateTexture(Texture texture, const Bitmap& bitmap);
 
 		void Resize(int w, int h);
 
@@ -37,6 +36,8 @@ namespace tako
 		void SetupImagePipeline();
 		void GetDrawOffset(float& x, float& y, float& w, float& h);
 		void CalculateScale();
+
+		GraphicsContext* m_context;
 
 		Vector2 m_cameraPosition;
 		U32 m_width;

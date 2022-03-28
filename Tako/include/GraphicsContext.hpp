@@ -21,7 +21,8 @@ namespace tako
 #endif
 	};
 
-	constexpr int SingleAPI = sizeof(SupportedAPIs) / sizeof(GraphicsAPI) == 1;
+	constexpr size_t SupportedAPICount = sizeof(SupportedAPIs) / sizeof(GraphicsAPI);
+	constexpr bool SingleAPI = SupportedAPICount == 1;
 
 	template<GraphicsAPI> struct APITypeMap;
 
@@ -39,4 +40,5 @@ namespace tako
 	using GraphicsContext = std::conditional<!SingleAPI, IGraphicsContext, APITypeMap<SupportedAPIs[0]>::type>::type;
 
 	std::unique_ptr<GraphicsContext> CreateGraphicsContext(Window *window, GraphicsAPI api);
+	GraphicsAPI ResolveGraphicsAPI(GraphicsAPI api);
 }

@@ -76,7 +76,7 @@ public:
 		renderer->Begin();
 		renderer->SetLightPosition(lightPos);
 		renderer->SetCameraView(tako::Matrix4::cameraViewMatrix(trans, rotation));
-		auto transform = tako::Matrix4::scale(zoom, zoom, zoom);
+		auto transform = tako::Matrix4::ScaleMatrix(zoom, zoom, zoom);
 		//renderer->DrawMesh(golf, texture, );
 
 		renderer->DrawModel(model, transform);
@@ -120,5 +120,6 @@ void tako::InitTakoConfig(GameConfig& config)
 	config.Setup = Setup;
 	config.Update = Update;
 	config.Draw = Draw;
+	config.graphicsAPI = tako::GraphicsAPI::Vulkan;
 	config.gameDataSize = sizeof(SandBoxGame);
 }

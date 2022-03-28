@@ -5,6 +5,7 @@ namespace tako
 	enum class GraphicsAPI
 	{
 		OpenGL,
-		Vulkan
+		Vulkan,
+		Default,
 	};
 }

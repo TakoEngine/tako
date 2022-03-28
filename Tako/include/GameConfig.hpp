@@ -16,5 +16,6 @@ namespace tako
 		void (*Update)(void* gameData, Input* input, float dt);
 		void (*Draw)(void* gameData);
 		size_t gameDataSize;
+		GraphicsAPI graphicsAPI = GraphicsAPI::Default;
 	};
 }

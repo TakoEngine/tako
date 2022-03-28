@@ -209,7 +209,7 @@ namespace tako
 
 		QuadUniformObject ubo;
 		ubo.projection = Matrix4::transpose(Matrix4::ortho(0, 1024, 0, 768, -1, 1));
-		Matrix4 model = Matrix4::transpose(Matrix4::translation(x, y, 0)) * Matrix4::scale(w, h, 1);
+		Matrix4 model = Matrix4::transpose(Matrix4::translation(x, y, 0)) * Matrix4::ScaleMatrix(w, h, 1);
 
 		ubo.color = { c.r / 255.0f, c.g / 255.0f, c.b / 255.0f, c.a / 255.0f };
 		m_context->UpdateUniform(&ubo, sizeof(QuadUniformObject));
@@ -234,7 +234,7 @@ namespace tako
 		GetDrawOffset(x, y, w, h);
 		m_context->BindPipeline(&m_imageProgram);
 		Matrix4 projection = Matrix4::transpose(Matrix4::ortho(0, 1024, 0, 768, -1, 1));
-		Matrix4 model = Matrix4::transpose(Matrix4::translation(x, y, 0)) * Matrix4::scale(w, h, 1);
+		Matrix4 model = Matrix4::transpose(Matrix4::translation(x, y, 0)) * Matrix4::ScaleMatrix(w, h, 1);
 
 		m_context->UpdateUniform(&projection, sizeof(Matrix4));
 		m_context->BindVertexBuffer(&m_imageVBO);

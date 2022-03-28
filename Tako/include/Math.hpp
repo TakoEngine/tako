@@ -282,13 +282,21 @@ namespace tako
 			return mat;
 		}
 
-		constexpr static Matrix4 scale(float x, float y, float z)
+		constexpr static Matrix4 ScaleMatrix(float x, float y, float z)
 		{
 			Matrix4 m = identity;
 			m[0] *= x;
 			m[5] *= y;
 			m[10] *= z;
 			return m;
+		}
+
+		constexpr Matrix4& scale(float x, float y, float z)
+		{
+			m[0] *= x;
+			m[5] *= y;
+			m[10] *= z;
+			return *this;
 		}
 
 		constexpr static Matrix4 transpose(const Matrix4& m)

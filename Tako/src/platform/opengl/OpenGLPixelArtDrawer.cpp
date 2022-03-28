@@ -55,10 +55,11 @@ namespace tako
 	}
 
 
-	OpenGLPixelArtDrawer::OpenGLPixelArtDrawer(GraphicsContext* context) : PixelArtDrawer(context)
+	OpenGLPixelArtDrawer::OpenGLPixelArtDrawer(GraphicsContext* context) : m_context(context)
 	{
 		m_scale = 1;
 		m_sizeSet = false;
+		m_autoScale = false;
 		glClearColor(0, 0, 0, 1);
 		glDisable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LESS);

@@ -32,6 +32,7 @@ namespace tako
 		TickStruct* data = reinterpret_cast<TickStruct*>(p);
 		static tako::Timer timer;
 		float dt = timer.GetDeltaTime();
+/*
 #ifdef TAKO_EDITOR
 		for (auto& change: data->watcher.Poll())
 		{
@@ -47,6 +48,7 @@ namespace tako
 #endif
 		}
 #endif
+ */
 		data->window.Poll();
 		data->input.Update();
 		if (data->config.Update)
@@ -68,7 +70,7 @@ namespace tako
 		LOG("Init!");
 		GameConfig config = {};
 		tako::InitTakoConfig(config);
-		auto api = tako::GraphicsAPI::Vulkan;
+		auto api = tako::ResolveGraphicsAPI(config.graphicsAPI);
 		tako::Window window(api);
 		tako::Input input;
 		auto context = CreateGraphicsContext(&window, api);

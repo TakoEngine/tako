@@ -1,5 +1,8 @@
 #include "Tako.hpp"
 #include "Font.hpp"
+#ifdef TAKO_OPENGL
+#include "OpenGLPixelArtDrawer.hpp"
+#endif
 
 static tako::Texture tree;
 static tako::Texture tileset;
@@ -18,14 +21,16 @@ static tako::Bitmap bitmap(240, 135);
 static tako::Texture bufferTex;
 static int helloTextSizeX;
 static int helloTextSizeY;
-static tako::PixelArtDrawer* g_drawer;
+static tako::OpenGLPixelArtDrawer* g_drawer;
+static tako::GraphicsContext* g_context;
 static std::string exampleText = "The quick brown fox jumps over the lazy dog!?";
 static tako::Vector2 mousePos = tako::Vector2(0, 0);
 
 void Setup(void* gameData, const tako::SetupData& setup)
 {
 	LOG("SANDBOX SETUP");
-	g_drawer = new tako::PixelArtDrawer(setup.context);
+	g_drawer = new tako::OpenGLPixelArtDrawer(setup.context);
+	g_context = setup.context;
 	clipBump = new tako::AudioClip("/Bump.wav");
 	clipMiss = new tako::AudioClip("/Miss.wav");
 	clipMusic = new tako::AudioClip("/garden-of-kittens.mp3");
@@ -38,6 +43,7 @@ void Setup(void* gameData, const tako::SetupData& setup)
 	std::tie(helloTextSizeX, helloTextSizeY) = font->CalculateDimensions(exampleText, 1, 5);
 	helloText = g_drawer->CreateTexture(textBitmap);
 	bufferTex = g_drawer->CreateTexture(bitmap);
+	g_drawer->Resize(1024,768);
 }
 
 int PingPong(int val, int max)
@@ -108,8 +114,8 @@ void Draw(void* gameData)
 {
 	auto alpha = static_cast<tako::U8>(PingPong(a, 255));
 	auto drawer = g_drawer;
-
-	drawer->Begin();
+	//drawer->Begin();
+	g_context->Begin();
 	drawer->Clear();
 
 	drawer->DrawImage(-200, -200, 48 * 2, 64 * 2, tileset.handle);
@@ -125,7 +131,8 @@ void Draw(void* gameData)
 
 	auto cursorPos = mousePos + drawer->GetCameraPosition() - drawer->GetCameraViewSize() / 2;
 	drawer->DrawRectangle(cursorPos.x, cursorPos.y, 16, 16, {128, 128, 128, 255});
-	drawer->End();
+	//drawer->End();
+	g_context->End();
 }
 
 void tako::InitTakoConfig(GameConfig& config)
@@ -133,5 +140,6 @@ void tako::InitTakoConfig(GameConfig& config)
 	config.Setup = Setup;
 	config.Update = Update;
 	config.Draw = Draw;
+	config.graphicsAPI = tako::GraphicsAPI::OpenGL;
 	config.gameDataSize = 0;
 }
