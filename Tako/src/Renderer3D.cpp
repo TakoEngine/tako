@@ -1,9 +1,11 @@
 #include "Renderer3D.hpp"
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "../tinyobjloader/tiny_obj_loader.h" //TODO: why
+/*
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+ */
 #include <vector>
 #include <array>
 #include "FileSystem.hpp"
@@ -141,6 +143,7 @@ namespace tako
 
 	Model Renderer3D::LoadModel(const char* file)
 	{
+		/*
 		Assimp::Importer importer;
 		const aiScene* scene = importer.ReadFile(file,
 			aiProcess_CalcTangentSpace |
@@ -275,7 +278,7 @@ namespace tako
 		*/
 
 
-		return { meshes, materials, textures, nodes };
+		//return { meshes, materials, textures, nodes };
 	}
 
 	Mesh Renderer3D::LoadMesh(const char* file)

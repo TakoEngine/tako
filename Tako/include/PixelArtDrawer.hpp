@@ -5,6 +5,7 @@
 #include "Texture.hpp"
 #include "Sprite.hpp"
 #include "GraphicsContext.hpp"
+#include <unordered_map>
 
 namespace tako
 {
