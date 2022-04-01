@@ -40,7 +40,8 @@ add_library(${TAKO_DLL}
 	"include/Pipeline.hpp"
 	"include/Renderer3D.hpp"
 	"src/Renderer3D.cpp"
-	"include/GameConfig.hpp")
+	"include/GameConfig.hpp"
+	"include/PlatformerPhysics2D.hpp")
 
 function(set_feature define val)
 	set(${define} ${val} PARENT_SCOPE)
