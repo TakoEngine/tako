@@ -215,7 +215,7 @@ namespace tako
 		return new OpenGLSprite(texture, spriteVBO);
 	}
 
-	void OpenGLPixelArtDrawer::UpdateTexture(Texture texture, const Bitmap& bitmap)
+	void OpenGLPixelArtDrawer::UpdateTexture(Texture& texture, const Bitmap& bitmap)
 	{
 		glBindTexture(GL_TEXTURE_2D, texture.handle.value);
 		texture.width = bitmap.Width();
@@ -354,7 +354,7 @@ namespace tako
 		int wScale = m_width / m_sizeW;
 		int hScale = m_height / m_sizeH;
 		m_scale = std::max(1, std::min(wScale, hScale));
-		LOG("SCALE {}", m_scale);
+		//LOG("SCALE {}", m_scale);
 	}
 
 

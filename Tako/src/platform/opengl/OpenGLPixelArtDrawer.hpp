@@ -26,7 +26,7 @@ namespace tako
 		Texture CreateTexture(const Bitmap& bitmap);
 		Sprite* CreateSprite(const Texture texture, float x, float y, float w, float h);
 
-		void UpdateTexture(Texture texture, const Bitmap& bitmap);
+		void UpdateTexture(Texture& texture, const Bitmap& bitmap);
 
 		void Resize(int w, int h);
 

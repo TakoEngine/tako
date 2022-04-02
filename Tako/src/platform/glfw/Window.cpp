@@ -42,7 +42,7 @@ namespace tako
 			{
 				glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 			}
-			m_window = glfwCreateWindow(1024, 768, "tako", NULL, NULL);
+			m_window = glfwCreateWindow(1200, 675, "tako", NULL, NULL);
 			m_width = 1024;
 			m_height = 768;
 			if (!m_window)
