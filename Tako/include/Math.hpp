@@ -729,6 +729,11 @@ namespace tako
 			return Color(r * 255, g * 255, b * 255, 255);
 		}
 
+		friend bool operator==(const Color& a, const Color& b)
+		{
+			return a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a;
+		}
+
 		friend std::ostream& operator<<(std::ostream& os, const Color& col)
 		{
 			os << "(" << (int)col.r << ", " << (int)col.g << ", " << (int)col.b << ", " << (int)col.a << ")";
