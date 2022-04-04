@@ -100,7 +100,6 @@ namespace tako
 	void Audio::Play(AudioClip& clip, bool looping)
 	{
 #ifdef TAKO_OPENAL
-		ALuint source;
 		for (auto source: m_sources)
 		{
 			ALint state;
@@ -124,6 +123,6 @@ namespace tako
 #endif
 	}
 #ifdef TAKO_OPENAL
-	std::array<ALuint, 64> Audio::m_sources;
+	std::array<ALuint, 256> Audio::m_sources;
 #endif
 }

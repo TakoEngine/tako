@@ -36,7 +36,7 @@ namespace tako
 #ifdef TAKO_OPENAL
 		ALCdevice* m_device;
 		ALCcontext* m_context;
-		static std::array<ALuint, 64> m_sources;
+		static std::array<ALuint, 256> m_sources;
 #endif
 	};
 }
