@@ -12,7 +12,6 @@ static int y = 0;
 static int a = 0;
 static tako::Vector2 pos(0,0);
 static float delta = 0;
-static tako::AudioClip* clipBump;
 static tako::AudioClip* clipMiss;
 static tako::AudioClip* clipMusic;
 static tako::Font* font;
@@ -25,16 +24,17 @@ static tako::OpenGLPixelArtDrawer* g_drawer;
 static tako::GraphicsContext* g_context;
 static std::string exampleText = "The quick brown fox jumps over the lazy dog!?";
 static tako::Vector2 mousePos = tako::Vector2(0, 0);
+static tako::Audio* g_audio;
 
 void Setup(void* gameData, const tako::SetupData& setup)
 {
 	LOG("SANDBOX SETUP");
+	g_audio = setup.audio;
 	g_drawer = new tako::OpenGLPixelArtDrawer(setup.context);
 	g_context = setup.context;
-	clipBump = new tako::AudioClip("/Bump.wav");
-	clipMiss = new tako::AudioClip("/Miss.wav");
-	clipMusic = new tako::AudioClip("/garden-of-kittens.mp3");
-	tako::Audio::Play(*clipMusic, true);
+	clipMiss = g_audio->Load("/Miss.wav");
+	clipMusic = g_audio->Load("/garden-of-kittens.mp3");
+	tako::Audio::Play(clipMusic, true);
 	tree = setup.resources->Load<tako::Texture>("/tree.png");
 	tileset = setup.resources->Load<tako::Texture>("/Tileset.png");
 	sprite = g_drawer->CreateSprite(tileset, 16, 0, 16, 16);
@@ -62,7 +62,7 @@ void Update(void* gameData, tako::Input* input, float dt)
 {
 	delta += dt;
 	if (delta > 1) {
-		tako::Audio::Play(*clipMiss);
+		tako::Audio::Play(clipMiss);
 		delta = 0;
 	}
 	float speed = 60;
@@ -88,7 +88,7 @@ void Update(void* gameData, tako::Input* input, float dt)
 	}
 	if (input->GetKeyDown(tako::Key::Space))
 	{
-		tako::Audio::Play(*clipBump);
+		g_audio->Play("/Bump.wav");
 	}
 
 	static float gradOff = 0;

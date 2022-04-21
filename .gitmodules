@@ -16,6 +16,6 @@
 [submodule "dependencies/assimp"]
 	path = dependencies/assimp
 	url = https://github.com/assimp/assimp.git
-[submodule "dependencies/soloud"]
-	path = dependencies/soloud
-	url = https://github.com/jarikomppa/soloud.git
+[submodule "dependencies/miniaudio"]
+	path = dependencies/miniaudio
+	url = https://github.com/mackron/miniaudio.git

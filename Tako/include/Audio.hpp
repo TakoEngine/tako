@@ -1,28 +1,15 @@
 #pragma once
-#ifdef TAKO_OPENAL
-#ifdef TAKO_MAC
-#include <OpenAL/al.h>
-#include <OpenAL/alc.h>
-#else
-#include <AL/al.h>
-#include <AL/alc.h>
-#endif
-#endif
 #include <array>
-
-
-
+#include "miniaudio.h"
 
 namespace tako
 {
 	class AudioClip
 	{
 	public:
-		AudioClip(const char* file);
 	private:
-#ifdef TAKO_OPENAL
-		ALuint m_buffer;
-#endif
+		AudioClip();
+		ma_sound sound;
 		friend class Audio;
 	};
 
@@ -31,13 +18,11 @@ namespace tako
 	public:
 		Audio();
 		void Init();
-		static void Play(AudioClip& clip, bool looping = false);
+		AudioClip* Load(const char* file);
+		static void Play(AudioClip* clip, bool looping = false);
+		void Play(const char* soundFile);
 	private:
-#ifdef TAKO_OPENAL
-		ALCdevice* m_device;
-		ALCcontext* m_context;
-		static std::array<ALuint, 256> m_sources;
-#endif
+		ma_engine m_engine;
 	};
 }
 

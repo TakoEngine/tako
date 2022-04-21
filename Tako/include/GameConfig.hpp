@@ -8,6 +8,7 @@ namespace tako
 	{
 		GraphicsContext* context;
 		Resources* resources;
+		Audio* audio;
 	};
 
 	struct GameConfig

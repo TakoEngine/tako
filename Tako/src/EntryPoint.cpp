@@ -83,7 +83,7 @@ namespace tako
 		void* gameData = malloc(config.gameDataSize);
 		if (config.Setup)
 		{
-			config.Setup(gameData, { context.get(), &resources });
+			config.Setup(gameData, { context.get(), &resources, &audio });
 		}
 		tako::Broadcaster broadcaster;
 #ifdef TAKO_EDITOR
