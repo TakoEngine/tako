@@ -54,7 +54,7 @@ endfunction()
 
 if (WIN32)
 set_feature(TAKO_WIN32 true)
-set_feature(TAKO_OPENGL false)
+set_feature(TAKO_OPENGL true)
 set_feature(TAKO_VULKAN true)
 set_feature(TAKO_GLAD true)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")

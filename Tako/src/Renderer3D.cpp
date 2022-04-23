@@ -279,6 +279,7 @@ namespace tako
 
 
 		//return { meshes, materials, textures, nodes };
+		return {};
 	}
 
 	Mesh Renderer3D::LoadMesh(const char* file)
