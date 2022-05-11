@@ -184,16 +184,13 @@ target_include_directories(${TAKO_DLL} PUBLIC "include")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/stb")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/dr_libs")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/tinyobjloader")
-#target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/assimp/include")
+target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/assimp/include")
 target_include_directories(${TAKO_DLL} PUBLIC "${CMAKE_BINARY_DIR}/shader")
 
 #MiniAudio
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/miniaudio")
-#target_link_libraries(${TAKO_DLL} PRIVATE dl)
-#target_link_libraries(${TAKO_DLL} PRIVATE pthread)
-#target_link_libraries(${TAKO_DLL} PRIVATE m)
 
-#target_link_libraries(${TAKO_DLL} PUBLIC assimp)
+target_link_libraries(${TAKO_DLL} PUBLIC assimp)
 
 if (TAKO_GLFW)
 target_link_libraries(${TAKO_DLL} PUBLIC glfw)
