@@ -5,6 +5,7 @@
 #include "Resources.hpp"
 //#include "OpenGLPixelArtDrawer.hpp"
 #include "Renderer3D.hpp"
+#include "JobSystem.hpp"
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
 #endif
@@ -22,6 +23,8 @@ namespace tako
 		tako::Resources& resources;
 		void* gameData;
 		GameConfig& config;
+		JobSystem& jobSys;
+		std::atomic<bool>& keepRunning;
 #ifdef TAKO_EDITOR
 		tako::FileWatcher& watcher;
 #endif
@@ -30,8 +33,16 @@ namespace tako
 	void Tick(void* p)
 	{
 		TickStruct* data = reinterpret_cast<TickStruct*>(p);
+		if (data->window.ShouldExit() || !data->keepRunning)
+		{
+			data->jobSys.Stop();
+			return;
+		}
+		data->jobSys.Schedule([]() { LOG("other thread?"); });
+		LOG("Tick Start");
 		static tako::Timer timer;
 		float dt = timer.GetDeltaTime();
+		LOG("dt {}", dt);
 /*
 #ifdef TAKO_EDITOR
 		for (auto& change: data->watcher.Poll())
@@ -63,11 +74,27 @@ namespace tako
 		}
 		//data->context.End();
 		data->context.Present();
+		LOG("Tick End");
+	}
+
+	void TickJob(void* p)
+	{
+		LOG("Tick!");
+		Tick(p);
+		JobSystem::Continuation(std::bind(TickJob, p));
 	}
 
 	int RunGameLoop()
 	{
 		LOG("Init!");
+		JobSystem jobSys;
+		jobSys.Init();
+		Audio audio;
+		jobSys.ScheduleForThread(0,[&]()
+		{
+			audio.Init();
+			LOG("Audio initialized!");
+		});
 		GameConfig config = {};
 		tako::InitTakoConfig(config);
 		auto api = tako::ResolveGraphicsAPI(config.graphicsAPI);
@@ -77,8 +104,7 @@ namespace tako
 		//TODO: Get frontend to get from configuration	
 		//auto drawer = new OpenGLPixelArtDrawer(context.get());
 		//drawer->Resize(window.GetWidth(), window.GetHeight());
-		Audio audio;
-		audio.Init();
+		
 		Resources resources(context.get());
 		void* gameData = malloc(config.gameDataSize);
 		if (config.Setup)
@@ -90,7 +116,7 @@ namespace tako
 		tako::FileWatcher watcher("./Assets");
 #endif
 
-		bool keepRunning = true;
+		std::atomic<bool> keepRunning = true;
 		tako::CallbackEventHandler onEvent([&](tako::Event& ev)
 		{
 			//LOG("Event: {}", ev);
@@ -135,16 +161,23 @@ namespace tako
 			resources,
 			gameData,
 			config,
+			jobSys,
+			keepRunning
 #ifdef TAKO_EDITOR
 			watcher
 #endif
 		};
 
 #ifndef EMSCRIPTEN
+		/*
 		while (!window.ShouldExit() && keepRunning)
 		{
+			jobSys.Schedule([]() {LOG("it works")});
 			Tick(&data);
 		}
+		*/
+		jobSys.ScheduleForThread(0, std::bind(TickJob, &data));
+		jobSys.JoinAsWorker();
 #else
 		emscripten_set_main_loop_arg(Tick, &data, 0, 1);
 #endif
