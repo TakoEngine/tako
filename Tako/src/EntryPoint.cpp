@@ -32,17 +32,11 @@ namespace tako
 
 	void Tick(void* p)
 	{
-		TickStruct* data = reinterpret_cast<TickStruct*>(p);
-		if (data->window.ShouldExit() || !data->keepRunning)
-		{
-			data->jobSys.Stop();
-			return;
-		}
-		data->jobSys.Schedule([]() { LOG("other thread?"); });
 		LOG("Tick Start");
 		static tako::Timer timer;
 		float dt = timer.GetDeltaTime();
 		LOG("dt {}", dt);
+		TickStruct* data = reinterpret_cast<TickStruct*>(p);
 /*
 #ifdef TAKO_EDITOR
 		for (auto& change: data->watcher.Poll())
@@ -62,26 +56,39 @@ namespace tako
  */
 		data->window.Poll();
 		data->input.Update();
-		if (data->config.Update)
-		{
-			data->config.Update(data->gameData, &data->input, dt);
-		}
-		//data->context.Begin();
-		//data->gameData->
-		if (data->config.Draw)
-		{
-			data->config.Draw(data->gameData);
-		}
-		//data->context.End();
-		data->context.Present();
-		LOG("Tick End");
-	}
 
-	void TickJob(void* p)
-	{
-		LOG("Tick!");
-		Tick(p);
-		JobSystem::Continuation(std::bind(TickJob, p));
+		data->jobSys.Schedule([=]()
+		{
+			void* frameData = malloc(data->config.frameDataSize);
+			GameStageData stageData
+			{
+				data->gameData,
+				frameData
+			};
+			if (data->config.Update)
+			{
+				data->config.Update(stageData, &data->input, dt);
+			}
+			if (data->window.ShouldExit() || !data->keepRunning)
+			{
+				data->jobSys.Stop();
+				return;
+			}
+			data->jobSys.ScheduleForThread(0, std::bind(Tick, p));
+			//data->context.Begin();
+			//data->gameData->
+			if (data->config.Draw)
+			{
+				data->config.Draw(stageData);
+			}
+			free(frameData);
+			//data->context.End();
+			data->jobSys.ScheduleForThread(0, [=]()
+			{
+				data->context.Present();
+				LOG("Tick End");
+			});
+		});
 	}
 
 	int RunGameLoop()
@@ -176,7 +183,7 @@ namespace tako
 			Tick(&data);
 		}
 		*/
-		jobSys.ScheduleForThread(0, std::bind(TickJob, &data));
+		jobSys.Schedule(std::bind(Tick, &data));
 		jobSys.JoinAsWorker();
 #else
 		emscripten_set_main_loop_arg(Tick, &data, 0, 1);

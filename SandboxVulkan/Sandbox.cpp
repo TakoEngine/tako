@@ -17,6 +17,14 @@ float PingPong(float val, float max)
 	}
 }
 
+struct FrameData
+{
+	float zoom = 1;
+	tako::Vector3 trans = { 0, -2, 0 };
+	tako::Vector3 lightPos = { 0, 10, -3 };
+	tako::Quaternion rotation;
+};
+
 class SandBoxGame
 {
 public:
@@ -26,26 +34,26 @@ public:
 		model = renderer->LoadModel("./Assets/CrossGolf.glb");
 	}
 
-	void Update(tako::Input* input, float dt)
+	void Update(tako::Input* input, float dt, FrameData* frameData)
 	{
 		time += dt/10;
 		if (input->GetKey(tako::Key::Down))
 		{
 			//rotX -= dt;
-			rotation = rotation * tako::Quaternion::FromEuler({dt, 0, 0});
+			data.rotation = data.rotation * tako::Quaternion::FromEuler({dt, 0, 0});
 		}
 		if (input->GetKey(tako::Key::Up))
 		{
 			//rotX += dt;
-			rotation = rotation * tako::Quaternion::FromEuler({-dt, 0, 0});
+			data.rotation = data.rotation * tako::Quaternion::FromEuler({-dt, 0, 0});
 		}
 		if (input->GetKey(tako::Key::Left))
 		{
-			rotation = rotation * tako::Quaternion::FromEuler({0, -dt, 0});
+			data.rotation = data.rotation * tako::Quaternion::FromEuler({0, -dt, 0});
 		}
 		if (input->GetKey(tako::Key::Right))
 		{
-			rotation = rotation * tako::Quaternion::FromEuler({0, dt, 0});
+			data.rotation = data.rotation * tako::Quaternion::FromEuler({0, dt, 0});
 		}
 		tako::Vector3 movAxis;
 		if (input->GetKey(tako::Key::W))
@@ -65,18 +73,21 @@ public:
 			movAxis.x += dt;
 		}
 
-		trans += rotation * movAxis;
+		data.trans += data.rotation * movAxis;
 		static float passed = 0;
 		passed += dt;
-		lightPos.x = PingPong(passed, 20) - 10;
+		data.lightPos.x = PingPong(passed, 20) - 10;
+
+		//Sync for renderphase
+		*frameData = data;
 	}
 
-	void Draw()
+	void Draw(FrameData* frameData)
 	{
 		renderer->Begin();
-		renderer->SetLightPosition(lightPos);
-		renderer->SetCameraView(tako::Matrix4::cameraViewMatrix(trans, rotation));
-		auto transform = tako::Matrix4::ScaleMatrix(zoom, zoom, zoom);
+		renderer->SetLightPosition(frameData->lightPos);
+		renderer->SetCameraView(tako::Matrix4::cameraViewMatrix(frameData->trans, frameData->rotation));
+		auto transform = tako::Matrix4::ScaleMatrix(frameData->zoom, frameData->zoom, frameData->zoom);
 		//renderer->DrawMesh(golf, texture, );
 
 		renderer->DrawModel(model, transform);
@@ -87,14 +98,17 @@ public:
 	}
 private:
 	tako::Renderer3D* renderer;
+	tako::Model model;
 	float time = 0;
 	float rotX = 0;
 	float rotZ = 0;
-	float zoom = 1;
-	tako::Vector3 trans = {0, -2, 0};
-	tako::Vector3 lightPos = { 0, 10, -3 };
-	tako::Quaternion rotation;
-	tako::Model model;
+	FrameData data
+	{
+		1,
+		{0, -2, 0},
+		{ 0, 10, -3 },
+		{}
+	};
 };
 
 void Setup(void* gameData, const tako::SetupData& setup)
@@ -103,16 +117,16 @@ void Setup(void* gameData, const tako::SetupData& setup)
 	game->Setup(setup);
 }
 
-void Update(void* gameData, tako::Input* input, float dt)
+void Update(const tako::GameStageData stageData, tako::Input* input, float dt)
 {
-	auto game = reinterpret_cast<SandBoxGame*>(gameData);
-	game->Update(input, dt);
+	auto game = reinterpret_cast<SandBoxGame*>(stageData.gameData);
+	game->Update(input, dt, reinterpret_cast<FrameData*>(stageData.frameData));
 }
 
-void Draw(void* gameData)
+void Draw(const tako::GameStageData stageData)
 {
-	auto game = reinterpret_cast<SandBoxGame*>(gameData);
-	game->Draw();
+	auto game = reinterpret_cast<SandBoxGame*>(stageData.gameData);
+	game->Draw(reinterpret_cast<FrameData*>(stageData.frameData));
 }
 
 void tako::InitTakoConfig(GameConfig& config)
@@ -122,4 +136,5 @@ void tako::InitTakoConfig(GameConfig& config)
 	config.Draw = Draw;
 	config.graphicsAPI = tako::GraphicsAPI::Vulkan;
 	config.gameDataSize = sizeof(SandBoxGame);
+	config.frameDataSize = sizeof(FrameData);
 }

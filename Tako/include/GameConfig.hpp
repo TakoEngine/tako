@@ -11,12 +11,19 @@ namespace tako
 		Audio* audio;
 	};
 
+	struct GameStageData
+	{
+		void* gameData;
+		void* frameData;
+	};
+
 	struct GameConfig
 	{
 		void (*Setup)(void* gameData, const SetupData& setup);
-		void (*Update)(void* gameData, Input* input, float dt);
-		void (*Draw)(void* gameData);
+		void (*Update)(const GameStageData stageData, Input* input, float dt);
+		void (*Draw)(const GameStageData stageData);
 		size_t gameDataSize;
+		size_t frameDataSize;
 		GraphicsAPI graphicsAPI = GraphicsAPI::Default;
 	};
 }
