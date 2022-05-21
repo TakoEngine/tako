@@ -112,7 +112,7 @@ namespace tako
 
 		Job* ScheduleForThread(unsigned int thread, Job* job)
 		{
-			m_localQueues[m_threadIndex].Push(job);
+			m_localQueues[thread].Push(job);
 			return job;
 		}
 
@@ -157,7 +157,7 @@ namespace tako
 				}
 				else
 				{
-					std::this_thread::sleep_for(std::chrono::milliseconds(1));
+					std::this_thread::sleep_for(std::chrono::nanoseconds (100));
 				}
 				
 			}

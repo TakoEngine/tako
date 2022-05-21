@@ -35,7 +35,9 @@ namespace tako
 		LOG("Tick Start");
 		static tako::Timer timer;
 		float dt = timer.GetDeltaTime();
-		LOG("dt {}", dt);
+        static float fps = 1;
+        fps = 0.001f * 1/dt + 0.999f * fps;
+		LOG("fps: {}", fps);
 		TickStruct* data = reinterpret_cast<TickStruct*>(p);
 /*
 #ifdef TAKO_EDITOR
@@ -54,41 +56,42 @@ namespace tako
 		}
 #endif
  */
-		data->window.Poll();
-		data->input.Update();
+        data->jobSys.ScheduleForThread(0, [=]()
+        {
+            data->window.Poll();
+            data->input.Update();
 
-		data->jobSys.Schedule([=]()
-		{
-			void* frameData = malloc(data->config.frameDataSize);
-			GameStageData stageData
-			{
-				data->gameData,
-				frameData
-			};
-			if (data->config.Update)
-			{
-				data->config.Update(stageData, &data->input, dt);
-			}
-			if (data->window.ShouldExit() || !data->keepRunning)
-			{
-				data->jobSys.Stop();
-				return;
-			}
-			data->jobSys.ScheduleForThread(0, std::bind(Tick, p));
-			//data->context.Begin();
-			//data->gameData->
-			if (data->config.Draw)
-			{
-				data->config.Draw(stageData);
-			}
-			free(frameData);
-			//data->context.End();
-			data->jobSys.ScheduleForThread(0, [=]()
-			{
-				data->context.Present();
-				LOG("Tick End");
-			});
-		});
+            data->jobSys.Schedule([=]()
+            {
+                void *frameData = malloc(data->config.frameDataSize);
+                GameStageData stageData
+                {
+                        data->gameData,
+                        frameData
+                };
+                if (data->config.Update) {
+                    data->config.Update(stageData, &data->input, dt);
+                }
+                if (data->window.ShouldExit() || !data->keepRunning) {
+                    data->jobSys.Stop();
+                    return;
+                }
+                data->jobSys.ScheduleForThread(0, [=]()
+                {
+                    LOG("Start Draw");
+                    //data->context.Begin();
+                    if (data->config.Draw) {
+                        data->config.Draw(stageData);
+                    }
+                    //data->context.End();
+                    free(frameData);
+                    data->context.Present();
+                    LOG("Tick End");
+                });
+
+                data->jobSys.Schedule(std::bind(Tick, p));
+            });
+        });
 	}
 
 	int RunGameLoop()
@@ -97,11 +100,11 @@ namespace tako
 		JobSystem jobSys;
 		jobSys.Init();
 		Audio audio;
-		jobSys.ScheduleForThread(0,[&]()
+        //TODO: jobify
 		{
 			audio.Init();
 			LOG("Audio initialized!");
-		});
+		};
 		GameConfig config = {};
 		tako::InitTakoConfig(config);
 		auto api = tako::ResolveGraphicsAPI(config.graphicsAPI);
@@ -169,7 +172,7 @@ namespace tako
 			gameData,
 			config,
 			jobSys,
-			keepRunning
+			keepRunning,
 #ifdef TAKO_EDITOR
 			watcher
 #endif
