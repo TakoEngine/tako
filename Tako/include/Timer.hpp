@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 
 namespace tako
 {
@@ -8,6 +9,6 @@ namespace tako
 		Timer();
 		float GetDeltaTime();
 	private:
-		float m_lastFrame;
+		std::atomic<float> m_lastFrame;
 	};
 }

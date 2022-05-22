@@ -25,6 +25,9 @@ namespace tako
 		GameConfig& config;
 		JobSystem& jobSys;
 		std::atomic<bool>& keepRunning;
+		std::atomic<int> frame = 0;
+		int openFrames = 1;
+		std::atomic_flag frameCounterLock = ATOMIC_FLAG_INIT;
 #ifdef TAKO_EDITOR
 		tako::FileWatcher& watcher;
 #endif
@@ -34,11 +37,13 @@ namespace tako
 	{
 		LOG("Tick Start");
 		static tako::Timer timer;
+		constexpr auto maxFramesConcurrent = 2;
 		float dt = timer.GetDeltaTime();
-        static float fps = 1;
-        fps = 0.001f * 1/dt + 0.999f * fps;
-		LOG("fps: {}", fps);
 		TickStruct* data = reinterpret_cast<TickStruct*>(p);
+		auto thisFrame = ++data->frame;
+		static std::atomic<float> fps = 1;
+		fps = 0.01f * 1/dt + 0.99f * fps;
+		LOG("frame {}: fps: {}", thisFrame, 1/dt);
 /*
 #ifdef TAKO_EDITOR
 		for (auto& change: data->watcher.Poll())
@@ -56,42 +61,65 @@ namespace tako
 		}
 #endif
  */
-        data->jobSys.ScheduleForThread(0, [=]()
-        {
-            data->window.Poll();
-            data->input.Update();
+		data->jobSys.ScheduleForThread(0, [=]()
+		{
+			data->window.Poll();
+			data->input.Update();
 
-            data->jobSys.Schedule([=]()
-            {
-                void *frameData = malloc(data->config.frameDataSize);
-                GameStageData stageData
-                {
-                        data->gameData,
-                        frameData
-                };
-                if (data->config.Update) {
-                    data->config.Update(stageData, &data->input, dt);
-                }
-                if (data->window.ShouldExit() || !data->keepRunning) {
-                    data->jobSys.Stop();
-                    return;
-                }
-                data->jobSys.ScheduleForThread(0, [=]()
-                {
-                    LOG("Start Draw");
-                    //data->context.Begin();
-                    if (data->config.Draw) {
-                        data->config.Draw(stageData);
-                    }
-                    //data->context.End();
-                    free(frameData);
-                    data->context.Present();
-                    LOG("Tick End");
-                });
+			data->jobSys.Schedule([=]()
+			{
+				void *frameData = malloc(data->config.frameDataSize);
+				GameStageData stageData
+				{
+						data->gameData,
+						frameData
+				};
+				if (data->config.Update) {
+					data->config.Update(stageData, &data->input, dt);
+				}
+				if (data->window.ShouldExit() || !data->keepRunning) {
+					data->jobSys.Stop();
+					return;
+				}
+				data->jobSys.ScheduleForThread(0, [=]()
+				{
+					if (true || thisFrame + 1 >= data->frame)
+					{
+						LOG("Start Draw {}", thisFrame);
+						//data->context.Begin();
+						if (data->config.Draw) {
+							data->config.Draw(stageData);
+						}
+						//data->context.End();
+						data->context.Present();
+					}
+					else
+					{
+						LOG("Skip Draw {}", thisFrame);
+					}
 
-                data->jobSys.Schedule(std::bind(Tick, p));
-            });
-        });
+					free(frameData);
+					while (data->frameCounterLock.test_and_set(std::memory_order_acquire));
+					data->openFrames--;
+					if (data->openFrames == 0)
+					{
+						data->openFrames++;
+						data->jobSys.Schedule(std::bind(Tick, p));
+					}
+					data->frameCounterLock.clear(std::memory_order_release);
+					LOG("Tick End");
+				});
+
+				while (data->frameCounterLock.test_and_set(std::memory_order_acquire));
+				if (data->openFrames < maxFramesConcurrent)
+				{
+					data->openFrames++;
+					data->jobSys.Schedule(std::bind(Tick, p));
+				}
+				data->frameCounterLock.clear(std::memory_order_release);
+
+			});
+		});
 	}
 
 	int RunGameLoop()
@@ -100,7 +128,7 @@ namespace tako
 		JobSystem jobSys;
 		jobSys.Init();
 		Audio audio;
-        //TODO: jobify
+		//TODO: jobify
 		{
 			audio.Init();
 			LOG("Audio initialized!");

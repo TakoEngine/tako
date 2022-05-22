@@ -2,6 +2,8 @@
 #include "Utility.hpp"
 #include <thread>
 #include <atomic>
+#include <mutex>
+#include <condition_variable>
 #include <vector>
 #include <deque>
 #include <chrono>
@@ -90,6 +92,7 @@ namespace tako
 		void Stop()
 		{
 			m_stop = true;
+			m_cv.notify_all();
 		}
 
 		Job* Schedule(std::function<void()>&& job)
@@ -101,6 +104,7 @@ namespace tako
 		Job* Schedule(Job* job)
 		{
 			m_globalQueues[m_threadIndex].Push(job);
+			m_cv.notify_all();
 			return job;
 		}
 
@@ -113,6 +117,7 @@ namespace tako
 		Job* ScheduleForThread(unsigned int thread, Job* job)
 		{
 			m_localQueues[thread].Push(job);
+			m_cv.notify_all();
 			return job;
 		}
 
@@ -126,6 +131,8 @@ namespace tako
 		std::vector<JobQueue> m_localQueues;
 		std::vector<JobQueue> m_globalQueues;
 		std::atomic<bool> m_stop = false;
+		static inline std::mutex m_cvMutex;
+		static inline std::condition_variable m_cv;
 		static inline thread_local Job* m_runningJob = nullptr;
 		static inline thread_local unsigned int m_threadIndex;
 		unsigned int m_threadCount;
@@ -157,7 +164,8 @@ namespace tako
 				}
 				else
 				{
-					std::this_thread::sleep_for(std::chrono::nanoseconds (100));
+					std::unique_lock lk(m_cvMutex);
+					m_cv.wait(lk);
 				}
 				
 			}

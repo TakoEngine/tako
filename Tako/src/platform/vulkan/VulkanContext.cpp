@@ -16,7 +16,7 @@
 #ifdef  TAKO_WIN32
 static std::array<const char*, 2> vkWinExtensions = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
 #endif
-static std::array<const char*, 2> vkDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, "VK_KHR_portability_subset" };
+static std::array<const char*, 1> vkDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 static std::array<const char*, 1> vkWinValidationLayers = { "VK_LAYER_KHRONOS_validation" };
 
 namespace tako
@@ -132,9 +132,6 @@ namespace tako
 		SmallVec<const char*, 50> vulkanExtensions;
 #ifndef NDEBUG
 		vulkanExtensions.Push(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-        vulkanExtensions.Push("VK_KHR_get_physical_device_properties2");
-        vulkanExtensions.Push("VK_KHR_portability_enumeration");
-        //vulkanExtensions.Push(VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR);
 #endif
 #ifdef TAKO_WIN32
 		vulkanExtensions.PushArray(vkWinExtensions.data(), vkWinExtensions.size());
@@ -142,11 +139,6 @@ namespace tako
 #ifdef TAKO_GLFW
 		uint32_t glfwExtCount;
 		auto glfwExts = glfwGetRequiredInstanceExtensions(&glfwExtCount);
-        LOG("GLFW extensions");
-        for (int i = 0; i < glfwExtCount; i++)
-        {
-            LOG("{}", glfwExts[i]);
-        }
 		vulkanExtensions.PushArray(glfwExts, glfwExtCount);
 #endif
 		{
@@ -163,7 +155,6 @@ namespace tako
 			createInfo.pApplicationInfo = &appInfo;
 			createInfo.enabledExtensionCount = vulkanExtensions.GetLength();
 			createInfo.ppEnabledExtensionNames = vulkanExtensions.GetData();
-            createInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 #ifndef NDEBUG
 			createInfo.enabledLayerCount = vkWinValidationLayers.size();
 			createInfo.ppEnabledLayerNames = vkWinValidationLayers.data();
@@ -333,7 +324,7 @@ namespace tako
 
 			createInfo.preTransform = capabilities.currentTransform;
 			createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-			createInfo.presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+			createInfo.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 			createInfo.clipped = VK_TRUE;
 			createInfo.oldSwapchain = VK_NULL_HANDLE;
 
@@ -978,7 +969,7 @@ namespace tako
 		{
 			uint32_t imageIndex;
 			result = vkAcquireNextImageKHR(m_vkDevice, m_swapChain, (std::numeric_limits<uint64_t>::max)(), GetCurrentFrame().imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
-            ASSERT(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR);
+			ASSERT(result == VK_SUCCESS);
 			m_acticeImageIndex = imageIndex;
 		}
 
@@ -1048,7 +1039,7 @@ namespace tako
 		presentInfo.pImageIndices = &m_acticeImageIndex;
 
 		result = vkQueuePresentKHR(m_presentQueue, &presentInfo);
-		ASSERT(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR);
+		ASSERT(result == VK_SUCCESS);
 		m_currentFrame++;
 	}
 
