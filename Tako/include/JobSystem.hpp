@@ -8,6 +8,8 @@
 #include <deque>
 #include <chrono>
 
+#include "Allocators/FreeListAllocator.hpp"
+
 namespace tako
 {
 	namespace
@@ -123,8 +125,9 @@ namespace tako
 	class JobSystem
 	{
 	public:
-		JobSystem()
+		JobSystem(): m_allocator(malloc(1024 * 1024 * 128), 1024 * 1024 * 128)
 		{
+			g_allocator = &m_allocator;
 		}
 
 		void Init()
@@ -207,6 +210,9 @@ namespace tako
 		static inline thread_local unsigned int m_threadIndex;
 		static inline thread_local Job* m_freeJobList = nullptr;
 		static inline thread_local size_t m_freeJobListCount = 0;
+		Allocators::FreeListAllocator m_allocator;
+		static inline Allocators::FreeListAllocator* g_allocator;
+		static inline std::mutex m_allocMutex;
 		unsigned int m_threadCount;
 
 		template<typename Functor>
@@ -235,7 +241,12 @@ namespace tako
 			}
 			else
 			{
-				job = new (malloc(sizeof(Job) + functorSize)) Job(functorSize);
+				void* ptr;
+				{
+					std::lock_guard lk(m_allocMutex);
+					ptr = g_allocator->Allocate(sizeof(Job) + functorSize);
+				}
+				job = new (ptr) Job(functorSize);
 			}
 			job->SetFunctor(std::move(func));
 			return job;
@@ -246,7 +257,8 @@ namespace tako
 			if (m_freeJobListCount >= 10)
 			{
 				job->~Job();
-				free(job);
+				std::lock_guard lk(m_allocMutex);
+				g_allocator->Deallocate(job, sizeof(Job) + job->m_functorSize);
 				return;
 			}
 			job->Reset();
@@ -288,7 +300,7 @@ namespace tako
 				else
 				{
 					std::unique_lock lk(m_cvMutex);
-					m_cv.wait_for(lk, std::chrono::microseconds(100));
+					m_cv.wait_for(lk, std::chrono::microseconds(1000));
 				}
 				
 			}

@@ -35,7 +35,7 @@ namespace tako
 
 	void Tick(void* p)
 	{
-		LOG("Tick Start");
+		//LOG("Tick Start");
 		static tako::Timer timer;
 		constexpr auto maxFramesConcurrent = 2;
 		float dt = timer.GetDeltaTime();
@@ -43,7 +43,7 @@ namespace tako
 		auto thisFrame = ++data->frame;
 		static std::atomic<float> fps = 1;
 		fps = 0.01f * 1/dt + 0.99f * fps;
-		LOG("frame {}: fps: {}", thisFrame, 1/dt);
+		//LOG("frame {}: fps: {}", thisFrame, 1/dt);
 /*
 #ifdef TAKO_EDITOR
 		for (auto& change: data->watcher.Poll())
