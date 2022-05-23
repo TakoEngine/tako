@@ -20,6 +20,7 @@ namespace tako
 		}
 	private:
 		friend class JobSystem;
+		Job* m_parent = nullptr;
 		std::function<void()> m_func;
 		Job* m_continuation = nullptr;
 		std::atomic<int> m_jobsLeft = 1;
@@ -103,9 +104,13 @@ namespace tako
 
 		Job* Schedule(Job* job)
 		{
-			m_globalQueues[m_threadIndex].Push(job);
-			m_cv.notify_all();
-			return job;
+			return ScheduleRaw(m_globalQueues[m_threadIndex], job);
+		}
+
+		Job* ScheduleDetached(std::function<void()>&& job)
+		{
+			auto allocatedJob = new Job(std::move(job));
+			return ScheduleRaw(m_globalQueues[m_threadIndex], allocatedJob, true);
 		}
 
 		Job* ScheduleForThread(unsigned int thread, std::function<void()>&& job)
@@ -116,9 +121,7 @@ namespace tako
 
 		Job* ScheduleForThread(unsigned int thread, Job* job)
 		{
-			m_localQueues[thread].Push(job);
-			m_cv.notify_all();
-			return job;
+			return ScheduleRaw(m_localQueues[thread], job);
 		}
 
 		static void Continuation(std::function<void()>&& job)
@@ -137,6 +140,18 @@ namespace tako
 		static inline thread_local unsigned int m_threadIndex;
 		unsigned int m_threadCount;
 
+		Job* ScheduleRaw(JobQueue& queue, Job* job, bool detached = false)
+		{
+			if (m_runningJob && job->m_parent == nullptr && !detached)
+			{
+				job->m_parent = m_runningJob;
+				job->m_parent->m_jobsLeft++;
+			}
+			queue.Push(job);
+			m_cv.notify_all();
+			return job;
+		}
+
 		void WorkerThread(unsigned int threadIndex)
 		{
 			m_threadIndex = threadIndex;
@@ -147,27 +162,44 @@ namespace tako
 				{
 					job = m_globalQueues[(i + m_threadIndex) % m_threadCount].Pop();
 				}
+				m_runningJob = job;
 				if (job != nullptr)
 				{
-					m_runningJob = job;
 					LOG("Start job({})", m_threadIndex);
 					job->m_func();
-					job->m_jobsLeft--;
-					if (job->m_jobsLeft <= 0)
-					{
-						if (job->m_continuation)
-						{
-							ScheduleForThread(0, job->m_continuation); //TODO: save target thread
-						}
-						delete job;
-					}
+					m_runningJob = nullptr;
+					OnJobDone(job);
 				}
 				else
 				{
 					std::unique_lock lk(m_cvMutex);
-					m_cv.wait(lk);
+					m_cv.wait_for(lk, std::chrono::microseconds(100));
 				}
 				
+			}
+		}
+
+		void OnJobDone(Job* job)
+		{
+			auto left = job->m_jobsLeft.fetch_sub(1);
+			if (left == 1)
+			{
+				// Job done, cleanup
+				if (job->m_continuation)
+				{
+					LOG("Continue!");
+					if (job->m_parent)
+					{
+						job->m_parent->m_jobsLeft++;
+						job->m_continuation->m_parent = job->m_parent;
+					}
+					Schedule(job->m_continuation); //TODO: save schedule params
+				}
+				if (job->m_parent)
+				{
+					OnJobDone(job->m_parent);
+				}
+				delete job;
 			}
 		}
 	};

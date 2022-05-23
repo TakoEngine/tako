@@ -65,61 +65,41 @@ namespace tako
 		{
 			data->window.Poll();
 			data->input.Update();
-
-			data->jobSys.Schedule([=]()
-			{
-				void *frameData = malloc(data->config.frameDataSize);
-				GameStageData stageData
-				{
-						data->gameData,
-						frameData
-				};
-				if (data->config.Update) {
-					data->config.Update(stageData, &data->input, dt);
-				}
-				if (data->window.ShouldExit() || !data->keepRunning) {
-					data->jobSys.Stop();
-					return;
-				}
-				data->jobSys.ScheduleForThread(0, [=]()
-				{
-					if (true || thisFrame + 1 >= data->frame)
-					{
-						LOG("Start Draw {}", thisFrame);
-						//data->context.Begin();
-						if (data->config.Draw) {
-							data->config.Draw(stageData);
-						}
-						//data->context.End();
-						data->context.Present();
-					}
-					else
-					{
-						LOG("Skip Draw {}", thisFrame);
-					}
-
-					free(frameData);
-					while (data->frameCounterLock.test_and_set(std::memory_order_acquire));
-					data->openFrames--;
-					if (data->openFrames == 0)
-					{
-						data->openFrames++;
-						data->jobSys.Schedule(std::bind(Tick, p));
-					}
-					data->frameCounterLock.clear(std::memory_order_release);
-					LOG("Tick End");
-				});
-
-				while (data->frameCounterLock.test_and_set(std::memory_order_acquire));
-				if (data->openFrames < maxFramesConcurrent)
-				{
-					data->openFrames++;
-					data->jobSys.Schedule(std::bind(Tick, p));
-				}
-				data->frameCounterLock.clear(std::memory_order_release);
-
-			});
 		});
+
+		void* frameData = malloc(data->config.frameDataSize);
+		GameStageData stageData
+		{
+			data->gameData,
+			frameData
+		};
+
+		data->jobSys.Continuation([=]()
+		{
+			if (data->config.Update) {
+				data->config.Update(stageData, &data->input, dt);
+			}
+			if (data->window.ShouldExit() || !data->keepRunning) {
+				data->jobSys.Stop();
+				return;
+			}
+			LOG("Start Draw {}", thisFrame);
+			//data->context.Begin();
+			if (data->config.Draw) {
+				data->config.Draw(stageData);
+			}
+			//data->context.End();
+
+			free(frameData);
+			data->jobSys.ScheduleForThread(0, [=]()
+			{
+				data->context.Present();
+				LOG("Tick End");
+			});
+
+			data->jobSys.ScheduleDetached(std::bind(Tick, p));
+		});
+		
 	}
 
 	int RunGameLoop()
