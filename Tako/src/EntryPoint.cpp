@@ -64,7 +64,10 @@ namespace tako
 		data->jobSys.ScheduleForThread(0, [=]()
 		{
 			data->window.Poll();
-			data->input.Update();
+			data->jobSys.Schedule([=]()
+			{
+				data->input.Update();
+			});
 		});
 
 		void* frameData = malloc(data->config.frameDataSize);
@@ -83,7 +86,7 @@ namespace tako
 				data->jobSys.Stop();
 				return;
 			}
-			LOG("Start Draw {}", thisFrame);
+			//LOG("Start Draw {}", thisFrame);
 			//data->context.Begin();
 			if (data->config.Draw) {
 				data->config.Draw(stageData);
@@ -94,7 +97,7 @@ namespace tako
 			data->jobSys.ScheduleForThread(0, [=]()
 			{
 				data->context.Present();
-				LOG("Tick End");
+				//LOG("Tick End");
 			});
 
 			data->jobSys.ScheduleDetached(std::bind(Tick, p));

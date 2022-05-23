@@ -10,20 +10,83 @@
 
 namespace tako
 {
+	namespace
+	{
+		struct JobFunctorBase
+		{
+			virtual ~JobFunctorBase() {}
+			virtual void operator()() = 0;
+		};
+
+		template <typename Functor>
+		struct JobFunctor final : JobFunctorBase
+		{
+			JobFunctor(Functor&& func) : f(std::move(func)) {}
+
+			void operator()() override
+			{
+				f();
+			}
+
+			Functor f;
+		};
+	}
+
 	class JobSystem;
 	class Job
 	{
 	public:
-		Job(std::function<void()>&& func)
+		Job(size_t functorSize): m_functorSize(functorSize)
 		{
-			m_func = std::move(func);
+			Reset();
+		}
+
+		~Job()
+		{
+			if (m_functorActive)
+			{
+				reinterpret_cast<JobFunctorBase*>(&m_functorData[0])->~JobFunctorBase();
+			}
+		}
+
+		template<typename Functor>
+		void SetFunctor(Functor&& func)
+		{
+			if (m_functorActive)
+			{
+				reinterpret_cast<JobFunctorBase*>(&m_functorData[0])->~JobFunctorBase();
+			}
+			new (&m_functorData) JobFunctor<Functor>(std::move(func));
+			m_functorActive = true;
+		}
+
+		void operator()()
+		{
+			(*reinterpret_cast<JobFunctorBase*>(&m_functorData[0]))();
+		}
+
+		void Reset()
+		{
+
+			if (m_functorActive)
+			{
+				reinterpret_cast<JobFunctorBase*>(&m_functorData[0])->~JobFunctorBase();
+				m_functorActive = false;
+			}
+
+			m_parent = nullptr;
+			m_continuation = nullptr;
+			m_jobsLeft = 1;
 		}
 	private:
 		friend class JobSystem;
 		Job* m_parent = nullptr;
-		std::function<void()> m_func;
+		//std::function<void()> m_func;
 		Job* m_continuation = nullptr;
+		bool m_functorActive = false;
 		std::atomic<int> m_jobsLeft = 1;
+		size_t m_functorSize;
+		char m_functorData[];
 	};
 
 	class JobQueue
@@ -96,9 +159,10 @@ namespace tako
 			m_cv.notify_all();
 		}
 
-		Job* Schedule(std::function<void()>&& job)
+		template<typename Functor>
+		Job* Schedule(Functor&& job)
 		{
-			auto allocatedJob = new Job(std::move(job));
+			auto allocatedJob = AllocateJob(std::move(job));
 			return Schedule(allocatedJob);
 		}
 
@@ -107,15 +171,17 @@ namespace tako
 			return ScheduleRaw(m_globalQueues[m_threadIndex], job);
 		}
 
-		Job* ScheduleDetached(std::function<void()>&& job)
+		template<typename Functor>
+		Job* ScheduleDetached(Functor&& job)
 		{
-			auto allocatedJob = new Job(std::move(job));
+			auto allocatedJob = AllocateJob(std::move(job));
 			return ScheduleRaw(m_globalQueues[m_threadIndex], allocatedJob, true);
 		}
 
-		Job* ScheduleForThread(unsigned int thread, std::function<void()>&& job)
+		template<typename Functor>
+		Job* ScheduleForThread(unsigned int thread, Functor&& job)
 		{
-			auto allocatedJob = new Job(std::move(job));
+			auto allocatedJob = AllocateJob(std::move(job));
 			return ScheduleForThread(thread, allocatedJob);
 		}
 
@@ -124,9 +190,10 @@ namespace tako
 			return ScheduleRaw(m_localQueues[thread], job);
 		}
 
-		static void Continuation(std::function<void()>&& job)
+		template<typename Functor>
+		static void Continuation(Functor&& job)
 		{
-			m_runningJob->m_continuation = new Job(std::move(job));
+			m_runningJob->m_continuation = AllocateJob(std::move(job));
 		}
 
 	private:
@@ -138,7 +205,55 @@ namespace tako
 		static inline std::condition_variable m_cv;
 		static inline thread_local Job* m_runningJob = nullptr;
 		static inline thread_local unsigned int m_threadIndex;
+		static inline thread_local Job* m_freeJobList = nullptr;
+		static inline thread_local size_t m_freeJobListCount = 0;
 		unsigned int m_threadCount;
+
+		template<typename Functor>
+		static Job* AllocateJob(Functor&& func)
+		{
+			auto job = m_freeJobList;
+			Job* prevJob = nullptr;
+			size_t functorSize = std::max<size_t>(sizeof(JobFunctor<Functor>), 32);
+			while (job && job->m_functorSize < functorSize)
+			{
+				prevJob = job;
+				job = job->m_parent;
+			}
+			if (job)
+			{
+				if (prevJob)
+				{
+					prevJob->m_parent = job->m_parent;
+				}
+				else
+				{
+					m_freeJobList = job->m_parent;
+				}
+				job->m_parent = nullptr;
+				m_freeJobListCount--;
+			}
+			else
+			{
+				job = new (malloc(sizeof(Job) + functorSize)) Job(functorSize);
+			}
+			job->SetFunctor(std::move(func));
+			return job;
+		}
+
+		static void DeallocateJob(Job* job)
+		{
+			if (m_freeJobListCount >= 10)
+			{
+				job->~Job();
+				free(job);
+				return;
+			}
+			job->Reset();
+			job->m_parent = m_freeJobList;
+			m_freeJobList = job;
+			m_freeJobListCount++;
+		}
 
 		Job* ScheduleRaw(JobQueue& queue, Job* job, bool detached = false)
 		{
@@ -165,8 +280,8 @@ namespace tako
 				m_runningJob = job;
 				if (job != nullptr)
 				{
-					LOG("Start job({})", m_threadIndex);
-					job->m_func();
+					//LOG("Start job({})", m_threadIndex);
+					(*job)();
 					m_runningJob = nullptr;
 					OnJobDone(job);
 				}
@@ -187,7 +302,6 @@ namespace tako
 				// Job done, cleanup
 				if (job->m_continuation)
 				{
-					LOG("Continue!");
 					if (job->m_parent)
 					{
 						job->m_parent->m_jobsLeft++;
@@ -199,7 +313,7 @@ namespace tako
 				{
 					OnJobDone(job->m_parent);
 				}
-				delete job;
+				DeallocateJob(job);
 			}
 		}
 	};
