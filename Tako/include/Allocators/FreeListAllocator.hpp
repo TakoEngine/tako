@@ -1,19 +1,16 @@
 #pragma once
+#include "Allocators/Allocator.hpp"
 #include "NumberTypes.hpp"
 
 namespace tako::Allocators
 {
-	namespace
+	class FreeListAllocator final : public Allocator
 	{
 		struct Node
 		{
 			Node* next;
 			size_t size;
 		};
-	}
-
-	class FreeListAllocator
-	{
 	public:
 		FreeListAllocator(void* data, size_t size)
 		{
@@ -24,7 +21,7 @@ namespace tako::Allocators
 			m_head->size = size;
 		}
 
-		void* Allocate(size_t size)
+		virtual void* Allocate(size_t size) override
 		{
 			Node* cur = m_head;
 			Node* prev = nullptr;
@@ -67,7 +64,7 @@ namespace tako::Allocators
 			return cur;
 		}
 
-		void Deallocate(void* data, size_t size)
+		virtual void Deallocate(void* data, size_t size) override
 		{
 			Node* d = reinterpret_cast<Node*>(data);
 			d->size = size;
@@ -83,15 +80,32 @@ namespace tako::Allocators
 			{
 				m_head = d;
 				d->next = cur;
+				Merge(nullptr, m_head);
 				return;
 			}
 
 			prev->next = d;
 			d->next = cur;
+			Merge(prev, d);
 		}
 	private:
 		void* m_data;
 		size_t m_size;
 		Node* m_head;
+
+		void Merge(Node* prev, Node* mid)
+		{
+			if (mid->next != nullptr && (reinterpret_cast<U8*>(mid->next) + mid->size) == reinterpret_cast<U8*>(mid->next))
+			{
+				mid->size += mid->next->size;
+				mid->next = mid->next->next;
+			}
+
+			if (prev != nullptr && (reinterpret_cast<U8*>(prev) + prev->size) == reinterpret_cast<U8*>(mid))
+			{
+				prev->size += mid->size;
+				prev->next = mid->next;
+			}
+		}
 	};
 }

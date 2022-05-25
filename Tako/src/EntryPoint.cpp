@@ -3,6 +3,7 @@
 #include "World.hpp"
 #include "Timer.hpp"
 #include "Resources.hpp"
+#include "Allocators/PoolAllocator.hpp"
 //#include "OpenGLPixelArtDrawer.hpp"
 #include "Renderer3D.hpp"
 #include "JobSystem.hpp"
@@ -25,6 +26,7 @@ namespace tako
 		GameConfig& config;
 		JobSystem& jobSys;
 		std::atomic<bool>& keepRunning;
+		Allocators::PoolAllocator frameDataPool;
 		std::atomic<int> frame = 0;
 		int openFrames = 1;
 		std::atomic_flag frameCounterLock = ATOMIC_FLAG_INIT;
@@ -70,7 +72,7 @@ namespace tako
 			});
 		});
 
-		void* frameData = malloc(data->config.frameDataSize);
+		void* frameData = data->frameDataPool.Allocate();
 		GameStageData stageData
 		{
 			data->gameData,
@@ -79,21 +81,25 @@ namespace tako
 
 		data->jobSys.Continuation([=]()
 		{
-			if (data->config.Update) {
+			if (data->config.Update)
+			{
 				data->config.Update(stageData, &data->input, dt);
 			}
-			if (data->window.ShouldExit() || !data->keepRunning) {
+			if (data->window.ShouldExit() || !data->keepRunning)
+			{
 				data->jobSys.Stop();
 				return;
 			}
 			//LOG("Start Draw {}", thisFrame);
 			//data->context.Begin();
-			if (data->config.Draw) {
+			if (data->config.Draw)
+			{
 				data->config.Draw(stageData);
 			}
 			//data->context.End();
 
-			free(frameData);
+			
+			data->frameDataPool.Deallocate(frameData);
 			data->jobSys.ScheduleForThread(0, [=]()
 			{
 				data->context.Present();
@@ -174,6 +180,9 @@ namespace tako
 			broadcaster.Broadcast(evt);
 		});
 
+		size_t framePoolSize = config.frameDataSize * 10;
+		void* framePoolData = malloc(framePoolSize);
+
 		TickStruct data
 		{
 			window,
@@ -184,6 +193,7 @@ namespace tako
 			config,
 			jobSys,
 			keepRunning,
+			{ framePoolData, framePoolSize, config.frameDataSize },
 #ifdef TAKO_EDITOR
 			watcher
 #endif
@@ -203,6 +213,8 @@ namespace tako
 		emscripten_set_main_loop_arg(Tick, &data, 0, 1);
 #endif
 
+		free(framePoolData);
+		free(gameData);
 
 		LOG("terminating");
 		return 0;

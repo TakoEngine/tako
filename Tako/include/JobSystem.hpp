@@ -220,7 +220,7 @@ namespace tako
 		{
 			auto job = m_freeJobList;
 			Job* prevJob = nullptr;
-			size_t functorSize = std::max<size_t>(sizeof(JobFunctor<Functor>), 32);
+			size_t functorSize = std::max<size_t>(sizeof(JobFunctor<Functor>), 24);
 			while (job && job->m_functorSize < functorSize)
 			{
 				prevJob = job;
@@ -254,7 +254,7 @@ namespace tako
 
 		static void DeallocateJob(Job* job)
 		{
-			if (m_freeJobListCount >= 10)
+			if (true || m_freeJobListCount >= 10)
 			{
 				job->~Job();
 				std::lock_guard lk(m_allocMutex);
