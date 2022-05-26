@@ -13,6 +13,7 @@
 #include "PixelArtDrawer.hpp"
 #include "Renderer3D.hpp"
 #include "GameConfig.hpp"
+#include "JobSystem.hpp"
 
 namespace tako
 {

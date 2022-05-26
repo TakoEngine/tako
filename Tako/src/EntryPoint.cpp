@@ -27,6 +27,7 @@ namespace tako
 		JobSystem& jobSys;
 		std::atomic<bool>& keepRunning;
 		Allocators::PoolAllocator frameDataPool;
+		std::atomic_flag frameDataPoolLock = ATOMIC_FLAG_INIT;
 		std::atomic<int> frame = 0;
 		int openFrames = 1;
 		std::atomic_flag frameCounterLock = ATOMIC_FLAG_INIT;
@@ -72,41 +73,57 @@ namespace tako
 			});
 		});
 
+		while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
 		void* frameData = data->frameDataPool.Allocate();
-		GameStageData stageData
-		{
-			data->gameData,
-			frameData
-		};
+		data->frameDataPoolLock.clear(std::memory_order_release);
 
 		data->jobSys.Continuation([=]()
 		{
 			if (data->config.Update)
 			{
-				data->config.Update(stageData, &data->input, dt);
+				data->jobSys.Schedule([=]()
+				{
+					GameStageData stageData
+					{
+						data->gameData,
+						frameData
+					};
+					data->config.Update(stageData, &data->input, dt);
+				});
 			}
-			if (data->window.ShouldExit() || !data->keepRunning)
+			data->jobSys.Continuation([=]()
 			{
-				data->jobSys.Stop();
-				return;
-			}
-			//LOG("Start Draw {}", thisFrame);
-			//data->context.Begin();
-			if (data->config.Draw)
-			{
-				data->config.Draw(stageData);
-			}
-			//data->context.End();
+				if (data->window.ShouldExit() || !data->keepRunning)
+				{
+					data->jobSys.Stop();
+					return;
+				}
+				//LOG("Start Draw {}", thisFrame);
+				//data->context.Begin();
+				if (data->config.Draw)
+				{
+					GameStageData stageData
+					{
+						data->gameData,
+						frameData
+					};
+					data->config.Draw(stageData);
+				}
+				//data->context.End();
 
-			
-			data->frameDataPool.Deallocate(frameData);
-			data->jobSys.ScheduleForThread(0, [=]()
-			{
-				data->context.Present();
-				//LOG("Tick End");
+
+				while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
+				data->frameDataPool.Deallocate(frameData);
+				data->frameDataPoolLock.clear(std::memory_order_release);
+				
+				data->jobSys.ScheduleForThread(0, [=]()
+				{
+					data->context.Present();
+					//LOG("Tick End");
+				});
+
+				data->jobSys.ScheduleDetached(std::bind(Tick, p));
 			});
-
-			data->jobSys.ScheduleDetached(std::bind(Tick, p));
 		});
 		
 	}

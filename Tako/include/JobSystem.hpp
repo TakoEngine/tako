@@ -43,14 +43,6 @@ namespace tako
 			Reset();
 		}
 
-		~Job()
-		{
-			if (m_functorActive)
-			{
-				reinterpret_cast<JobFunctorBase*>(&m_functorData[0])->~JobFunctorBase();
-			}
-		}
-
 		template<typename Functor>
 		void SetFunctor(Functor&& func)
 		{
@@ -163,32 +155,32 @@ namespace tako
 		}
 
 		template<typename Functor>
-		Job* Schedule(Functor&& job)
+		static Job* Schedule(Functor&& job)
 		{
 			auto allocatedJob = AllocateJob(std::move(job));
 			return Schedule(allocatedJob);
 		}
 
-		Job* Schedule(Job* job)
+		static Job* Schedule(Job* job)
 		{
 			return ScheduleRaw(m_globalQueues[m_threadIndex], job);
 		}
 
 		template<typename Functor>
-		Job* ScheduleDetached(Functor&& job)
+		static Job* ScheduleDetached(Functor&& job)
 		{
 			auto allocatedJob = AllocateJob(std::move(job));
 			return ScheduleRaw(m_globalQueues[m_threadIndex], allocatedJob, true);
 		}
 
 		template<typename Functor>
-		Job* ScheduleForThread(unsigned int thread, Functor&& job)
+		static Job* ScheduleForThread(unsigned int thread, Functor&& job)
 		{
 			auto allocatedJob = AllocateJob(std::move(job));
 			return ScheduleForThread(thread, allocatedJob);
 		}
 
-		Job* ScheduleForThread(unsigned int thread, Job* job)
+		static Job* ScheduleForThread(unsigned int thread, Job* job)
 		{
 			return ScheduleRaw(m_localQueues[thread], job);
 		}
@@ -201,8 +193,8 @@ namespace tako
 
 	private:
 		std::vector<std::thread> m_workers;
-		std::vector<JobQueue> m_localQueues;
-		std::vector<JobQueue> m_globalQueues;
+		static inline std::vector<JobQueue> m_localQueues;
+		static inline std::vector<JobQueue> m_globalQueues;
 		std::atomic<bool> m_stop = false;
 		static inline std::mutex m_cvMutex;
 		static inline std::condition_variable m_cv;
@@ -210,6 +202,8 @@ namespace tako
 		static inline thread_local unsigned int m_threadIndex;
 		static inline thread_local Job* m_freeJobList = nullptr;
 		static inline thread_local size_t m_freeJobListCount = 0;
+		static inline thread_local Job* m_deleteJobList = nullptr;
+		static inline thread_local size_t m_deleteJobListCount = 0;
 		Allocators::FreeListAllocator m_allocator;
 		static inline Allocators::FreeListAllocator* g_allocator;
 		static inline std::mutex m_allocMutex;
@@ -243,8 +237,9 @@ namespace tako
 			{
 				void* ptr;
 				{
-					std::lock_guard lk(m_allocMutex);
-					ptr = g_allocator->Allocate(sizeof(Job) + functorSize);
+					//std::lock_guard lk(m_allocMutex);
+					//TODO: fix freelistallocator
+					ptr = malloc(sizeof(Job) + functorSize);
 				}
 				job = new (ptr) Job(functorSize);
 			}
@@ -254,25 +249,25 @@ namespace tako
 
 		static void DeallocateJob(Job* job)
 		{
+			job->Reset();
 			if (true || m_freeJobListCount >= 10)
 			{
-				job->~Job();
-				std::lock_guard lk(m_allocMutex);
-				g_allocator->Deallocate(job, sizeof(Job) + job->m_functorSize);
+				job->m_parent = m_deleteJobList;
+				m_deleteJobList = job;
+				m_deleteJobListCount++;
 				return;
 			}
-			job->Reset();
 			job->m_parent = m_freeJobList;
 			m_freeJobList = job;
 			m_freeJobListCount++;
 		}
 
-		Job* ScheduleRaw(JobQueue& queue, Job* job, bool detached = false)
+		static Job* ScheduleRaw(JobQueue& queue, Job* job, bool detached = false)
 		{
 			if (m_runningJob && job->m_parent == nullptr && !detached)
 			{
+				m_runningJob->m_jobsLeft++;
 				job->m_parent = m_runningJob;
-				job->m_parent->m_jobsLeft++;
 			}
 			queue.Push(job);
 			m_cv.notify_all();
@@ -299,6 +294,11 @@ namespace tako
 				}
 				else
 				{
+					if (m_deleteJobList)
+					{
+						DeleteOldJobs();
+						continue;
+					}
 					std::unique_lock lk(m_cvMutex);
 					m_cv.wait_for(lk, std::chrono::microseconds(1000));
 				}
@@ -327,6 +327,20 @@ namespace tako
 				}
 				DeallocateJob(job);
 			}
+		}
+
+		void DeleteOldJobs()
+		{
+			//std::lock_guard lk(m_allocMutex);
+			while (m_deleteJobList)
+			{
+				auto job = m_deleteJobList;
+				m_deleteJobList = m_deleteJobList->m_parent;
+				std::destroy_at(job);
+				//g_allocator->Deallocate(job, sizeof(Job) + job->m_functorSize);
+				free(job);
+			}
+			m_deleteJobListCount = 0;
 		}
 	};
 }
