@@ -206,6 +206,11 @@ namespace tako
 			return mathf::sqrt(x * x + y * y + z * z);
 		}
 
+		constexpr float magnitudeSquared() const
+		{
+			return x * x + y * y + z * z;
+		}
+
 		constexpr Vector3& normalize()
 		{
 			float mag = magnitude();
@@ -280,6 +285,11 @@ namespace tako
 			Matrix4 mat = identity;
 			mat.translate(x, y, z);
 			return mat;
+		}
+
+		constexpr static Matrix4 translation(Vector3 trans)
+		{
+			return translation(trans.x, trans.y, trans.z);
 		}
 
 		constexpr static Matrix4 ScaleMatrix(float x, float y, float z)
