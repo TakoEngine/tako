@@ -9,6 +9,7 @@
 #include <chrono>
 
 #include "Allocators/FreeListAllocator.hpp"
+#include "Allocators/PoolAllocator.hpp"
 
 namespace tako
 {
@@ -117,7 +118,7 @@ namespace tako
 	class JobSystem
 	{
 	public:
-		JobSystem(): m_allocator(malloc(1024 * 1024 * 128), 1024 * 1024 * 128)
+		JobSystem(): m_allocator(malloc(1024 * 1024 * 128), 1024 * 1024 * 128, 128)
 		{
 			g_allocator = &m_allocator;
 		}
@@ -204,8 +205,8 @@ namespace tako
 		static inline thread_local size_t m_freeJobListCount = 0;
 		static inline thread_local Job* m_deleteJobList = nullptr;
 		static inline thread_local size_t m_deleteJobListCount = 0;
-		Allocators::FreeListAllocator m_allocator;
-		static inline Allocators::FreeListAllocator* g_allocator;
+		Allocators::PoolAllocator m_allocator;
+		static inline Allocators::PoolAllocator* g_allocator;
 		static inline std::mutex m_allocMutex;
 		unsigned int m_threadCount;
 
@@ -237,11 +238,13 @@ namespace tako
 			{
 				void* ptr;
 				{
-					//std::lock_guard lk(m_allocMutex);
+					std::lock_guard lk(m_allocMutex);
 					//TODO: fix freelistallocator
-					ptr = malloc(sizeof(Job) + functorSize);
+					//ptr = malloc(sizeof(Job) + functorSize);
+					ptr = g_allocator->Allocate();
 				}
-				job = new (ptr) Job(functorSize);
+				//job = new (ptr) Job(functorSize);
+				job = new (ptr) Job(128 - sizeof(Job));
 			}
 			job->SetFunctor(std::move(func));
 			return job;
@@ -250,7 +253,7 @@ namespace tako
 		static void DeallocateJob(Job* job)
 		{
 			job->Reset();
-			if (true || m_freeJobListCount >= 10)
+			if (m_freeJobListCount >= 10)
 			{
 				job->m_parent = m_deleteJobList;
 				m_deleteJobList = job;
@@ -331,14 +334,15 @@ namespace tako
 
 		void DeleteOldJobs()
 		{
-			//std::lock_guard lk(m_allocMutex);
+			std::lock_guard lk(m_allocMutex);
 			while (m_deleteJobList)
 			{
 				auto job = m_deleteJobList;
 				m_deleteJobList = m_deleteJobList->m_parent;
 				std::destroy_at(job);
 				//g_allocator->Deallocate(job, sizeof(Job) + job->m_functorSize);
-				free(job);
+				g_allocator->Deallocate(job);
+				//free(job);
 			}
 			m_deleteJobListCount = 0;
 		}

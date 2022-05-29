@@ -33,18 +33,21 @@ namespace tako
 			return value;
 		}
 
-		constexpr float sqrt(float x)
+		inline float sqrt(float x)
 		{
+			return std::sqrt(x);
+			/*
 			if (x < 0) return std::numeric_limits<float>::quiet_NaN();
 			float a = x / 2;
 			float b = 0;
 			while (a != b)
 			{
 				b = a;
-				a = (x/a + a) / 2;
+				a = (x / a + a) / 2;
 			}
 
 			return a;
+			*/
 		}
 
 		constexpr float toRad(float deg)
@@ -115,7 +118,7 @@ namespace tako
 			return *this;
 		}
 
-		constexpr float magnitude() const
+		float magnitude() const
 		{
 			return mathf::sqrt(x * x + y * y);
 		}
@@ -201,7 +204,7 @@ namespace tako
 			return *this;
 		}
 
-		constexpr float magnitude() const
+		float magnitude() const
 		{
 			return mathf::sqrt(x * x + y * y + z * z);
 		}
@@ -211,12 +214,23 @@ namespace tako
 			return x * x + y * y + z * z;
 		}
 
-		constexpr Vector3& normalize()
+		Vector3& normalize()
 		{
 			float mag = magnitude();
 			if (mag < 0.0001f)
 			{
 				return *this = Vector3(0, 0, 0);
+			}
+
+			return operator/=(mag);
+		}
+
+		Vector3& limitMagnitude()
+		{
+			float mag = magnitude();
+			if (mag < 1)
+			{
+				return *this;
 			}
 
 			return operator/=(mag);
@@ -495,7 +509,7 @@ namespace tako
 			);
 		}
 
-		constexpr static Matrix4 lookAt(const Vector3& eye, const Vector3& target, const Vector3& upDir)
+		static Matrix4 lookAt(const Vector3& eye, const Vector3& target, const Vector3& upDir)
 		{
 			Vector3 forward = eye - target;
 			forward.normalize();
