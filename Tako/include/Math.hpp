@@ -294,6 +294,11 @@ namespace tako
 			return *this;
 		}
 
+		constexpr Matrix4& translate(Vector3 trans)
+		{
+			return translate(trans.x, trans.y, trans.z);
+		}
+
 		constexpr static Matrix4 translation(float x, float y, float z)
 		{
 			Matrix4 mat = identity;
@@ -572,6 +577,8 @@ namespace tako
 
 			return m;
 		}
+		
+		static Matrix4 DirectionToRotation(const Vector3& direction, const Vector3& up = { 0, 1, 0 });
 
 		void Print();
 	};
@@ -607,8 +614,13 @@ namespace tako
 
 		static Quaternion AngleAxis(float degrees, Vector3 axis)
 		{
-			Quaternion res;
 			auto radians = degrees * mathf::PI / 180;
+			return AngleAxisRadians(radians, axis);
+		}
+
+		static Quaternion AngleAxisRadians(float radians, Vector3 axis)
+		{
+			Quaternion res;
 			auto ax = std::sin(radians * 0.5f) * axis.normalize();
 			res.x = ax.x;
 			res.y = ax.y;
@@ -656,6 +668,16 @@ namespace tako
 		static constexpr float Dot(const Quaternion& q1, const Quaternion& q2)
 		{
 			return q1.x * q2.x + q1.y * q2.y + q1.z * q2.z + q1.w * q2.w;
+		}
+
+		static Quaternion FromToRotation(Vector3 from, Vector3 to)
+		{
+			from.normalize();
+			to.normalize();
+			auto dot = Vector3::dot(from, to);
+			auto angle = std::acos(dot);
+			auto axis = Vector3::cross(from, to).normalize();
+			return AngleAxisRadians(angle, axis);
 		}
 
 		static Quaternion RotateTowards(const Quaternion& a, const Quaternion& b, float maxDelta)
