@@ -253,7 +253,7 @@ namespace tako
 		static void DeallocateJob(Job* job)
 		{
 			job->Reset();
-			if (m_freeJobListCount >= 10)
+			if (m_freeJobListCount >= 100)
 			{
 				job->m_parent = m_deleteJobList;
 				m_deleteJobList = job;

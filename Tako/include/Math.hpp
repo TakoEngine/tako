@@ -188,12 +188,27 @@ namespace tako
 			return { v.x * factor, v.y * factor, v.z * factor };
 		}
 
+		friend constexpr Vector3 operator*(Vector3 v, const float factor)
+		{
+			return { v.x * factor, v.y * factor, v.z * factor };
+		}
+
 		constexpr Vector3& operator*=(const float factor)
 		{
 			x *= factor;
 			y *= factor;
 			z *= factor;
 			return *this;
+		}
+
+		friend constexpr Vector3 operator/(const float factor, Vector3 v)
+		{
+			return { v.x / factor, v.y / factor, v.z / factor };
+		}
+
+		friend constexpr Vector3 operator/(Vector3 v, const float factor)
+		{
+			return { v.x / factor, v.y / factor, v.z / factor };
 		}
 
 		constexpr Vector3& operator/=(const float factor)

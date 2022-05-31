@@ -166,6 +166,7 @@ namespace tako
 			auto result = vkCreateInstance(&createInfo, nullptr, &vkInstance);
 			ASSERT(result == VK_SUCCESS);
 		}
+#ifndef NDEBUG
 		{
 			VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
 			createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -178,6 +179,7 @@ namespace tako
 			auto result = func(vkInstance, &createInfo, nullptr, &callback);
 			ASSERT(result == VK_SUCCESS);
 		}
+#endif
 #if TAKO_GLFW
 		{
 			auto result = glfwCreateWindowSurface(vkInstance, windowHandle, NULL, &m_surface);

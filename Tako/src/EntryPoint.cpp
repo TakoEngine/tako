@@ -111,11 +111,6 @@ namespace tako
 				}
 				//data->context.End();
 
-
-				while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
-				data->frameDataPool.Deallocate(frameData);
-				data->frameDataPoolLock.clear(std::memory_order_release);
-				
 				data->jobSys.ScheduleForThread(0, [=]()
 				{
 					data->context.Present();
@@ -123,6 +118,10 @@ namespace tako
 				});
 
 				data->jobSys.ScheduleDetached(std::bind(Tick, p));
+
+				while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
+				data->frameDataPool.Deallocate(frameData);
+				data->frameDataPoolLock.clear(std::memory_order_release);
 			});
 		});
 		
@@ -136,8 +135,8 @@ namespace tako
 		Audio audio;
 		//TODO: jobify
 		{
-			audio.Init();
-			LOG("Audio initialized!");
+			//audio.Init();
+			//LOG("Audio initialized!");
 		};
 		GameConfig config = {};
 		tako::InitTakoConfig(config);
