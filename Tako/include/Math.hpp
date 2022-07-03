@@ -240,15 +240,26 @@ namespace tako
 			return operator/=(mag);
 		}
 
-		Vector3& limitMagnitude()
+		Vector3 normalized()
 		{
 			float mag = magnitude();
-			if (mag < 1)
+			if (mag < 0.0001f)
+			{
+				return Vector3(0, 0, 0);
+			}
+
+			return *this / mag;
+		}
+
+		Vector3& limitMagnitude(float max = 1)
+		{
+			float mag = magnitude();
+			if (mag < max)
 			{
 				return *this;
 			}
 
-			return operator/=(mag);
+			return operator/=(mag/max);
 		}
 
 		constexpr static Vector3 cross(const Vector3& lhs, const Vector3& rhs)
