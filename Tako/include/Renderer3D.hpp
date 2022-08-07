@@ -51,8 +51,10 @@ namespace tako
 		void End();
 
 		void DrawMesh(const Mesh& mesh, const Material& material, const Matrix4& model);
+		void DrawMeshInstanced(const Mesh& mesh, const Material& material, size_t instanceCount, const Matrix4* transforms);
 		void DrawCube(const Matrix4& model, const Material& material);
 		void DrawModel(const Model& model, const Matrix4& transform);
+		void DrawModelInstanced(const Model& model, size_t instanceCount, const Matrix4* transforms);
 		Mesh CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices);
 
 		void SetCameraView(const Matrix4& view);

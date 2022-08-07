@@ -59,6 +59,7 @@ namespace tako
 		virtual void UpdateUniform(const void* uniformData, size_t uniformSize) = 0;
 
 		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) = 0;
+		virtual void DrawIndexed(uint32_t indexCount, uint32_t matrixCount, const Matrix4* renderMatrix) = 0;
 
 		virtual Pipeline CreatePipeline(const PipelineDescriptor& pipelineDescriptor) = 0;
 		virtual Material CreateMaterial(const Texture* texture) = 0;

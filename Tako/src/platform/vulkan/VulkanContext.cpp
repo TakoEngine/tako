@@ -1180,6 +1180,22 @@ namespace tako
 		vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, frame.modelIndex++);
 	}
 
+	void VulkanContext::DrawIndexed(uint32_t indexCount, uint32_t matrixCount, const Matrix4* renderMatrix)
+	{
+		auto commandBuffer = GetActiveCommandBuffer();
+
+		auto& frame = GetCurrentFrame();
+		void* data;
+		auto result = vkMapMemory(m_vkDevice, frame.modelBuffer.bufferMemory, 0, sizeof(CameraUniformData), 0, &data);
+		ASSERT(result == VK_SUCCESS);
+		memcpy((void*) &reinterpret_cast<Matrix4*>(data)[frame.modelIndex], renderMatrix, sizeof(Matrix4) * matrixCount);
+		vkUnmapMemory(m_vkDevice, frame.modelBuffer.bufferMemory);
+
+		auto firstIndex = frame.modelIndex;
+		frame.modelIndex += matrixCount;
+		vkCmdDrawIndexed(commandBuffer, indexCount, 1, matrixCount, 0, firstIndex);
+	}
+
 	VkCommandBuffer VulkanContext::GetActiveCommandBuffer() const
 	{
 		return m_commandBuffers[m_acticeImageIndex];

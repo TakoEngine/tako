@@ -103,6 +103,14 @@ namespace tako
 		m_context->DrawIndexed(mesh.indexCount, model);
 	}
 
+	void Renderer3D::DrawMeshInstanced(const Mesh& mesh, const Material& material, size_t instanceCount, const Matrix4* transforms)
+	{
+		m_context->BindVertexBuffer(&mesh.vertexBuffer);
+		m_context->BindIndexBuffer(&mesh.indexBuffer);
+		m_context->BindMaterial(&material);
+		m_context->DrawIndexed(mesh.indexCount, instanceCount, transforms);
+	}
+
 	void Renderer3D::DrawCube(const Matrix4& model, const Material& material)
 	{
 		DrawMesh(m_cubeMesh, material, model);
@@ -113,6 +121,14 @@ namespace tako
 		for (const Node& node : model.nodes)
 		{
 			DrawMesh(node.mesh, node.mat, transform);
+		}
+	}
+
+	void Renderer3D::DrawModelInstanced(const Model& model, size_t instanceCount, const Matrix4* transforms)
+	{
+		for (const Node& node : model.nodes)
+		{
+			DrawMeshInstanced(node.mesh, node.mat, instanceCount, transforms);
 		}
 	}
 
