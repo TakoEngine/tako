@@ -77,10 +77,14 @@ namespace tako
 		{
 			VkSemaphore imageAvailableSemaphore, renderFinishedSemaphore;
 			VkFence renderFence;
+			VkDescriptorPool descriptorPool;
+			VkDescriptorSet modelDescriptor;
+			BufferMapEntry modelBuffer;
+			int modelIndex = 0;
 		};
 
 		FrameProgress& GetCurrentFrame();
-		CameraUniformDescriptor MakeCameraDescriptor(const CameraUniformData& cameraData);
+		CameraUniformDescriptor MakeCameraDescriptor(const CameraUniformData& cameraData, VkDescriptorPool descriptorPool);
 
 		VkExtent2D m_swapChainExtent;
 		VkInstance vkInstance;
@@ -97,6 +101,7 @@ namespace tako
 		PipelineMapEntry* m_currentPipeline = nullptr;
 		VkDescriptorSetLayout m_descriptorSetLayoutUniform;
 		VkDescriptorSetLayout m_descriptorSetLayoutSampler;
+		VkDescriptorSetLayout m_descriptorSetLayoutStorage;
 		//VkPipeline m_graphicsPipeline;
 		VkCommandPool m_commandPool;
 		std::vector<VkCommandBuffer> m_commandBuffers; //*

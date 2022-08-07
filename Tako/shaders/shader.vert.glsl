@@ -1,4 +1,4 @@
-#version 450
+#version 460
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(set = 0, binding = 0) uniform UniformBufferObject
@@ -25,27 +25,28 @@ layout(location = 3) out vec3 normalCamera;
 layout(location = 4) out vec3 eyeDirection;
 layout(location = 5) out vec3 lightDirection;
 
-layout( push_constant ) uniform constants
+layout(std140, set = 3, binding = 0) readonly buffer ModelBuffer
 {
-	mat4 model;
-} PushConstants;
+	mat4 models[];
+} modelBuffer;
 
 out gl_PerVertex {
     vec4 gl_Position;
 };
 
 void main() {
-    gl_Position = ubo.proj * ubo.view * PushConstants.model * vec4(inPosition, 1.0);
-    fragColor = inColor;
+	mat4 model = modelBuffer.models[gl_BaseInstance];
+	gl_Position = ubo.proj * ubo.view * model * vec4(inPosition, 1.0);
+	fragColor = inColor;
 	texCoord = inTexCoord;
 
-	positionWorld = (PushConstants.model * vec4(inPosition, 1)).xyz;
+	positionWorld = (model * vec4(inPosition, 1)).xyz;
 
-	vec3 vertexPosCamera = (ubo.view * PushConstants.model * vec4(inPosition,1)).xyz;
+	vec3 vertexPosCamera = (ubo.view * model * vec4(inPosition,1)).xyz;
 	eyeDirection = vec3(0,0,0) - vertexPosCamera;
 
 	vec3 lightPosCamera = (ubo.view * vec4(lightUBO.lightPos, 1)).xyz;
 	lightDirection = lightPosCamera + eyeDirection;
 
-	normalCamera = ( ubo.view * PushConstants.model * vec4(inNormal, 0)).xyz;
+	normalCamera = ( ubo.view * model * vec4(inNormal, 0)).xyz;
 }

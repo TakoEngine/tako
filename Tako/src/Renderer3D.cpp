@@ -77,7 +77,7 @@ namespace tako
 		pipelineDescriptor.pipelineUniformSize = sizeof(LightSettings);
 
 		pipelineDescriptor.pushConstants = &pushConstant;
-		pipelineDescriptor.pushConstantsSize = 1;
+		pipelineDescriptor.pushConstantsSize = 0;
 
 		m_pipeline = m_context->CreatePipeline(pipelineDescriptor);
 

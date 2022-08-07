@@ -16,7 +16,7 @@
 #ifdef  TAKO_WIN32
 static std::array<const char*, 2> vkWinExtensions = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
 #endif
-static std::array<const char*, 1> vkDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+static std::array<const char*, 2> vkDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME };
 static std::array<const char*, 1> vkWinValidationLayers = { "VK_LAYER_KHRONOS_validation" };
 
 namespace tako
@@ -148,7 +148,7 @@ namespace tako
 			appInfo.applicationVersion = VK_MAKE_VERSION(0, 1, 0);
 			appInfo.pEngineName = "tako";
 			appInfo.engineVersion = VK_MAKE_VERSION(0, 0, 1);
-			appInfo.apiVersion = VK_API_VERSION_1_0;
+			appInfo.apiVersion = VK_API_VERSION_1_1;
 
 			VkInstanceCreateInfo createInfo = {};
 			createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -268,6 +268,10 @@ namespace tako
 			}
 
 			VkPhysicalDeviceFeatures deviceFeatures = {};
+			VkPhysicalDeviceShaderDrawParametersFeatures shaderDrawParameters = {};
+			shaderDrawParameters.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
+			shaderDrawParameters.pNext = nullptr;
+			shaderDrawParameters.shaderDrawParameters = VK_TRUE;
 
 			VkDeviceCreateInfo createInfo = {};
 			createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -278,6 +282,7 @@ namespace tako
 			createInfo.ppEnabledExtensionNames = vkDeviceExtensions.data();
 			createInfo.enabledLayerCount = vkWinValidationLayers.size();
 			createInfo.ppEnabledLayerNames = vkWinValidationLayers.data();
+			createInfo.pNext = &shaderDrawParameters;
 
 			auto result = vkCreateDevice(physicalDevice, &createInfo, nullptr, &m_vkDevice);
 			ASSERT(result == VK_SUCCESS);
@@ -516,6 +521,22 @@ namespace tako
 		}
 
 		{
+			VkDescriptorSetLayoutBinding storageBinding = {};
+			storageBinding.binding = 0;
+			storageBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			storageBinding.descriptorCount = 1;
+			storageBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+			VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+			layoutInfo.bindingCount = 1;
+			layoutInfo.pBindings = &storageBinding;
+
+			result = vkCreateDescriptorSetLayout(m_vkDevice, &layoutInfo, nullptr, &m_descriptorSetLayoutStorage);
+			ASSERT(result == VK_SUCCESS);
+		}
+
+		{
 			VkSamplerCreateInfo samplerInfo = {};
 			samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 			samplerInfo.pNext = nullptr;
@@ -595,18 +616,22 @@ namespace tako
 		{
 			VkDescriptorPoolSize poolSize = {};
 			poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			poolSize.descriptorCount = 10;//static_cast<uint32_t>(m_swapChainImages.size());
+			poolSize.descriptorCount = 100;//static_cast<uint32_t>(m_swapChainImages.size());
 
 			VkDescriptorPoolSize texSize = {};
 			texSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			texSize.descriptorCount = 42;
+			texSize.descriptorCount = 100;
 
-			VkDescriptorPoolSize sizes[] = { poolSize, texSize };
+			VkDescriptorPoolSize storageBufferSize = {};
+			storageBufferSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			storageBufferSize.descriptorCount = 100;
+
+			VkDescriptorPoolSize sizes[] = { poolSize, texSize, storageBufferSize };
 			VkDescriptorPoolCreateInfo poolInfo = {};
 			poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-			poolInfo.poolSizeCount = 2;
+			poolInfo.poolSizeCount = 3;
 			poolInfo.pPoolSizes = sizes;
-			poolInfo.maxSets = 42;
+			poolInfo.maxSets = 100;
 			poolInfo.flags = 0;
 
 			result = vkCreateDescriptorPool(m_vkDevice, &poolInfo, nullptr, &m_descriptorPool);
@@ -614,7 +639,7 @@ namespace tako
 		}
 
 		CreateDescriptorSets();
-		m_currentCameraUniform = MakeCameraDescriptor({ Matrix4::identity, Matrix4::identity, Matrix4::identity });
+		m_currentCameraUniform = MakeCameraDescriptor({ Matrix4::identity, Matrix4::identity, Matrix4::identity }, m_descriptorPool);
 
 		{
 			m_commandBuffers.resize(m_swapChainFramebuffers.size());
@@ -647,6 +672,50 @@ namespace tako
 			ASSERT(result == VK_SUCCESS);
 			result = vkCreateSemaphore(m_vkDevice, &semaphoreInfo, nullptr, &prog.renderFinishedSemaphore);
 			ASSERT(result == VK_SUCCESS);
+
+			//Frame specifc descriptor pool
+			VkDescriptorPoolSize poolSize = {};
+			poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			poolSize.descriptorCount = 42;
+
+			VkDescriptorPoolSize sizes[] = { poolSize };
+			VkDescriptorPoolCreateInfo poolInfo = {};
+			poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+			poolInfo.poolSizeCount = 1;
+			poolInfo.pPoolSizes = sizes;
+			poolInfo.maxSets = 42;
+			poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+
+			result = vkCreateDescriptorPool(m_vkDevice, &poolInfo, nullptr, &prog.descriptorPool);
+			ASSERT(result == VK_SUCCESS);
+
+			VkDescriptorSetAllocateInfo allocInfo = {};
+			allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+			allocInfo.descriptorPool = m_descriptorPool;
+			allocInfo.descriptorSetCount = 1;
+			allocInfo.pSetLayouts = &m_descriptorSetLayoutStorage;
+
+			result = vkAllocateDescriptorSets(m_vkDevice, &allocInfo, &prog.modelDescriptor);
+			ASSERT(result == VK_SUCCESS);
+
+			CreateVulkanBuffer(m_physicalDevice, sizeof(Matrix4) * 100000, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, prog.modelBuffer.buffer, prog.modelBuffer.bufferMemory);
+
+			VkDescriptorBufferInfo bufferInfo = {};
+			bufferInfo.buffer = prog.modelBuffer.buffer;
+			bufferInfo.offset = 0;
+			bufferInfo.range = VK_WHOLE_SIZE;
+
+			VkWriteDescriptorSet descriptorWrite = {};
+			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrite.dstSet = prog.modelDescriptor;
+			descriptorWrite.dstBinding = 0;
+			descriptorWrite.dstArrayElement = 0;
+			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			descriptorWrite.descriptorCount = 1;
+			descriptorWrite.pBufferInfo = &bufferInfo;
+
+			vkUpdateDescriptorSets(m_vkDevice, 1, &descriptorWrite, 0, nullptr);
+
 			m_frameProgresses.push_back(std::move(prog));
 		}
 	}
@@ -776,6 +845,7 @@ namespace tako
 		}
 
 		layouts.Push(m_descriptorSetLayoutSampler);
+		layouts.Push(m_descriptorSetLayoutStorage);
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipelineLayoutInfo.setLayoutCount = layouts.GetLength();
@@ -958,12 +1028,14 @@ namespace tako
 
 	void VulkanContext::Begin()
 	{
+		auto& frame = GetCurrentFrame();
 		m_cameraUniformFreeList.insert(m_cameraUniformFreeList.end(), m_cameraUniformUsedList.begin(), m_cameraUniformUsedList.end());
 		m_cameraUniformUsedList.clear();
 		m_acticeImageIndex = 0;
-		auto result = vkQueueWaitIdle(m_graphicsQueue);
-		result = vkQueueWaitIdle(m_presentQueue);
-		result = vkWaitForFences(m_vkDevice, 1, &GetCurrentFrame().renderFence, true, 10000000000);
+		frame.modelIndex = 0;
+		//auto result = vkQueueWaitIdle(m_graphicsQueue);
+		//result = vkQueueWaitIdle(m_presentQueue);
+		auto result = vkWaitForFences(m_vkDevice, 1, &GetCurrentFrame().renderFence, true, 10000000000);
 		ASSERT(result == VK_SUCCESS);
 		result = vkResetFences(m_vkDevice, 1, &GetCurrentFrame().renderFence);
 		ASSERT(result == VK_SUCCESS);
@@ -974,6 +1046,9 @@ namespace tako
 			ASSERT(result == VK_SUCCESS);
 			m_acticeImageIndex = imageIndex;
 		}
+
+		result = vkResetDescriptorPool(m_vkDevice, frame.descriptorPool, 0);
+		ASSERT(result == VK_SUCCESS);
 
 		auto commandBuffer = m_commandBuffers[m_acticeImageIndex];
 		auto swapChainFramebuffer = m_swapChainFramebuffers[m_acticeImageIndex];
@@ -1000,7 +1075,6 @@ namespace tako
 		renderPassInfo.pClearValues = &clearValues[0];
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		//vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_currentCameraUniform.descriptor, 0, nullptr);
 	}
 
 	void VulkanContext::End()
@@ -1040,7 +1114,7 @@ namespace tako
 		presentInfo.pSwapchains = swapChains;
 		presentInfo.pImageIndices = &m_acticeImageIndex;
 
-		result = vkQueuePresentKHR(m_presentQueue, &presentInfo);
+		result = vkQueuePresentKHR(m_graphicsQueue, &presentInfo);
 		ASSERT(result == VK_SUCCESS);
 		m_currentFrame++;
 	}
@@ -1058,6 +1132,7 @@ namespace tako
 		{
 			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, entry.layout, 1, 1, &entry.descriptor, 0, nullptr);
 		}
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, entry.layout, 3, 1, &GetCurrentFrame().modelDescriptor, 0, nullptr);
 		//vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[m_acticeImageIndex], 0, nullptr);
 	}
 
@@ -1088,13 +1163,21 @@ namespace tako
 	{
 		auto commandBuffer = GetActiveCommandBuffer();
 
-		
+		auto& frame = GetCurrentFrame();
+		void* data;
+		auto result = vkMapMemory(m_vkDevice, frame.modelBuffer.bufferMemory, 0, sizeof(CameraUniformData), 0, &data);
+		ASSERT(result == VK_SUCCESS);
+		reinterpret_cast<Matrix4*>(data)[frame.modelIndex] = renderMatrix;
+		vkUnmapMemory(m_vkDevice, frame.modelBuffer.bufferMemory);
+
+		/*
 		MeshPushConstants constants;
 		constants.renderMatrix = renderMatrix;
 		vkCmdPushConstants(commandBuffer, m_currentPipeline->layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
+		*/
 		
 
-		vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
+		vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, frame.modelIndex++);
 	}
 
 	VkCommandBuffer VulkanContext::GetActiveCommandBuffer() const
@@ -1118,7 +1201,7 @@ namespace tako
 		}
 		else
 		{
-			m_currentCameraUniform = MakeCameraDescriptor(cameraData);
+			m_currentCameraUniform = MakeCameraDescriptor(cameraData, m_descriptorPool);
 		}
 
 		auto commandBuffer = GetActiveCommandBuffer();
@@ -1219,7 +1302,7 @@ namespace tako
 		vkFreeCommandBuffers(m_vkDevice, m_commandPool, 1, &commandBuffer);
 	}
 
-	CameraUniformDescriptor VulkanContext::MakeCameraDescriptor(const CameraUniformData& cameraData)
+	CameraUniformDescriptor VulkanContext::MakeCameraDescriptor(const CameraUniformData& cameraData, VkDescriptorPool descriptorPool)
 	{
 		CameraUniformDescriptor camUniform;
 
@@ -1227,7 +1310,7 @@ namespace tako
 
 		VkDescriptorSetAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.descriptorPool = m_descriptorPool;
+		allocInfo.descriptorPool = descriptorPool;
 		allocInfo.descriptorSetCount = 1;
 		allocInfo.pSetLayouts = &m_descriptorSetLayoutUniform;
 
