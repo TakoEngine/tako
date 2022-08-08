@@ -35,7 +35,7 @@ out gl_PerVertex {
 };
 
 void main() {
-	mat4 model = modelBuffer.models[gl_BaseInstance];
+	mat4 model = modelBuffer.models[gl_InstanceIndex];
 	gl_Position = ubo.proj * ubo.view * model * vec4(inPosition, 1.0);
 	fragColor = inColor;
 	texCoord = inTexCoord;

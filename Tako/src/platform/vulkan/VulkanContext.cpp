@@ -698,7 +698,7 @@ namespace tako
 			result = vkAllocateDescriptorSets(m_vkDevice, &allocInfo, &prog.modelDescriptor);
 			ASSERT(result == VK_SUCCESS);
 
-			CreateVulkanBuffer(m_physicalDevice, sizeof(Matrix4) * 100000, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, prog.modelBuffer.buffer, prog.modelBuffer.bufferMemory);
+			CreateVulkanBuffer(m_physicalDevice, sizeof(Matrix4) * 300000, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, prog.modelBuffer.buffer, prog.modelBuffer.bufferMemory);
 
 			VkDescriptorBufferInfo bufferInfo = {};
 			bufferInfo.buffer = prog.modelBuffer.buffer;
@@ -1165,9 +1165,9 @@ namespace tako
 
 		auto& frame = GetCurrentFrame();
 		void* data;
-		auto result = vkMapMemory(m_vkDevice, frame.modelBuffer.bufferMemory, 0, sizeof(CameraUniformData), 0, &data);
+		auto result = vkMapMemory(m_vkDevice, frame.modelBuffer.bufferMemory, frame.modelIndex * sizeof(Matrix4), sizeof(Matrix4), 0, &data);
 		ASSERT(result == VK_SUCCESS);
-		reinterpret_cast<Matrix4*>(data)[frame.modelIndex] = renderMatrix;
+		*reinterpret_cast<Matrix4*>(data) = renderMatrix;
 		vkUnmapMemory(m_vkDevice, frame.modelBuffer.bufferMemory);
 
 		/*
@@ -1186,14 +1186,15 @@ namespace tako
 
 		auto& frame = GetCurrentFrame();
 		void* data;
-		auto result = vkMapMemory(m_vkDevice, frame.modelBuffer.bufferMemory, 0, sizeof(CameraUniformData), 0, &data);
+		auto result = vkMapMemory(m_vkDevice, frame.modelBuffer.bufferMemory, frame.modelIndex * sizeof(Matrix4), sizeof(Matrix4) * matrixCount, 0, &data);
 		ASSERT(result == VK_SUCCESS);
-		memcpy((void*) &reinterpret_cast<Matrix4*>(data)[frame.modelIndex], renderMatrix, sizeof(Matrix4) * matrixCount);
+
+		memcpy(data, renderMatrix, sizeof(Matrix4) * matrixCount);
 		vkUnmapMemory(m_vkDevice, frame.modelBuffer.bufferMemory);
 
-		auto firstIndex = frame.modelIndex;
+		auto firstInstance = frame.modelIndex;
 		frame.modelIndex += matrixCount;
-		vkCmdDrawIndexed(commandBuffer, indexCount, 1, matrixCount, 0, firstIndex);
+		vkCmdDrawIndexed(commandBuffer, indexCount, matrixCount, 0, 0, firstInstance);
 	}
 
 	VkCommandBuffer VulkanContext::GetActiveCommandBuffer() const
