@@ -55,16 +55,16 @@ namespace tako
 
 			RECT r = RECT();
 			r.top = 0;
-			r.bottom = 768;
+			r.bottom = 1080;
 			r.left = 0;
-			r.right = 1024;
+			r.right = 1920;
 
 			AdjustWindowRectEx(&r, WS_OVERLAPPEDWINDOW, FALSE, 0);
 
 			m_hwnd = CreateWindowEx(WS_EX_APPWINDOW, "tako", "Tako Engine", WS_OVERLAPPEDWINDOW, 100, 100, r.right - r.left, r.bottom - r.top, NULL, NULL, GetModuleHandle(nullptr), this);
 			SetWindowLongPtr(m_hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
 			//SetWindowLong(m_hwnd, GWL_STYLE, 0);
-			Resize(1024, 768);
+			Resize(1920, 1080);
 
 			ShowWindow(m_hwnd, SW_SHOWNORMAL);
 		}

@@ -50,6 +50,9 @@ namespace tako
 		virtual void Resize(int width, int height) = 0;
 		virtual void HandleEvent(Event &evt) override = 0;
 
+		virtual U32 GetWidth() = 0;
+		virtual U32 GetHeight() = 0;
+
 		virtual void BindPipeline(const Pipeline* pipeline) = 0;
 		virtual void BindVertexBuffer(const Buffer* buffer) = 0;
 		virtual void BindIndexBuffer(const Buffer* buffer) = 0;

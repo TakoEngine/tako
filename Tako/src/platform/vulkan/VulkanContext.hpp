@@ -52,6 +52,9 @@ namespace tako
 		virtual void Resize(int width, int height) override;
 		virtual void HandleEvent(Event& evt) override;
 
+		virtual U32 GetWidth() override;
+		virtual U32 GetHeight() override;
+
 		virtual void BindPipeline(const Pipeline* pipeline) override;
 		virtual void BindVertexBuffer(const Buffer* buffer) override;
 		virtual void BindIndexBuffer(const Buffer* buffer) override;
@@ -86,15 +89,21 @@ namespace tako
 
 		FrameProgress& GetCurrentFrame();
 		CameraUniformDescriptor MakeCameraDescriptor(const CameraUniformData& cameraData, VkDescriptorPool descriptorPool);
+		void CreateSwapchain();
+		void DestroySwapchain(bool skipSwapchain);
 
 		VkExtent2D m_swapChainExtent;
 		VkInstance vkInstance;
 		VkDebugUtilsMessengerEXT callback;
 		VkDevice m_vkDevice;
+
+		uint32_t m_graphicsFamily;
+		uint32_t m_presentFamily;
+
 		VkQueue m_graphicsQueue;//* //TODO: maybe prefer merged graphics and present queue
 		VkQueue m_presentQueue;//*
 		VkSurfaceKHR m_surface;
-		VkSwapchainKHR m_swapChain;
+		VkSwapchainKHR m_swapChain = VK_NULL_HANDLE;
 		std::vector<VkImage> m_swapChainImages;
 		std::vector<VkImageView> m_swapChainImageViews;
 		std::vector<VkFramebuffer> m_swapChainFramebuffers;

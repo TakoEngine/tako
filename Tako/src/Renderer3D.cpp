@@ -145,7 +145,7 @@ namespace tako
 	{
 		CameraUniformData cam;
 		cam.view = view;
-		cam.proj = Matrix4::perspective(45, 1024 / (float)768, 1, 1000);
+		cam.proj = Matrix4::perspective(45, m_context->GetWidth() / (float) m_context->GetHeight(), 1, 1000);
 		cam.viewProj = cam.proj * cam.view;
 		m_context->UpdateCamera(cam);
 	}

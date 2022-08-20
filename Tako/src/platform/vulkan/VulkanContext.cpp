@@ -248,6 +248,8 @@ namespace tako
 			i++;
 		}
 		ASSERT(graphicsFamily >= 0 && presentFamily >= 0);
+		m_graphicsFamily = graphicsFamily;
+		m_presentFamily = presentFamily;
 
 		{
 			std::set<uint32_t> uniqueQueueFamilies = { graphicsFamily, presentFamily };
@@ -291,32 +293,218 @@ namespace tako
 			vkGetDeviceQueue(m_vkDevice, presentFamily, 0, &m_presentQueue);
 		}
 
+		const VkFormat imageFormat = VK_FORMAT_B8G8R8A8_UNORM; //TODO: check available
+		auto depthFormat = VK_FORMAT_D32_SFLOAT; //TODO: check available
+		{
+			VkAttachmentDescription colorAttachment = {};
+			colorAttachment.format = imageFormat;
+			colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+			colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+			colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+			VkAttachmentReference colorAttachmentRef = {};
+			colorAttachmentRef.attachment = 0;
+			colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+			VkAttachmentDescription depthAttachment = {};
+			depthAttachment.flags = 0;
+			depthAttachment.format = depthFormat;
+			depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+			depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+			VkAttachmentReference depthAttachmentRef = {};
+			depthAttachmentRef.attachment = 1;
+			depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+			VkAttachmentDescription attachments[] = { colorAttachment, depthAttachment };
+
+			VkSubpassDescription subpass = {};
+			subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+			subpass.colorAttachmentCount = 1;
+			subpass.pColorAttachments = &colorAttachmentRef;
+			subpass.pDepthStencilAttachment = &depthAttachmentRef;
+
+			VkSubpassDependency dependency = {};
+			dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+			dependency.dstSubpass = 0;
+			dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+			dependency.srcAccessMask = 0;
+			dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+			dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+			VkRenderPassCreateInfo renderPassInfo = {};
+			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+			renderPassInfo.attachmentCount = 2;
+			renderPassInfo.pAttachments = &attachments[0];
+			renderPassInfo.subpassCount = 1;
+			renderPassInfo.pSubpasses = &subpass;
+			renderPassInfo.dependencyCount = 1;
+			renderPassInfo.pDependencies = &dependency;
+
+			result = vkCreateRenderPass(m_vkDevice, &renderPassInfo, nullptr, &m_renderPass);
+			ASSERT(result == VK_SUCCESS);
+		}
+
+		//MARKER
+
+
+		// Create Camera Buffer Layout
+		{
+			VkDescriptorSetLayoutBinding uboLayoutBinding = {};
+			uboLayoutBinding.binding = 0;
+			uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			uboLayoutBinding.descriptorCount = 1;
+			uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+			VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+			layoutInfo.bindingCount = 1;
+			layoutInfo.pBindings = &uboLayoutBinding;
+
+			result = vkCreateDescriptorSetLayout(m_vkDevice, &layoutInfo, nullptr, &m_descriptorSetLayoutUniform);
+			ASSERT(result == VK_SUCCESS);
+		}
+
+		{
+			VkDescriptorSetLayoutBinding textureBinding = {};
+			textureBinding.binding = 0;
+			textureBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			textureBinding.descriptorCount = 1;
+			textureBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+			VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+			layoutInfo.bindingCount = 1;
+			layoutInfo.pBindings = &textureBinding;
+
+			result = vkCreateDescriptorSetLayout(m_vkDevice, &layoutInfo, nullptr, &m_descriptorSetLayoutSampler);
+			ASSERT(result == VK_SUCCESS);
+		}
+
+		{
+			VkDescriptorSetLayoutBinding storageBinding = {};
+			storageBinding.binding = 0;
+			storageBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			storageBinding.descriptorCount = 1;
+			storageBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+			VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+			layoutInfo.bindingCount = 1;
+			layoutInfo.pBindings = &storageBinding;
+
+			result = vkCreateDescriptorSetLayout(m_vkDevice, &layoutInfo, nullptr, &m_descriptorSetLayoutStorage);
+			ASSERT(result == VK_SUCCESS);
+		}
+
+		{
+			VkSamplerCreateInfo samplerInfo = {};
+			samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+			samplerInfo.pNext = nullptr;
+
+			samplerInfo.magFilter = VK_FILTER_NEAREST;
+			samplerInfo.minFilter = VK_FILTER_NEAREST;
+			samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+			samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+			samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+			result = vkCreateSampler(m_vkDevice, &samplerInfo, nullptr, &m_pixelSampler);
+			ASSERT(result == VK_SUCCESS);
+		}
+
+		{
+			VkSamplerCreateInfo samplerInfo = {};
+			samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+			samplerInfo.pNext = nullptr;
+
+			samplerInfo.magFilter = VK_FILTER_LINEAR;
+			samplerInfo.minFilter = VK_FILTER_LINEAR;
+			samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
+			result = vkCreateSampler(m_vkDevice, &samplerInfo, nullptr, &m_linearSampler);
+			ASSERT(result == VK_SUCCESS);
+		}
+
+		{
+			VkCommandPoolCreateInfo poolInfo = {};
+			poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+			poolInfo.queueFamilyIndex = graphicsFamily;
+			poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+			auto result = vkCreateCommandPool(m_vkDevice, &poolInfo, nullptr, &m_commandPool);
+			ASSERT(result == VK_SUCCESS);
+		}
+
+		// createDescriptorPool
+		{
+			VkDescriptorPoolSize poolSize = {};
+			poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			poolSize.descriptorCount = 100;//static_cast<uint32_t>(m_swapChainImages.size());
+
+			VkDescriptorPoolSize texSize = {};
+			texSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			texSize.descriptorCount = 100;
+
+			VkDescriptorPoolSize storageBufferSize = {};
+			storageBufferSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			storageBufferSize.descriptorCount = 100;
+
+			VkDescriptorPoolSize sizes[] = { poolSize, texSize, storageBufferSize };
+			VkDescriptorPoolCreateInfo poolInfo = {};
+			poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+			poolInfo.poolSizeCount = 3;
+			poolInfo.pPoolSizes = sizes;
+			poolInfo.maxSets = 100;
+			poolInfo.flags = 0;
+
+			result = vkCreateDescriptorPool(m_vkDevice, &poolInfo, nullptr, &m_descriptorPool);
+			ASSERT(result == VK_SUCCESS);
+		}
+
+		m_currentCameraUniform = MakeCameraDescriptor({ Matrix4::identity, Matrix4::identity, Matrix4::identity }, m_descriptorPool);
+
+		CreateSwapchain();
+	}
+
+	void VulkanContext::CreateSwapchain()
+	{
 		//Swapchain TODO: check if options are available
 		const VkFormat imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
 		{
 			VkSurfaceCapabilitiesKHR capabilities;
-			auto result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, m_surface, &capabilities);
+			auto result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, m_surface, &capabilities);
 			ASSERT(result == VK_SUCCESS);
 
 			/*RECT clientRect;
 			GetClientRect(hwnd, &clientRect);
 			uint32_t clientWidth = clientRect.right - clientRect.left;
 			uint32_t clientHeight = clientRect.bottom - clientRect.top;*/
-			uint32_t clientWidth = 1024;
-			uint32_t clientHeight = 768;
+			uint32_t clientWidth = capabilities.currentExtent.width;
+			uint32_t clientHeight = capabilities.currentExtent.height;
 
 			VkSwapchainCreateInfoKHR createInfo = {};
 			createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 			createInfo.surface = m_surface;
-			createInfo.minImageCount = capabilities.minImageCount + 1; // triple buffering
+			createInfo.minImageCount = std::min(capabilities.maxImageCount, std::max(capabilities.minImageCount, (uint32_t) 3)); // triple buffering
 			createInfo.imageFormat = imageFormat;
 			createInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 			createInfo.imageExtent = m_swapChainExtent = { clientWidth, clientHeight }; //TODO: clamp to allowed values
 			createInfo.imageArrayLayers = 1;
 			createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-			uint32_t queueFamiliyIndices[] = { graphicsFamily, presentFamily };
-			if (graphicsFamily != presentFamily)
+			uint32_t queueFamiliyIndices[] = { m_graphicsFamily, m_presentFamily };
+			if (m_graphicsFamily != m_presentFamily)
 			{
 				createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 				createInfo.queueFamilyIndexCount = 2;
@@ -333,7 +521,7 @@ namespace tako
 			createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 			createInfo.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 			createInfo.clipped = VK_TRUE;
-			createInfo.oldSwapchain = VK_NULL_HANDLE;
+			createInfo.oldSwapchain = m_swapChain;
 
 			result = vkCreateSwapchainKHR(m_vkDevice, &createInfo, nullptr, &m_swapChain);
 			ASSERT(result == VK_SUCCESS);
@@ -428,145 +616,6 @@ namespace tako
 		}
 
 		{
-			VkAttachmentDescription colorAttachment = {};
-			colorAttachment.format = imageFormat;
-			colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-			colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-			colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-			colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-			colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-			colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-			VkAttachmentReference colorAttachmentRef = {};
-			colorAttachmentRef.attachment = 0;
-			colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-			VkAttachmentDescription depthAttachment = {};
-			depthAttachment.flags = 0;
-			depthAttachment.format = depthFormat;
-			depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-			depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-			depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-			depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-			depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-			depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-			VkAttachmentReference depthAttachmentRef = {};
-			depthAttachmentRef.attachment = 1;
-			depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-			VkAttachmentDescription attachments[] = { colorAttachment, depthAttachment };
-
-			VkSubpassDescription subpass = {};
-			subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-			subpass.colorAttachmentCount = 1;
-			subpass.pColorAttachments = &colorAttachmentRef;
-			subpass.pDepthStencilAttachment = &depthAttachmentRef;
-
-			VkSubpassDependency dependency = {};
-			dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-			dependency.dstSubpass = 0;
-			dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-			dependency.srcAccessMask = 0;
-			dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-			dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-			VkRenderPassCreateInfo renderPassInfo = {};
-			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-			renderPassInfo.attachmentCount = 2;
-			renderPassInfo.pAttachments = &attachments[0];
-			renderPassInfo.subpassCount = 1;
-			renderPassInfo.pSubpasses = &subpass;
-			renderPassInfo.dependencyCount = 1;
-			renderPassInfo.pDependencies = &dependency;
-
-			result = vkCreateRenderPass(m_vkDevice, &renderPassInfo, nullptr, &m_renderPass);
-			ASSERT(result == VK_SUCCESS);
-		}
-
-
-		// Create Camera Buffer Layout
-		{
-			VkDescriptorSetLayoutBinding uboLayoutBinding = {};
-			uboLayoutBinding.binding = 0;
-			uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			uboLayoutBinding.descriptorCount = 1;
-			uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-
-			VkDescriptorSetLayoutCreateInfo layoutInfo = {};
-			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-			layoutInfo.bindingCount = 1;
-			layoutInfo.pBindings = &uboLayoutBinding;
-
-			result = vkCreateDescriptorSetLayout(m_vkDevice, &layoutInfo, nullptr, &m_descriptorSetLayoutUniform);
-			ASSERT(result == VK_SUCCESS);
-		}
-
-		{
-			VkDescriptorSetLayoutBinding textureBinding = {};
-			textureBinding.binding = 0;
-			textureBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			textureBinding.descriptorCount = 1;
-			textureBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-			VkDescriptorSetLayoutCreateInfo layoutInfo = {};
-			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-			layoutInfo.bindingCount = 1;
-			layoutInfo.pBindings = &textureBinding;
-
-			result = vkCreateDescriptorSetLayout(m_vkDevice, &layoutInfo, nullptr, &m_descriptorSetLayoutSampler);
-			ASSERT(result == VK_SUCCESS);
-		}
-
-		{
-			VkDescriptorSetLayoutBinding storageBinding = {};
-			storageBinding.binding = 0;
-			storageBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			storageBinding.descriptorCount = 1;
-			storageBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-			VkDescriptorSetLayoutCreateInfo layoutInfo = {};
-			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-			layoutInfo.bindingCount = 1;
-			layoutInfo.pBindings = &storageBinding;
-
-			result = vkCreateDescriptorSetLayout(m_vkDevice, &layoutInfo, nullptr, &m_descriptorSetLayoutStorage);
-			ASSERT(result == VK_SUCCESS);
-		}
-
-		{
-			VkSamplerCreateInfo samplerInfo = {};
-			samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-			samplerInfo.pNext = nullptr;
-
-			samplerInfo.magFilter = VK_FILTER_NEAREST;
-			samplerInfo.minFilter = VK_FILTER_NEAREST;
-			samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-			samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-			samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-
-			result = vkCreateSampler(m_vkDevice, &samplerInfo, nullptr, &m_pixelSampler);
-			ASSERT(result == VK_SUCCESS);
-		}
-
-		{
-			VkSamplerCreateInfo samplerInfo = {};
-			samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-			samplerInfo.pNext = nullptr;
-
-			samplerInfo.magFilter = VK_FILTER_LINEAR;
-			samplerInfo.minFilter = VK_FILTER_LINEAR;
-			samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-			samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-			samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-
-			result = vkCreateSampler(m_vkDevice, &samplerInfo, nullptr, &m_linearSampler);
-			ASSERT(result == VK_SUCCESS);
-		}
-
-		{
 			m_swapChainFramebuffers.resize(m_swapChainImageViews.size());
 			for (size_t i = 0; i < m_swapChainImageViews.size(); i++)
 			{
@@ -591,16 +640,6 @@ namespace tako
 		}
 
 		{
-			VkCommandPoolCreateInfo poolInfo = {};
-			poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-			poolInfo.queueFamilyIndex = graphicsFamily;
-			poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-
-			auto result = vkCreateCommandPool(m_vkDevice, &poolInfo, nullptr, &m_commandPool);
-			ASSERT(result == VK_SUCCESS);
-		}
-
-		{
 			VkDeviceSize bufferSize = sizeof(CameraUniformData);
 
 			m_uniformBuffers.resize(m_swapChainImages.size());
@@ -608,38 +647,11 @@ namespace tako
 
 			for (size_t i = 0; i < m_swapChainImages.size(); i++)
 			{
-				CreateVulkanBuffer(physicalDevice, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_uniformBuffers[i], m_uniformBuffersMemory[i]);
+				CreateVulkanBuffer(m_physicalDevice, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_uniformBuffers[i], m_uniformBuffersMemory[i]);
 			}
 		}
 
-		// createDescriptorPool
-		{
-			VkDescriptorPoolSize poolSize = {};
-			poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			poolSize.descriptorCount = 100;//static_cast<uint32_t>(m_swapChainImages.size());
-
-			VkDescriptorPoolSize texSize = {};
-			texSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			texSize.descriptorCount = 100;
-
-			VkDescriptorPoolSize storageBufferSize = {};
-			storageBufferSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			storageBufferSize.descriptorCount = 100;
-
-			VkDescriptorPoolSize sizes[] = { poolSize, texSize, storageBufferSize };
-			VkDescriptorPoolCreateInfo poolInfo = {};
-			poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-			poolInfo.poolSizeCount = 3;
-			poolInfo.pPoolSizes = sizes;
-			poolInfo.maxSets = 100;
-			poolInfo.flags = 0;
-
-			result = vkCreateDescriptorPool(m_vkDevice, &poolInfo, nullptr, &m_descriptorPool);
-			ASSERT(result == VK_SUCCESS);
-		}
-
 		CreateDescriptorSets();
-		m_currentCameraUniform = MakeCameraDescriptor({ Matrix4::identity, Matrix4::identity, Matrix4::identity }, m_descriptorPool);
 
 		{
 			m_commandBuffers.resize(m_swapChainFramebuffers.size());
@@ -959,7 +971,7 @@ namespace tako
 		{
 			vkDestroyImage(m_vkDevice, image, nullptr);
 		}
-		vkDestroySwapchainKHR(m_vkDevice, m_swapChain, nullptr);
+		
 		vkDestroyDescriptorSetLayout(m_vkDevice, m_descriptorSetLayoutUniform, nullptr);
 		vkDestroyDescriptorSetLayout(m_vkDevice, m_descriptorSetLayoutSampler, nullptr);
 		for (size_t i = 0; i < m_uniformBuffers.size(); i++)
@@ -1007,6 +1019,8 @@ namespace tako
 			vkDestroyPipeline(m_vkDevice, pipeline.pipeline, nullptr);
 		}
 
+		DestroySwapchain(false);
+
 
 		vkDestroySampler(m_vkDevice, m_pixelSampler, nullptr);
 		vkDestroySampler(m_vkDevice, m_linearSampler, nullptr);
@@ -1019,6 +1033,24 @@ namespace tako
 		auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(vkInstance, "vkDestroyDebugUtilsMessengerEXT");
 		func(vkInstance, callback, nullptr);
 		vkDestroyInstance(vkInstance, nullptr);
+	}
+
+	U32 VulkanContext::GetWidth()
+	{
+		return m_swapChainExtent.width;
+	}
+
+	U32 VulkanContext::GetHeight()
+	{
+		return m_swapChainExtent.height;
+	}
+
+	void VulkanContext::DestroySwapchain(bool skipSwapchain)
+	{
+		if (!skipSwapchain)
+		{
+			vkDestroySwapchainKHR(m_vkDevice, m_swapChain, nullptr);
+		}
 	}
 
 	VulkanContext::FrameProgress& VulkanContext::GetCurrentFrame()
@@ -1361,6 +1393,9 @@ namespace tako
 
 	void VulkanContext::CreateDescriptorSets()
 	{
+		if (m_swapChainImages.size() == m_swapChainImages.size()) {
+			return;
+		}
 		std::vector<VkDescriptorSetLayout> layouts(m_swapChainImages.size(), m_descriptorSetLayoutUniform);
 		VkDescriptorSetAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1392,7 +1427,18 @@ namespace tako
 		}
 	}
 
-	void VulkanContext::Resize(int width, int height) {}
+	void VulkanContext::Resize(int width, int height) {
+		LOG("RESIZXZEFRZLOSADF")
+		m_swapChainExtent = { (uint32_t)width, (uint32_t)height };
+		ASSERT(vkQueueWaitIdle(m_graphicsQueue) == VK_SUCCESS);
+		ASSERT(vkQueueWaitIdle(m_presentQueue) == VK_SUCCESS);
+		ASSERT(vkDeviceWaitIdle(m_vkDevice) == VK_SUCCESS); //TODO: wait somewhere else
+		auto oldSwap = m_swapChain;
+		DestroySwapchain(true);
+		CreateSwapchain();
+		vkDestroySwapchainKHR(m_vkDevice, oldSwap, nullptr);
+	}
+
 	void VulkanContext::HandleEvent(Event& evt) {}
 	Texture VulkanContext::CreateTexture(const Bitmap& bitmap)
 	{
