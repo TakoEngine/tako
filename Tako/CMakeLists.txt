@@ -167,6 +167,27 @@ target_sources(${TAKO_DLL} PRIVATE
 target_include_directories(${TAKO_DLL} PUBLIC "src/platform/vulkan")
 #configure_file("shaders/shader.vert.spv" ${CMAKE_BINARY_DIR}/shaders/shader.vert.spv COPYONLY)
 #configure_file("shaders/shader.frag.spv" ${CMAKE_BINARY_DIR}/shaders/shader.frag.spv COPYONLY)
+
+
+find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
+
+function(compile_shader file)
+	get_filename_component(filename ${file} NAME_WLE)
+	SET(SHADER_IN ${CMAKE_CURRENT_SOURCE_DIR}/shaders/${file})
+	SET(SHADER_OUT ${CMAKE_BINARY_DIR}/shader/${filename}.spv)
+	add_custom_command(
+		OUTPUT ${SHADER_OUT}
+		COMMAND ${GLSL_VALIDATOR} -V ${SHADER_IN} -o ${SHADER_OUT}
+		DEPENDS ${SHADER_IN}
+		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+		COMMENT "Compiling ${SHADER_IN} ${SHADER_OUT}"
+	)
+	target_sources(${TAKO_DLL} PRIVATE ${SHADER_OUT})
+endfunction()
+
+compile_shader("shader.vert.glsl")
+compile_shader("shader.frag.glsl")
+
 endif(TAKO_VULKAN)
 
 if (TAKO_GLFW)

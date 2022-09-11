@@ -57,8 +57,8 @@ namespace tako
 
 	Renderer3D::Renderer3D(GraphicsContext* context) : m_context(context)
 	{
-		const char* vertPath = "/shader.vert.spv";
-		const char* fragPath = "/shader.frag.spv";
+		const char* vertPath = "/../../shader/shader.vert.spv";
+		const char* fragPath = "/../../shader/shader.frag.spv";
 
 		auto vertCode = LoadShaderCode(vertPath);
 		auto fragCode = LoadShaderCode(fragPath);
