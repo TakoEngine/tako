@@ -668,6 +668,7 @@ namespace tako
 
 		for (int i = 0; i < m_swapChainFramebuffers.size(); i++)
 		{
+			if (m_frameProgresses.size() > i) continue;
 			FrameProgress prog;
 			VkFenceCreateInfo fenceInfo = {};
 			fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
