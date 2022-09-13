@@ -1,5 +1,6 @@
 #include "Tako.hpp"
 #include "Renderer3D.hpp"
+#include "FileSystem.hpp"
 
 float PingPong(float val, float max)
 {
@@ -31,7 +32,8 @@ public:
 	void Setup(const tako::SetupData& setup)
 	{
 		renderer = new tako::Renderer3D(setup.context);
-		model = renderer->LoadModel("./Assets/CrossGolf.glb");
+		auto path = tako::FileSystem::GetExecutablePath() + "/Assets/CrossGolf.glb";
+		model = renderer->LoadModel(path.c_str());
 	}
 
 	void Update(tako::Input* input, float dt, FrameData* frameData)

@@ -10,12 +10,10 @@ namespace tako::FileSystem
 					size_t bufferSize,
 					size_t& bytesRead)
 	{
-		std::string path("./Assets");
-		path.append(filePath);
-		std::ifstream file(path);
+		std::ifstream file(filePath);
 		if (!file.is_open())
 		{
-			LOG_ERR("Cant open file {}", path);
+			LOG_ERR("Cant open file {}", filePath);
 			return false;
 		}
 
@@ -32,9 +30,13 @@ namespace tako::FileSystem
 
 	size_t GetFileSize(const char* filePath)
 	{
-		std::string path("./Assets");
-		path.append(filePath);
-		return std::filesystem::file_size(path);
+		return std::filesystem::file_size(filePath);
+	}
+
+	std::string GetExecutablePath()
+	{
+		//LOG("{}", )
+		return "";
 	}
 }
 

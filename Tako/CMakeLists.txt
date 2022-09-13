@@ -41,7 +41,9 @@ add_library(${TAKO_DLL}
 	"include/Renderer3D.hpp"
 	"src/Renderer3D.cpp"
 	"include/GameConfig.hpp"
-	"include/PlatformerPhysics2D.hpp")
+	"include/PlatformerPhysics2D.hpp"
+	"include/Assets.hpp"
+)
 
 function(set_feature define val)
 	set(${define} ${val} PARENT_SCOPE)
@@ -93,6 +95,7 @@ target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/win32/Window.cpp"
 	"src/platform/win32/Log.cpp"
 	"src/platform/win32/FileSystem.cpp"
+	#"src/platform/default/FileSystem.cpp"
 	"include/WinUtility.hpp"
 	"src/platform/win32/WinUtility.cpp"
 	"src/platform/default/Timer.cpp"

@@ -46,10 +46,11 @@ namespace tako
 
 	std::vector<U8> LoadShaderCode(const char* codePath)
 	{
-		size_t fileSize = FileSystem::GetFileSize(codePath);
+		auto path = FileSystem::GetExecutablePath() + codePath;
+		size_t fileSize = FileSystem::GetFileSize(path.c_str());
 		std::vector<U8> code(fileSize);
 		size_t bytesRead = 0;
-		bool readSuccess = FileSystem::ReadFile(codePath, code.data(), code.size(), bytesRead);
+		bool readSuccess = FileSystem::ReadFile(path.c_str(), code.data(), code.size(), bytesRead);
 		ASSERT(readSuccess && fileSize == bytesRead);
 
 		return code;
@@ -57,8 +58,8 @@ namespace tako
 
 	Renderer3D::Renderer3D(GraphicsContext* context) : m_context(context)
 	{
-		const char* vertPath = "/../../shader/shader.vert.spv";
-		const char* fragPath = "/../../shader/shader.frag.spv";
+		const char* vertPath = "/../shader/shader.vert.spv";
+		const char* fragPath = "/../shader/shader.frag.spv";
 
 		auto vertCode = LoadShaderCode(vertPath);
 		auto fragCode = LoadShaderCode(fragPath);

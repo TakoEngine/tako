@@ -1,5 +1,5 @@
 #include "PixelArtDrawer.hpp"
-#include "FileSystem.hpp"
+#include "Assets.hpp"
 #include <array>
 
 namespace tako
@@ -40,10 +40,10 @@ namespace tako
 
 		std::vector<U8> LoadShaderCode(const char* codePath)
 		{
-			size_t fileSize = FileSystem::GetFileSize(codePath);
+			size_t fileSize = Assets::GetAssetFileSize(codePath);
 			std::vector<U8> code(fileSize);
 			size_t bytesRead = 0;
-			bool readSuccess = FileSystem::ReadFile(codePath, code.data(), code.size(), bytesRead);
+			bool readSuccess = Assets::ReadAssetFile(codePath, code.data(), code.size(), bytesRead);
 			ASSERT(readSuccess && fileSize == bytesRead);
 
 			return code;

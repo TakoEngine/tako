@@ -1,5 +1,6 @@
 #pragma once
 #include "NumberTypes.hpp"
+#include <string>
 
 namespace tako::FileSystem
 {
@@ -10,4 +11,6 @@ namespace tako::FileSystem
 		size_t& bytesRead);
 
 	size_t GetFileSize(const char* filePath);
+
+	std::string GetExecutablePath();
 }

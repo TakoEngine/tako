@@ -1,7 +1,7 @@
 #include "Bitmap.hpp"
 #include "Utility.hpp"
 #include <cstring>
-#include "FileSystem.hpp"
+#include "Assets.hpp"
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_NO_STDIO
 #include "stb_image.h"
@@ -121,7 +121,7 @@ namespace tako
 	{
 		tako::U8* buffer = new tako::U8[5242880];
 		size_t bytesRead = 0;
-		tako::FileSystem::ReadFile(filePath, buffer, 5242880, bytesRead);
+		tako::Assets::ReadAssetFile(filePath, buffer, 5242880, bytesRead);
 		int width, height, channels;
 		stbi_uc* img = stbi_load_from_memory(buffer, bytesRead, &width, &height, &channels, 4);
 		Bitmap bitmap((Color*)img, width, height);
