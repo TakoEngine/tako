@@ -7,6 +7,7 @@
 //#include "OpenGLPixelArtDrawer.hpp"
 #include "Renderer3D.hpp"
 #include "JobSystem.hpp"
+#include "Application.hpp"
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
 #endif
@@ -127,9 +128,11 @@ namespace tako
 		
 	}
 
-	int RunGameLoop()
+	int RunGameLoop(int argc, char* argv[])
 	{
 		LOG("Init!");
+		Application::argc = argc;
+		Application::argv = argv;
 		JobSystem jobSys;
 		jobSys.Init();
 		Audio audio;

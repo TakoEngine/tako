@@ -1,7 +1,7 @@
 #include <Windows.h>
 #include "EntryPoint.hpp"
 
-INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow)
+int main(int argc, char* argv[])
 {
 #ifndef NDEBUG
 	{
@@ -10,5 +10,5 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 		ShowWindow(hWnd, SW_SHOWNORMAL);
 	}
 #endif
-	return tako::RunGameLoop();
+	return tako::RunGameLoop(argc, argv);
 }

@@ -43,6 +43,8 @@ add_library(${TAKO_DLL}
 	"include/GameConfig.hpp"
 	"include/PlatformerPhysics2D.hpp"
 	"include/Assets.hpp"
+	"include/Application.hpp"
+	"src/Application.cpp"
 )
 
 function(set_feature define val)
@@ -94,8 +96,8 @@ target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/win32/Main.cpp"
 	"src/platform/win32/Window.cpp"
 	"src/platform/win32/Log.cpp"
-	"src/platform/win32/FileSystem.cpp"
-	#"src/platform/default/FileSystem.cpp"
+	#"src/platform/win32/FileSystem.cpp"
+	"src/platform/default/FileSystem.cpp"
 	"include/WinUtility.hpp"
 	"src/platform/win32/WinUtility.cpp"
 	"src/platform/default/Timer.cpp"

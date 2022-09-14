@@ -2,6 +2,7 @@
 #include "Utility.hpp"
 #include <filesystem>
 #include <fstream>
+#include "Application.hpp"
 
 namespace tako::FileSystem
 {
@@ -10,7 +11,7 @@ namespace tako::FileSystem
 					size_t bufferSize,
 					size_t& bytesRead)
 	{
-		std::ifstream file(filePath);
+		std::ifstream file(filePath, std::ios::binary);
 		if (!file.is_open())
 		{
 			LOG_ERR("Cant open file {}", filePath);
@@ -35,8 +36,8 @@ namespace tako::FileSystem
 
 	std::string GetExecutablePath()
 	{
-		//LOG("{}", )
-		return "";
+		static auto path = std::filesystem::weakly_canonical(Application::argv[0]).parent_path().string();
+		return path;
 	}
 }
 
