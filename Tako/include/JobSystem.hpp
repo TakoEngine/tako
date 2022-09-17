@@ -126,7 +126,7 @@ namespace tako
 		void Init()
 		{
 			m_threadIndex = 0;
-			m_threadCount = std::thread::hardware_concurrency();
+			m_threadCount = 1;// std::thread::hardware_concurrency();
 			LOG("Threads: {}", m_threadCount);
 			m_localQueues.reserve(m_threadCount);
 			m_globalQueues.reserve(m_threadCount);

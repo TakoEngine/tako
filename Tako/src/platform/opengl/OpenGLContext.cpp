@@ -77,6 +77,16 @@ namespace tako
 		}
 	}
 
+	U32 OpenGLContext::GetWidth()
+	{
+		return U32();
+	}
+
+	U32 OpenGLContext::GetHeight()
+	{
+		return U32();
+	}
+
 	Texture OpenGLContext::CreateTexture(const Bitmap& bitmap)
 	{
 		GLuint tex;
@@ -152,6 +162,10 @@ namespace tako
 	void OpenGLContext::DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix)
 	{
 
+	}
+
+	void OpenGLContext::DrawIndexed(uint32_t indexCount, uint32_t matrixCount, const Matrix4* renderMatrix)
+	{
 	}
 
 	Pipeline OpenGLContext::CreatePipeline(const PipelineDescriptor &pipelineDescriptor)

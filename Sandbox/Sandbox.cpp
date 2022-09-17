@@ -32,9 +32,9 @@ void Setup(void* gameData, const tako::SetupData& setup)
 	g_audio = setup.audio;
 	g_drawer = new tako::OpenGLPixelArtDrawer(setup.context);
 	g_context = setup.context;
-	clipMiss = g_audio->Load("/Miss.wav");
-	clipMusic = g_audio->Load("/garden-of-kittens.mp3");
-	tako::Audio::Play(clipMusic, true);
+	//clipMiss = g_audio->Load("/Miss.wav");
+	//clipMusic = g_audio->Load("/garden-of-kittens.mp3");
+	//tako::Audio::Play(clipMusic, true);
 	tree = setup.resources->Load<tako::Texture>("/tree.png");
 	tileset = setup.resources->Load<tako::Texture>("/Tileset.png");
 	sprite = g_drawer->CreateSprite(tileset, 16, 0, 16, 16);
@@ -58,11 +58,11 @@ int PingPong(int val, int max)
 	}
 }
 
-void Update(void* gameData, tako::Input* input, float dt)
+void Update(const tako::GameStageData stageData, tako::Input* input, float dt)
 {
 	delta += dt;
 	if (delta > 1) {
-		tako::Audio::Play(clipMiss);
+		//tako::Audio::Play(clipMiss);
 		delta = 0;
 	}
 	float speed = 60;
@@ -88,7 +88,7 @@ void Update(void* gameData, tako::Input* input, float dt)
 	}
 	if (input->GetKeyDown(tako::Key::Space))
 	{
-		g_audio->Play("/Bump.wav");
+		//g_audio->Play("/Bump.wav");
 	}
 
 	static float gradOff = 0;
@@ -110,7 +110,7 @@ void Update(void* gameData, tako::Input* input, float dt)
 	mousePos = input->GetMousePosition();
 }
 
-void Draw(void* gameData)
+void Draw(const tako::GameStageData stageData)
 {
 	auto alpha = static_cast<tako::U8>(PingPong(a, 255));
 	auto drawer = g_drawer;
@@ -141,5 +141,6 @@ void tako::InitTakoConfig(GameConfig& config)
 	config.Update = Update;
 	config.Draw = Draw;
 	config.graphicsAPI = tako::GraphicsAPI::OpenGL;
-	config.gameDataSize = 0;
+	config.gameDataSize = 1024;
+	config.frameDataSize = 1024;
 }
