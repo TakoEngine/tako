@@ -38,6 +38,7 @@ namespace tako::Reflection
 		};
 
 		std::vector<Field> fields;
+		void (*constr)(void*);
 	};
 
 	struct Resolver
@@ -66,6 +67,12 @@ namespace tako::Reflection
 			}
 		}
 	};
+
+	template<typename T>
+	static void InitDefault(void* data)
+	{
+		new (data) T();
+	}
 }
 
 
@@ -81,6 +88,7 @@ namespace tako::Reflection
 		using T = type; \
 		info->name = #type; \
 		info->size = sizeof(T); \
+		info->constr = &::tako::Reflection::InitDefault<T>; \
 		info->fields = \
 		{
 

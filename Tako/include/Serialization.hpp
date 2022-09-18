@@ -6,6 +6,14 @@
 
 namespace tako::Serialization
 {
+	struct SubComp
+	{
+		int x;
+		int y;
+	private:
+		REFLECT()
+	};
+
 	struct TestComponent
 	{
 		int index;
@@ -13,6 +21,7 @@ namespace tako::Serialization
 		bool flying;
 		bool trample;
 		bool haste;
+		SubComp pos;
 	private:
 		REFLECT()
 	};
@@ -48,7 +57,7 @@ namespace tako::Serialization
 	{
 		auto path = FileSystem::GetExecutablePath() + "/testComp.yaml";
 		auto comp = Deserialize<TestComponent>(ReadText(path.c_str()).c_str());
-		LOG("{} {} {} {} {}", comp.index, comp.type, comp.flying, comp.trample, comp.haste);
+		LOG("{} {} {} {} {} {} {}", comp.index, comp.type, comp.flying, comp.trample, comp.haste, comp.pos.x, comp.pos.y);
 		comp.trample = !comp.trample;
 		comp.index *= 2;
 		auto node = Serialize(comp);
