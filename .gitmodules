@@ -19,3 +19,6 @@
 [submodule "dependencies/miniaudio"]
 	path = dependencies/miniaudio
 	url = https://github.com/mackron/miniaudio.git
+[submodule "dependencies/yaml-cpp"]
+	path = dependencies/yaml-cpp
+	url = https://github.com/jbeder/yaml-cpp/

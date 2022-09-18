@@ -45,6 +45,10 @@ add_library(${TAKO_DLL}
 	"include/Assets.hpp"
 	"include/Application.hpp"
 	"src/Application.cpp"
+	"include/Serialization.hpp"
+	"src/Serialization.cpp"
+	"include/Reflection.hpp"
+	"src/Reflection.cpp"
 )
 
 function(set_feature define val)
@@ -211,12 +215,14 @@ target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencie
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/dr_libs")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/tinyobjloader")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/assimp/include")
+target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/yaml-cpp/include")
 target_include_directories(${TAKO_DLL} PUBLIC "${CMAKE_BINARY_DIR}/shader")
 
 #MiniAudio
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/miniaudio")
 
 target_link_libraries(${TAKO_DLL} PUBLIC assimp)
+target_link_libraries(${TAKO_DLL} PUBLIC yaml-cpp)
 
 if (TAKO_GLFW)
 target_link_libraries(${TAKO_DLL} PUBLIC glfw)

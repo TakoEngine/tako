@@ -8,6 +8,7 @@
 #include "Renderer3D.hpp"
 #include "JobSystem.hpp"
 #include "Application.hpp"
+#include "Serialization.hpp"
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
 #endif
@@ -133,6 +134,7 @@ namespace tako
 		LOG("Init!");
 		Application::argc = argc;
 		Application::argv = argv;
+		Serialization::TestYaml();
 		JobSystem jobSys;
 		jobSys.Init();
 		Audio audio;

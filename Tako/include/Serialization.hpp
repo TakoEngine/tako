@@ -1,0 +1,57 @@
+#pragma once
+#include "Utility.hpp"
+#include "FileSystem.hpp"
+#include "Reflection.hpp"
+#include <type_traits>
+
+namespace tako::Serialization
+{
+	struct TestComponent
+	{
+		int index;
+		int type;
+		bool flying;
+		bool trample;
+		bool haste;
+	private:
+		REFLECT()
+	};
+
+	void Decode(const char* text, void* data, const Reflection::StructInformation* info);
+
+	template<typename T, std::enable_if_t<Reflection::Resolver::IsReflected<T>::value, bool> = true>
+	T Deserialize(const char* text)
+	{
+		T t;
+		Decode(text, &t, Reflection::Resolver::Get<T>());
+		return t;
+	}
+
+	std::string Encode(const void* data, const Reflection::StructInformation* info);
+
+	template<typename T, std::enable_if_t<Reflection::Resolver::IsReflected<T>::value, bool> = true>
+	std::string Serialize(const T& t)
+	{
+		return Encode(&t, Reflection::Resolver::Get<T>());
+	}
+
+	static std::string ReadText(const char* filePath)
+	{
+		size_t fileSize = FileSystem::GetFileSize(filePath);
+		std::string str(fileSize, '\0');
+		size_t bytesRead = 0;
+		bool readSuccess = FileSystem::ReadFile(filePath, (U8*)str.data(), str.size(), bytesRead);
+		return str;
+	}
+
+	static void TestYaml()
+	{
+		auto path = FileSystem::GetExecutablePath() + "/testComp.yaml";
+		auto comp = Deserialize<TestComponent>(ReadText(path.c_str()).c_str());
+		LOG("{} {} {} {} {}", comp.index, comp.type, comp.flying, comp.trample, comp.haste);
+		comp.trample = !comp.trample;
+		comp.index *= 2;
+		auto node = Serialize(comp);
+		LOG("{}", node);
+	}
+}
