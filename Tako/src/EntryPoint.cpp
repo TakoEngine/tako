@@ -16,6 +16,10 @@
 #include "FileWatcher.hpp"
 #endif
 
+#include "imgui.h"
+#include "imgui_impl_win32.h"
+#include "imgui_impl_opengl3.h"
+
 namespace tako
 {
 	struct TickStruct
@@ -69,6 +73,9 @@ namespace tako
 		data->jobSys.ScheduleForThread(0, [=]()
 		{
 			data->window.Poll();
+			ImGui_ImplOpenGL3_NewFrame();
+			ImGui_ImplWin32_NewFrame();
+			ImGui::NewFrame();
 			data->jobSys.Schedule([=]()
 			{
 				data->input.Update();
@@ -112,6 +119,12 @@ namespace tako
 					data->config.Draw(stageData);
 				}
 				//data->context.End();
+				ImGui::EndFrame();
+				ImGui::Render();
+				ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+				ImGui::UpdatePlatformWindows();
+				ImGui::RenderPlatformWindowsDefault();
 
 				data->jobSys.ScheduleForThread(0, [=]()
 				{
@@ -134,7 +147,6 @@ namespace tako
 		LOG("Init!");
 		Application::argc = argc;
 		Application::argv = argv;
-		Serialization::TestYaml();
 		JobSystem jobSys;
 		jobSys.Init();
 		Audio audio;
@@ -152,6 +164,16 @@ namespace tako
 		//TODO: Get frontend to get from configuration	
 		//auto drawer = new OpenGLPixelArtDrawer(context.get());
 		//drawer->Resize(window.GetWidth(), window.GetHeight());
+
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		auto& io = ImGui::GetIO();
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+		ImGui_ImplWin32_Init(window.GetHandle());
+		ImGui_ImplOpenGL3_Init();
 		
 		Resources resources(context.get());
 		void* gameData = malloc(config.gameDataSize);

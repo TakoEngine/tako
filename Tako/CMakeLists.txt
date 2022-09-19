@@ -224,6 +224,29 @@ target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencie
 target_link_libraries(${TAKO_DLL} PUBLIC assimp)
 target_link_libraries(${TAKO_DLL} PUBLIC yaml-cpp)
 
+#imgui
+add_library(imgui
+	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui.h"
+	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui.cpp"
+	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_draw.cpp"
+	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_tables.cpp"
+	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_widgets.cpp"
+	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_internal.h"
+	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imstb_rectpack.h"
+	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imstb_textedit.h"
+	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imstb_truetype.h"
+	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_demo.cpp"
+
+	"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_win32.h"
+	"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_win32.cpp"
+	"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_opengl3.h"
+	"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_opengl3.cpp"
+)
+target_include_directories(imgui PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/imgui")
+target_include_directories(imgui PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/imgui/backends")
+
+target_link_libraries(${TAKO_DLL} PUBLIC imgui)
+
 if (TAKO_GLFW)
 target_link_libraries(${TAKO_DLL} PUBLIC glfw)
 endif()

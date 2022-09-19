@@ -22,3 +22,6 @@
 [submodule "dependencies/yaml-cpp"]
 	path = dependencies/yaml-cpp
 	url = https://github.com/jbeder/yaml-cpp/
+[submodule "dependencies/imgui"]
+	path = dependencies/imgui
+	url = https://github.com/ocornut/imgui.git

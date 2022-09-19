@@ -3,6 +3,8 @@
 #ifdef TAKO_OPENGL
 #include "OpenGLPixelArtDrawer.hpp"
 #endif
+#include "imgui.h"
+#include "Serialization.hpp"
 
 static tako::Texture tree;
 static tako::Texture tileset;
@@ -58,6 +60,35 @@ int PingPong(int val, int max)
 	}
 }
 
+void ImGuiRenderComponent(void* data, const tako::Reflection::StructInformation* info)
+{
+	for (auto& field : info->fields)
+	{
+		if (auto strInfo = dynamic_cast<const tako::Reflection::StructInformation*>(field.type))
+		{
+			auto strData = reinterpret_cast<tako::U8*>(data) + field.offset;
+			if (ImGui::TreeNode(field.name))
+			{
+				ImGuiRenderComponent(strData, strInfo);
+				ImGui::TreePop();
+			}
+		}
+		else
+		{
+			if (tako::Reflection::GetPrimitiveInformation<int>() == field.type)
+			{
+				auto ptr = reinterpret_cast<int*>(reinterpret_cast<tako::U8*>(data) + field.offset);
+				ImGui::DragInt(field.name, ptr);
+			}
+			else if (tako::Reflection::GetPrimitiveInformation<bool>() == field.type)
+			{
+				auto ptr = reinterpret_cast<bool*>(reinterpret_cast<tako::U8*>(data) + field.offset);
+				ImGui::Checkbox(field.name, ptr);
+			}
+		}
+	}
+}
+
 void Update(const tako::GameStageData stageData, tako::Input* input, float dt)
 {
 	delta += dt;
@@ -108,6 +139,16 @@ void Update(const tako::GameStageData stageData, tako::Input* input, float dt)
 	}
 	g_drawer->UpdateTexture(bufferTex, bitmap);
 	mousePos = input->GetMousePosition();
+	ImGui::Begin("Test");
+	ImGui::Text("Heyo!");
+	ImGui::End();
+	ImGui::ShowDemoWindow();
+	static auto comp = tako::Serialization::Deserialize<tako::Serialization::TestComponent>(tako::FileSystem::ReadText((tako::FileSystem::GetExecutablePath() + "/testComp.yaml").c_str()).c_str());
+
+	ImGui::Begin("Component");
+	ImGuiRenderComponent(&comp, tako::Reflection::Resolver::Get<decltype(comp)>());
+	ImGui::Text(tako::Serialization::Serialize(comp).c_str());
+	ImGui::End();
 }
 
 void Draw(const tako::GameStageData stageData)

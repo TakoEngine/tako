@@ -31,7 +31,7 @@ namespace tako::Serialization
 	template<typename T, std::enable_if_t<Reflection::Resolver::IsReflected<T>::value, bool> = true>
 	T Deserialize(const char* text)
 	{
-		T t;
+		T t = {};
 		Decode(text, &t, Reflection::Resolver::Get<T>());
 		return t;
 	}
@@ -44,19 +44,10 @@ namespace tako::Serialization
 		return Encode(&t, Reflection::Resolver::Get<T>());
 	}
 
-	static std::string ReadText(const char* filePath)
-	{
-		size_t fileSize = FileSystem::GetFileSize(filePath);
-		std::string str(fileSize, '\0');
-		size_t bytesRead = 0;
-		bool readSuccess = FileSystem::ReadFile(filePath, (U8*)str.data(), str.size(), bytesRead);
-		return str;
-	}
-
 	static void TestYaml()
 	{
 		auto path = FileSystem::GetExecutablePath() + "/testComp.yaml";
-		auto comp = Deserialize<TestComponent>(ReadText(path.c_str()).c_str());
+		auto comp = Deserialize<TestComponent>(FileSystem::ReadText(path.c_str()).c_str());
 		LOG("{} {} {} {} {} {} {}", comp.index, comp.type, comp.flying, comp.trample, comp.haste, comp.pos.x, comp.pos.y);
 		comp.trample = !comp.trample;
 		comp.index *= 2;

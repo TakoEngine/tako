@@ -8,8 +8,11 @@
 #include <array>
 #include <set>
 #include <limits>
+#include "imgui_impl_win32.h"
 
 using namespace tako::literals;
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 namespace tako
 {
@@ -113,6 +116,11 @@ namespace tako
 
 		static LRESULT WINAPI WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		{
+			if (ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam))
+			{
+				return true;
+			}
+				
 			LRESULT result = 0;
 			WindowImpl* win = reinterpret_cast<WindowImpl*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 			switch (uMsg)
