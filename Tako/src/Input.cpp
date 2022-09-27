@@ -1,4 +1,5 @@
 #include "Input.hpp"
+#include "Event.hpp"
 #include "Utility.hpp"
 
 namespace tako
@@ -18,6 +19,11 @@ namespace tako
 			{
 				tako::MouseMove& move = static_cast<tako::MouseMove&>(evt);
 				m_mousePosition = move.position;
+			} break;
+			case tako::EventType::AxisUpdate:
+			{
+				tako::AxisUpdate& update = static_cast<tako::AxisUpdate&>(evt);
+				m_axis[static_cast<size_t>(update.axis)] = update.value;
 			} break;
 		}
 	}
@@ -48,6 +54,11 @@ namespace tako
 		}
 
 		return false;
+	}
+
+	Vector2 Input::GetAxis(Axis axis)
+	{
+		return m_axis[static_cast<size_t>(axis)];
 	}
 
 	Vector2 Input::GetMousePosition()

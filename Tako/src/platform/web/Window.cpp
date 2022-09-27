@@ -111,6 +111,18 @@ namespace tako
 							m_callback(evt);
 						}
 
+						{
+							AxisUpdate evt;
+							evt.axis = Axis::Left;
+							evt.value.x = padState.axis[0];
+							evt.value.y = -padState.axis[1];
+							m_callback(evt);
+							evt.axis = Axis::Right;
+							evt.value.x = padState.axis[2];
+							evt.value.y = -padState.axis[3];
+							m_callback(evt);
+						}
+
 						break;
 					}
 				}

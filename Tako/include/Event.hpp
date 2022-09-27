@@ -13,6 +13,7 @@ namespace tako
 		WindowResize,
 		KeyPress,
 		MouseMove,
+		AxisUpdate,
 		AppQuit
 	};
 
@@ -114,6 +115,22 @@ namespace tako
 		EVENT_CLASS_TYPE(MouseMove)
 
 		Vector2 position;
+	};
+
+	enum class Axis
+	{
+		Left,
+		Right,
+		Unknown
+	};
+
+	class AxisUpdate : public Event
+	{
+	public:
+		EVENT_CLASS_TYPE(AxisUpdate)
+
+		Axis axis;
+		Vector2 value;
 	};
 
 	class AppQuit : public Event

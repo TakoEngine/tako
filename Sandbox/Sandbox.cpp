@@ -140,6 +140,8 @@ void Update(const tako::GameStageData stageData, tako::Input* input, float dt)
 	y = (y + 1) % 50;
 	a = (a + 1) % 512;
 
+	pos += input->GetAxis(tako::Axis::Left) * speed * dt;
+
 	if (input->GetKey(tako::Key::W) || input->GetKey(tako::Key::Up) || input->GetKey(tako::Key::Gamepad_Dpad_Up))
 	{
 		pos.y += speed * dt;
