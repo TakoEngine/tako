@@ -8,7 +8,7 @@
 
 using namespace tako::literals;
 
-constexpr char* HTML_TARGET = "#canvas";
+const char* HTML_TARGET = "#canvas";
 
 namespace tako
 {
@@ -73,10 +73,8 @@ namespace tako
 			emscripten_webgl_make_context_current(m_contextHandle);
 			double width, height;
 			emscripten_get_element_css_size(HTML_TARGET, &width, &height);
-			int w, h;
-			emscripten_get_canvas_element_size(HTML_TARGET, &w, &h);
 			Resize(width, height);
-			emscripten_set_resize_callback(HTML_TARGET, this, false, WindowResizeCallback);
+			emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, this, false, WindowResizeCallback);
 
 			emscripten_set_keypress_callback(HTML_TARGET, this, false, KeyPressCallback);
 			emscripten_set_keydown_callback(HTML_TARGET, this, false, KeyPressCallback);
@@ -140,6 +138,13 @@ namespace tako
 			m_width = width;
 			m_height = height;
 			emscripten_set_canvas_element_size(HTML_TARGET, width, height);
+			if (m_callback)
+			{
+				WindowResize evt;
+				evt.width = width;
+				evt.height = height;
+				m_callback(evt);
+			}
 		}
 
 		static EM_BOOL WindowResizeCallback(int eventType, const EmscriptenUiEvent* uiEvent, void* userData)
@@ -148,14 +153,6 @@ namespace tako
 			double width, height;
 			emscripten_get_element_css_size(HTML_TARGET, &width, &height);
 			win->Resize(width, height);
-			if (win->m_callback)
-			{
-				WindowResize evt;
-				evt.width = win->m_width;
-				evt.height = win->m_height;
-				win->m_callback(evt);
-			}
-
 			return true;
 		}
 

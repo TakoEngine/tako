@@ -222,6 +222,7 @@ namespace tako
 				case tako::EventType::WindowResize:
 				{
 					tako::WindowResize& res = static_cast<tako::WindowResize&>(ev);
+					LOG("Resize {} {}", res.width, res.height);
 					context->Resize(res.width, res.height);
 				} break;
 				case tako::EventType::WindowClose:

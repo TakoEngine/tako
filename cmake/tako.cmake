@@ -1,10 +1,16 @@
 function(tako_setup target)
     if (DEFINED EMSCRIPTEN)
-        #set(CMAKE_EXECUTABLE_SUFFIX ".html" PARENT_SCOPE)
-        set_target_properties(${target} PROPERTIES LINK_FLAGS "--emrun")
-				set_target_properties(${target} PROPERTIES LINK_FLAGS "--source-map-base http://localhost:8080/")
-        set_target_properties(${target} PROPERTIES LINK_FLAGS "-gsource-map")
-        set_target_properties(${target} PROPERTIES LINK_FLAGS "-g")
+        set(CMAKE_EXECUTABLE_SUFFIX ".js" PARENT_SCOPE)
+				#set_target_properties(${target} PROPERTIES LINK_FLAGS "--emrun")
+				#set_target_properties(${target} PROPERTIES LINK_FLAGS "--source-map-base http://localhost:8080/")
+				#set_target_properties(${target} PROPERTIES LINK_FLAGS "-gsource-map")
+				#set_target_properties(${target} PROPERTIES LINK_FLAGS "-g")
+				set_target_properties(${target} PROPERTIES LINK_FLAGS "-sEXPORTED_RUNTIME_METHODS=ccall")
+				configure_file(
+					${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../Tako/src/platform/web/index.html
+					${CMAKE_CURRENT_BINARY_DIR}/index.html
+					@ONLY
+				)
     endif()
 endfunction()
 

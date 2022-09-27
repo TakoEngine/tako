@@ -13,6 +13,7 @@ namespace tako
 		bool GetKey(Key key);
 		bool GetKeyDown(Key key);
 		bool GetKeyUp(Key key);
+		bool GetAnyDown();
 		Vector2 GetMousePosition();
 	private:
 		Vector2 m_mousePosition;

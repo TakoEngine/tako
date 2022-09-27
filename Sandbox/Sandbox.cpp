@@ -120,7 +120,7 @@ void Update(const tako::GameStageData stageData, tako::Input* input, float dt)
 	auto* gameData = reinterpret_cast<GameData*>(stageData.gameData);
 	if (!gameData->audioInited)
 	{
-		if (input->GetKeyDown(tako::Key::Space))
+		if (input->GetAnyDown())
 		{
 			InitAudio(gameData, g_audio);
 		}

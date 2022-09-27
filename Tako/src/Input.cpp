@@ -37,6 +37,19 @@ namespace tako
 		return keys[static_cast<size_t>(key)] == KeyStatus::Up && prevKeys[static_cast<size_t>(key)] == KeyStatus::Down;
 	}
 
+	bool Input::GetAnyDown()
+	{
+		for (int i = 0; i < (int) tako::Key::Unknown; i++)
+		{
+			if (GetKeyDown((tako::Key) i))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	Vector2 Input::GetMousePosition()
 	{
 		return m_mousePosition;
