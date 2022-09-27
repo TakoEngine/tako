@@ -34,6 +34,7 @@ namespace tako
 		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) override;
 	private:
 		WindowHandle m_handle;
+		U32 m_width, m_height;
 	};
 }
 

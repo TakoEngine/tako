@@ -166,6 +166,10 @@ namespace tako
 
 	void OpenGLPixelArtDrawer::Resize(int w, int h)
 	{
+		if (w == m_width && h == m_height)
+		{
+			return;
+		}
 		m_width = w;
 		m_height = h;
 		if (m_sizeSet || m_autoScale)

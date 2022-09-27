@@ -38,6 +38,7 @@ struct GameData
 
 void InitAudio(GameData* gameData, tako::Audio* audio)
 {
+	LOG("Manual Audio init!");
 	audio->Init();
 	clipMiss = audio->Load("/Miss.wav");
 	clipMusic = audio->Load("/garden-of-kittens.mp3");
@@ -63,7 +64,7 @@ void Setup(void* gameDataPtr, const tako::SetupData& setup)
 	std::tie(helloTextSizeX, helloTextSizeY) = font->CalculateDimensions(exampleText, 1, 5);
 	helloText = g_drawer->CreateTexture(textBitmap);
 	bufferTex = g_drawer->CreateTexture(bitmap);
-	g_drawer->Resize(1024,768);
+	g_drawer->Resize(setup.context->GetWidth(), setup.context->GetHeight());
 }
 
 int PingPong(int val, int max)
@@ -108,6 +109,11 @@ void ImGuiRenderComponent(void* data, const tako::Reflection::StructInformation*
 	}
 }
 #endif
+
+struct FrameData
+{
+
+};
 
 void Update(const tako::GameStageData stageData, tako::Input* input, float dt)
 {
@@ -188,10 +194,10 @@ void Update(const tako::GameStageData stageData, tako::Input* input, float dt)
 
 void Draw(const tako::GameStageData stageData)
 {
+	g_drawer->Resize(g_context->GetWidth(), g_context->GetHeight());
 	auto alpha = static_cast<tako::U8>(PingPong(a, 255));
 	auto drawer = g_drawer;
 	//drawer->Begin();
-	g_context->Begin();
 	drawer->Clear();
 
 	drawer->DrawImage(-200, -200, 48 * 2, 64 * 2, tileset.handle);
@@ -208,7 +214,6 @@ void Draw(const tako::GameStageData stageData)
 	auto cursorPos = mousePos + drawer->GetCameraPosition() - drawer->GetCameraViewSize() / 2;
 	drawer->DrawRectangle(cursorPos.x, cursorPos.y, 16, 16, {128, 128, 128, 255});
 	//drawer->End();
-	g_context->End();
 }
 
 void tako::InitTakoConfig(GameConfig& config)
@@ -218,6 +223,6 @@ void tako::InitTakoConfig(GameConfig& config)
 	config.Draw = Draw;
 	config.graphicsAPI = tako::GraphicsAPI::OpenGL;
 	config.initAudioDelayed = true;
-	config.gameDataSize = 24;
-	config.frameDataSize = 24;
+	config.gameDataSize = sizeof(GameData);
+	config.frameDataSize = sizeof(FrameData);
 }

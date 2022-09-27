@@ -1,5 +1,7 @@
 #include "OpenGLContext.hpp"
+#ifdef TAKO_GLFW
 #include "GLFW/glfw3.h"
+#endif
 #include "Math.hpp"
 #include "Bitmap.hpp"
 #include "OpenGLPixelArtDrawer.hpp"
@@ -56,13 +58,13 @@ namespace tako
 		gladLoadGLES2Loader((GLADloadproc)GetGLProcAddress);
 #endif
 #endif
-
-		//GetPixelArtDrawer()->Resize(window->GetWidth(), window->GetHeight());
+		Resize(window->GetWidth(), window->GetHeight());
 	}
 
 	void OpenGLContext::Resize(int w, int h)
 	{
-		//GetPixelArtDrawer()->Resize(w, h);
+		m_width = w;
+		m_height = h;
 	}
 
 	void OpenGLContext::HandleEvent(Event& evt)
@@ -73,19 +75,19 @@ namespace tako
 		{
 			tako::WindowResize& res = static_cast<tako::WindowResize&>(evt);
 			LOG("Window Resize: {} {} {}", res.GetName(), res.width, res.height);
-			//GetPixelArtDrawer()->Resize(res.width, res.height);
+			Resize(res.width, res.height);
 		} break;
 		}
 	}
 
 	U32 OpenGLContext::GetWidth()
 	{
-		return U32();
+		return m_width;
 	}
 
 	U32 OpenGLContext::GetHeight()
 	{
-		return U32();
+		return m_height;
 	}
 
 	Texture OpenGLContext::CreateTexture(const Bitmap& bitmap)

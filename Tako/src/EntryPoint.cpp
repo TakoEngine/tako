@@ -96,9 +96,9 @@ namespace tako
 			};
 		};
 
-		while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
+		//while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
 		void* frameData = data->frameDataPool.Allocate();
-		data->frameDataPoolLock.clear(std::memory_order_release);
+		//data->frameDataPoolLock.clear(std::memory_order_release);
 
 		//data->jobSys.Continuation([=]()
 		{
@@ -153,9 +153,9 @@ namespace tako
 
 				//data->jobSys.ScheduleDetached(std::bind(Tick, p));
 
-				while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
+				//while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
 				data->frameDataPool.Deallocate(frameData);
-				data->frameDataPoolLock.clear(std::memory_order_release);
+				//data->frameDataPoolLock.clear(std::memory_order_release);
 			};
 		};
 
