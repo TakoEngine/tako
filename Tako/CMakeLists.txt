@@ -38,8 +38,6 @@ add_library(${TAKO_DLL}
 	"include/VertexBuffer.hpp"
 	"include/Material.hpp"
 	"include/Pipeline.hpp"
-	"include/Renderer3D.hpp"
-	"src/Renderer3D.cpp"
 	"include/GameConfig.hpp"
 	"include/PlatformerPhysics2D.hpp"
 	"include/Assets.hpp"
@@ -67,6 +65,7 @@ set_feature(TAKO_VULKAN true)
 set_feature(TAKO_GLAD true)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set_feature(TAKO_EDITOR false)
+	set_feature(TAKO_IMGUI true)
 else()
 	set_feature(TAKO_EDITOR false)
 endif()
@@ -77,6 +76,7 @@ set_feature(TAKO_EMSCRIPTEN true)
 set_feature(TAKO_OPENGL true)
 set_feature(TAKO_VULKAN false)
 set_feature(TAKO_EDITOR false)
+set_feature(TAKO_IMGUI false)
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 set_feature(TAKO_MAC true)
 elseif(UNIX AND NOT APPLE)
@@ -89,7 +89,8 @@ set_feature(TAKO_VULKAN true)
 set_feature(TAKO_GLFW true)
 set_feature(TAKO_GLAD true)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-	set_feature(TAKO_EDITOR true)
+	set_feature(TAKO_EDITOR false)
+	set_feature(TAKO_IMGUI true)
 else()
 	set_feature(TAKO_EDITOR false)
 endif()
@@ -132,7 +133,7 @@ target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/opengl/OpenGLSprite.hpp"
 	"src/platform/opengl/OpenGLSprite.cpp"
 	"src/platform/opengl/OpenGLContext.hpp"
-    "src/platform/opengl/OpenGLContext.cpp"
+	"src/platform/opengl/OpenGLContext.cpp"
 )
 target_include_directories(${TAKO_DLL} PUBLIC "src/platform/opengl")
 
@@ -189,7 +190,7 @@ function(compile_shader file)
 		COMMAND ${GLSL_VALIDATOR} -V ${SHADER_IN} -o ${SHADER_OUT}
 		DEPENDS ${SHADER_IN}
 		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-		COMMENT "Compiling ${SHADER_IN} ${SHADER_OUT}"
+		COMMENT "${GLSL_VALIDATOR} -V ${SHADER_IN} -o ${SHADER_OUT}"
 	)
 	target_sources(${TAKO_DLL} PRIVATE ${SHADER_OUT})
 endfunction()
@@ -214,18 +215,28 @@ target_include_directories(${TAKO_DLL} PUBLIC "include")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/stb")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/dr_libs")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/tinyobjloader")
-target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/assimp/include")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/yaml-cpp/include")
 target_include_directories(${TAKO_DLL} PUBLIC "${CMAKE_BINARY_DIR}/shader")
+
+if (NOT EMSCRIPTEN)
+	target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/assimp/include")
+	target_link_libraries(${TAKO_DLL} PUBLIC assimp)
+
+target_sources(${TAKO_DLL} PRIVATE
+	"include/Renderer3D.hpp"
+	"src/Renderer3D.cpp"
+)
+endif()
+
 
 #MiniAudio
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/miniaudio")
 
-target_link_libraries(${TAKO_DLL} PUBLIC assimp)
 target_link_libraries(${TAKO_DLL} PUBLIC yaml-cpp)
 
 #imgui
-add_library(imgui
+if (TAKO_IMGUI)
+target_sources(${TAKO_DLL} PUBLIC
 	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui.h"
 	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui.cpp"
 	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_draw.cpp"
@@ -237,15 +248,24 @@ add_library(imgui
 	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imstb_truetype.h"
 	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_demo.cpp"
 
-	"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_win32.h"
-	"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_win32.cpp"
 	"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_opengl3.h"
 	"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_opengl3.cpp"
 )
-target_include_directories(imgui PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/imgui")
-target_include_directories(imgui PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/imgui/backends")
 
-target_link_libraries(${TAKO_DLL} PUBLIC imgui)
+if (TAKO_WIN32)
+	target_sources(${TAKO_DLL} PUBLIC
+		"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_win32.h"
+		"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_win32.cpp"
+	)
+elseif (TAKO_GLFW)
+	target_sources(${TAKO_DLL} PUBLIC
+		"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_glfw.h"
+		"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_glfw.cpp"
+	)
+endif()
+target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/imgui")
+target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/imgui/backends")
+endif()
 
 if (TAKO_GLFW)
 target_link_libraries(${TAKO_DLL} PUBLIC glfw)

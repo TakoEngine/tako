@@ -1,4 +1,5 @@
 #include "OpenGLContext.hpp"
+#include "GLFW/glfw3.h"
 #include "Math.hpp"
 #include "Bitmap.hpp"
 #include "OpenGLPixelArtDrawer.hpp"
@@ -108,7 +109,9 @@ namespace tako
 
 	void OpenGLContext::Begin()
 	{
-
+#ifdef TAKO_GLFW
+		glfwMakeContextCurrent(m_handle);
+#endif
 	}
 
 	void OpenGLContext::End()

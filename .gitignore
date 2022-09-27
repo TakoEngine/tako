@@ -36,6 +36,7 @@
 #*.spv
 /.vscode
 /build
+/build-*
 /out
 /.idea
 /cmake-build*

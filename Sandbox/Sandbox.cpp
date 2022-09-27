@@ -1,9 +1,12 @@
+#include "Event.hpp"
 #include "Tako.hpp"
 #include "Font.hpp"
 #ifdef TAKO_OPENGL
 #include "OpenGLPixelArtDrawer.hpp"
 #endif
+#ifdef TAKO_IMGUI
 #include "imgui.h"
+#endif
 #include "Serialization.hpp"
 
 static tako::Texture tree;
@@ -28,15 +31,30 @@ static std::string exampleText = "The quick brown fox jumps over the lazy dog!?"
 static tako::Vector2 mousePos = tako::Vector2(0, 0);
 static tako::Audio* g_audio;
 
-void Setup(void* gameData, const tako::SetupData& setup)
+struct GameData
 {
+	bool audioInited = false;
+};
+
+void InitAudio(GameData* gameData, tako::Audio* audio)
+{
+	audio->Init();
+	clipMiss = audio->Load("/Miss.wav");
+	clipMusic = audio->Load("/garden-of-kittens.mp3");
+	tako::Audio::Play(clipMusic, true);
+	gameData->audioInited = true;
+}
+
+void Setup(void* gameDataPtr, const tako::SetupData& setup)
+{
+	auto* gameData = reinterpret_cast<GameData*>(gameDataPtr);
 	LOG("SANDBOX SETUP");
+#ifndef TAKO_EMSCRIPTEN
+	InitAudio(gameData, setup.audio);
+#endif
 	g_audio = setup.audio;
 	g_drawer = new tako::OpenGLPixelArtDrawer(setup.context);
 	g_context = setup.context;
-	//clipMiss = g_audio->Load("/Miss.wav");
-	//clipMusic = g_audio->Load("/garden-of-kittens.mp3");
-	//tako::Audio::Play(clipMusic, true);
 	tree = setup.resources->Load<tako::Texture>("/tree.png");
 	tileset = setup.resources->Load<tako::Texture>("/Tileset.png");
 	sprite = g_drawer->CreateSprite(tileset, 16, 0, 16, 16);
@@ -60,6 +78,7 @@ int PingPong(int val, int max)
 	}
 }
 
+#ifdef TAKO_IMGUI
 void ImGuiRenderComponent(void* data, const tako::Reflection::StructInformation* info)
 {
 	for (auto& field : info->fields)
@@ -88,12 +107,26 @@ void ImGuiRenderComponent(void* data, const tako::Reflection::StructInformation*
 		}
 	}
 }
+#endif
 
 void Update(const tako::GameStageData stageData, tako::Input* input, float dt)
 {
+	auto* gameData = reinterpret_cast<GameData*>(stageData.gameData);
+	if (!gameData->audioInited)
+	{
+		if (input->GetKeyDown(tako::Key::Space))
+		{
+			InitAudio(gameData, g_audio);
+		}
+		else
+		{
+			return;
+		}
+	}
+
 	delta += dt;
 	if (delta > 1) {
-		//tako::Audio::Play(clipMiss);
+		tako::Audio::Play(clipMiss);
 		delta = 0;
 	}
 	float speed = 60;
@@ -119,7 +152,7 @@ void Update(const tako::GameStageData stageData, tako::Input* input, float dt)
 	}
 	if (input->GetKeyDown(tako::Key::Space))
 	{
-		//g_audio->Play("/Bump.wav");
+		g_audio->Play("/Bump.wav");
 	}
 
 	static float gradOff = 0;
@@ -139,16 +172,18 @@ void Update(const tako::GameStageData stageData, tako::Input* input, float dt)
 	}
 	g_drawer->UpdateTexture(bufferTex, bitmap);
 	mousePos = input->GetMousePosition();
+#ifdef TAKO_IMGUI
 	ImGui::Begin("Test");
 	ImGui::Text("Heyo!");
 	ImGui::End();
 	ImGui::ShowDemoWindow();
-	static auto comp = tako::Serialization::Deserialize<tako::Serialization::TestComponent>(tako::FileSystem::ReadText((tako::FileSystem::GetExecutablePath() + "/testComp.yaml").c_str()).c_str());
+	static tako::Serialization::TestComponent comp = {};
 
 	ImGui::Begin("Component");
 	ImGuiRenderComponent(&comp, tako::Reflection::Resolver::Get<decltype(comp)>());
 	ImGui::Text(tako::Serialization::Serialize(comp).c_str());
 	ImGui::End();
+#endif
 }
 
 void Draw(const tako::GameStageData stageData)
@@ -182,6 +217,7 @@ void tako::InitTakoConfig(GameConfig& config)
 	config.Update = Update;
 	config.Draw = Draw;
 	config.graphicsAPI = tako::GraphicsAPI::OpenGL;
-	config.gameDataSize = 1024;
-	config.frameDataSize = 1024;
+	config.initAudioDelayed = true;
+	config.gameDataSize = 24;
+	config.frameDataSize = 24;
 }

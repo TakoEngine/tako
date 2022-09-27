@@ -30,5 +30,10 @@ namespace tako::FileSystem
 		fseek(file, 0, SEEK_END);
 		return ftell(file);
 	}
+
+	std::string GetExecutablePath()
+	{
+		return "";
+	}
 }
 

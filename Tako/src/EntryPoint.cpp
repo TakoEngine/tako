@@ -16,9 +16,16 @@
 #include "FileWatcher.hpp"
 #endif
 
+#ifdef TAKO_IMGUI
 #include "imgui.h"
+#ifdef TAKO_WIN32
 #include "imgui_impl_win32.h"
+#endif
+#ifdef TAKO_GLFW
+#include "imgui_impl_glfw.h"
+#endif
 #include "imgui_impl_opengl3.h"
+#endif
 
 namespace tako
 {
@@ -30,7 +37,7 @@ namespace tako
 		tako::Resources& resources;
 		void* gameData;
 		GameConfig& config;
-		JobSystem& jobSys;
+		//JobSystem& jobSys;
 		std::atomic<bool>& keepRunning;
 		Allocators::PoolAllocator frameDataPool;
 		std::atomic_flag frameDataPoolLock = ATOMIC_FLAG_INIT;
@@ -70,27 +77,34 @@ namespace tako
 		}
 #endif
  */
-		data->jobSys.ScheduleForThread(0, [=]()
+		//data->jobSys.ScheduleForThread(0, [=]()
 		{
 			data->window.Poll();
+#ifdef TAKO_IMGUI
 			ImGui_ImplOpenGL3_NewFrame();
+#ifdef TAKO_WIN32
 			ImGui_ImplWin32_NewFrame();
+#endif
+#ifdef TAKO_GLFW
+			ImGui_ImplGlfw_NewFrame();
+#endif
 			ImGui::NewFrame();
-			data->jobSys.Schedule([=]()
+#endif
+			//data->jobSys.Schedule([=]()
 			{
 				data->input.Update();
-			});
-		});
+			};
+		};
 
 		while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
 		void* frameData = data->frameDataPool.Allocate();
 		data->frameDataPoolLock.clear(std::memory_order_release);
 
-		data->jobSys.Continuation([=]()
+		//data->jobSys.Continuation([=]()
 		{
 			if (data->config.Update)
 			{
-				data->jobSys.Schedule([=]()
+				//data->jobSys.Schedule([=]()
 				{
 					GameStageData stageData
 					{
@@ -98,17 +112,17 @@ namespace tako
 						frameData
 					};
 					data->config.Update(stageData, &data->input, dt);
-				});
+				};
 			}
-			data->jobSys.Continuation([=]()
+			//data->jobSys.Continuation([=]()
 			{
 				if (data->window.ShouldExit() || !data->keepRunning)
 				{
-					data->jobSys.Stop();
+					//data->jobSys.Stop();
 					return;
 				}
 				//LOG("Start Draw {}", thisFrame);
-				//data->context.Begin();
+				data->context.Begin();
 				if (data->config.Draw)
 				{
 					GameStageData stageData
@@ -118,28 +132,33 @@ namespace tako
 					};
 					data->config.Draw(stageData);
 				}
-				//data->context.End();
+				data->context.End();
+#ifdef TAKO_IMGUI
 				ImGui::EndFrame();
 				ImGui::Render();
 				ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-				ImGui::UpdatePlatformWindows();
-				ImGui::RenderPlatformWindowsDefault();
+				if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+				{
+					ImGui::UpdatePlatformWindows();
+					ImGui::RenderPlatformWindowsDefault();
+				}
+#endif
 
-				data->jobSys.ScheduleForThread(0, [=]()
+				//data->jobSys.ScheduleForThread(0, [=]()
 				{
 					data->context.Present();
 					//LOG("Tick End");
-				});
+				};
 
-				data->jobSys.ScheduleDetached(std::bind(Tick, p));
+				//data->jobSys.ScheduleDetached(std::bind(Tick, p));
 
 				while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
 				data->frameDataPool.Deallocate(frameData);
 				data->frameDataPoolLock.clear(std::memory_order_release);
-			});
-		});
-		
+			};
+		};
+
 	}
 
 	int RunGameLoop(int argc, char* argv[])
@@ -147,34 +166,42 @@ namespace tako
 		LOG("Init!");
 		Application::argc = argc;
 		Application::argv = argv;
-		JobSystem jobSys;
-		jobSys.Init();
-		Audio audio;
-		//TODO: jobify
-		{
-			//audio.Init();
-			//LOG("Audio initialized!");
-		};
+		//JobSystem jobSys;
+		//jobSys.Init();
 		GameConfig config = {};
 		tako::InitTakoConfig(config);
+
+		Audio audio;
+		//TODO: jobify
+		if (!config.initAudioDelayed)
+		{
+			audio.Init();
+			LOG("Audio initialized!");
+		};
 		auto api = tako::ResolveGraphicsAPI(config.graphicsAPI);
 		tako::Window window(api);
 		tako::Input input;
 		auto context = CreateGraphicsContext(&window, api);
-		//TODO: Get frontend to get from configuration	
+		//TODO: Get frontend to get from configuration
 		//auto drawer = new OpenGLPixelArtDrawer(context.get());
 		//drawer->Resize(window.GetWidth(), window.GetHeight());
 
+#ifdef TAKO_IMGUI
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
 		auto& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-
+#ifdef TAKO_WIN32
 		ImGui_ImplWin32_Init(window.GetHandle());
+#endif
+#ifdef TAKO_GLFW
+		ImGui_ImplGlfw_InitForOpenGL(window.GetHandle(), true);
+#endif
 		ImGui_ImplOpenGL3_Init();
-		
+#endif
+
 		Resources resources(context.get());
 		void* gameData = malloc(config.gameDataSize);
 		if (config.Setup)
@@ -234,7 +261,7 @@ namespace tako
 			resources,
 			gameData,
 			config,
-			jobSys,
+			//jobSys,
 			keepRunning,
 			{ framePoolData, framePoolSize, config.frameDataSize },
 #ifdef TAKO_EDITOR
@@ -242,16 +269,15 @@ namespace tako
 #endif
 		};
 
-#ifndef EMSCRIPTEN
-		/*
+#ifndef TAKO_EMSCRIPTEN
+		///*
 		while (!window.ShouldExit() && keepRunning)
 		{
-			jobSys.Schedule([]() {LOG("it works")});
 			Tick(&data);
 		}
-		*/
-		jobSys.Schedule(std::bind(Tick, &data));
-		jobSys.JoinAsWorker();
+		//*/
+		//jobSys.Schedule(std::bind(Tick, &data));
+		//jobSys.JoinAsWorker();
 #else
 		emscripten_set_main_loop_arg(Tick, &data, 0, 1);
 #endif

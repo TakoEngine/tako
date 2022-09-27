@@ -3,12 +3,16 @@
 
 namespace tako::Assets
 {
-	std::string GetAssetPath(const char* filePath)
+	static std::string GetAssetPath(const char* filePath)
 	{
+#ifndef TAKO_EMSCRIPTEN
 		return FileSystem::GetExecutablePath() + "/Assets" + filePath;
+#else
+		return filePath;
+#endif
 	}
 
-	bool ReadAssetFile(
+	static bool ReadAssetFile(
 		const char* filePath,
 		U8* buffer,
 		size_t bufferSize,
@@ -17,7 +21,7 @@ namespace tako::Assets
 		return FileSystem::ReadFile(GetAssetPath(filePath).c_str(), buffer, bufferSize, bytesRead);
 	}
 
-	size_t GetAssetFileSize(const char* filePath)
+	static size_t GetAssetFileSize(const char* filePath)
 	{
 		return FileSystem::GetFileSize(GetAssetPath(filePath).c_str());
 	}

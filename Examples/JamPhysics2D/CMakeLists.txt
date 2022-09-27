@@ -1,6 +1,6 @@
 include(tako)
 add_executable(jamPhysics2D WIN32 "JamPhysics2D.cpp")
-tako_setup(jamPyhsics2D)
+tako_setup(jamPhysics2D)
 target_link_libraries(jamPhysics2D PRIVATE tako)
 if (DEFINED EMSCRIPTEN)
   set(CMAKE_EXECUTABLE_SUFFIX ".html")

@@ -106,7 +106,7 @@ namespace tako
 				job = m_queue.front();
 				m_queue.pop_front();
 			}
-			
+
 			m_lock.clear(std::memory_order_release);
 			return job;
 		}
@@ -118,7 +118,7 @@ namespace tako
 	class JobSystem
 	{
 	public:
-		JobSystem(): m_allocator(malloc(1024 * 1024 * 128), 1024 * 1024 * 128, 128)
+		JobSystem(): m_allocator(malloc(3024 * 128), 3024 * 128, 128)
 		{
 			g_allocator = &m_allocator;
 		}
@@ -126,7 +126,7 @@ namespace tako
 		void Init()
 		{
 			m_threadIndex = 0;
-			m_threadCount = 1;// std::thread::hardware_concurrency();
+			m_threadCount = std::thread::hardware_concurrency();
 			LOG("Threads: {}", m_threadCount);
 			m_localQueues.reserve(m_threadCount);
 			m_globalQueues.reserve(m_threadCount);
@@ -135,7 +135,7 @@ namespace tako
 				m_localQueues.emplace_back();
 				m_globalQueues.emplace_back();
 			}
-			
+
 			for (unsigned int i = 1; i < m_threadCount; i++)
 			{
 				std::thread thread(&JobSystem::WorkerThread, this, i);
@@ -305,7 +305,7 @@ namespace tako
 					std::unique_lock lk(m_cvMutex);
 					m_cv.wait_for(lk, std::chrono::microseconds(1000));
 				}
-				
+
 			}
 		}
 

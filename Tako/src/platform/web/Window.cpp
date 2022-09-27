@@ -195,7 +195,9 @@ namespace tako
 				evt.position.x = mouseEvent->clientX;
 				evt.position.y = win->m_height - mouseEvent->clientY;
 				win->m_callback(evt);
+				return true;
 			}
+			return false;
 		}
 	};
 

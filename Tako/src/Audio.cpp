@@ -1,6 +1,6 @@
 #include "Audio.hpp"
-#include "FileSystem.hpp"
 #include "Utility.hpp"
+#include "Assets.hpp"
 
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
@@ -25,10 +25,8 @@ namespace tako
 
 	AudioClip* Audio::Load(const char *file)
 	{
-		std::string path("./Assets");
-		path.append(file);
 		AudioClip* clip = new AudioClip();
-		auto result = ma_sound_init_from_file(&m_engine, path.c_str(), 0, nullptr, nullptr, &clip->sound);
+		auto result = ma_sound_init_from_file(&m_engine, Assets::GetAssetPath(file).c_str(), 0, nullptr, nullptr, &clip->sound);
 		ASSERT(result == MA_SUCCESS);
 		return clip;
 	}
@@ -42,9 +40,7 @@ namespace tako
 
 	void Audio::Play(const char *soundFile)
 	{
-		std::string path("./Assets");
-		path.append(soundFile);
-		auto result = ma_engine_play_sound(&m_engine, path.c_str(), nullptr);
+		auto result = ma_engine_play_sound(&m_engine, Assets::GetAssetPath(soundFile).c_str(), nullptr);
 		ASSERT(result == MA_SUCCESS);
 	}
 

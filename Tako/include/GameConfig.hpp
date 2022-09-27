@@ -25,5 +25,6 @@ namespace tako
 		size_t gameDataSize;
 		size_t frameDataSize;
 		GraphicsAPI graphicsAPI = GraphicsAPI::Default;
+		bool initAudioDelayed;
 	};
 }
