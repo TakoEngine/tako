@@ -15,6 +15,12 @@ namespace tako
 		ASSERT(w >= 0 && h >= 0);
 	}
 
+	Bitmap::Bitmap() :
+		m_width(1), m_height(1),
+		m_data(new Color[1])
+	{
+	}
+
 	Bitmap::Bitmap(Bitmap&& other) :
 		m_width(other.m_width),
 		m_height(other.m_height),

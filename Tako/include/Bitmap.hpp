@@ -8,6 +8,7 @@ namespace tako
 	{
 	public:
 		Bitmap(I32 w, I32 h);
+		Bitmap();
 		Bitmap(Bitmap&& other);
 		Bitmap(const Color* data, I32 w, I32 h);
 		Bitmap& operator=(Bitmap&& other);

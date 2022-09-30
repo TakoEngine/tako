@@ -47,6 +47,8 @@ add_library(${TAKO_DLL}
 	"src/Serialization.cpp"
 	"include/Reflection.hpp"
 	"src/Reflection.cpp"
+	"include/Jam/LDtkImporter.hpp"
+	"include/Jam/TileMap.hpp"
 )
 
 function(set_feature define val)
@@ -216,16 +218,17 @@ target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencie
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/dr_libs")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/tinyobjloader")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/yaml-cpp/include")
+target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/json/include")
 target_include_directories(${TAKO_DLL} PUBLIC "${CMAKE_BINARY_DIR}/shader")
 
 if (NOT EMSCRIPTEN)
 	target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/assimp/include")
 	target_link_libraries(${TAKO_DLL} PUBLIC assimp)
 
-target_sources(${TAKO_DLL} PRIVATE
-	"include/Renderer3D.hpp"
-	"src/Renderer3D.cpp"
-)
+	target_sources(${TAKO_DLL} PRIVATE
+		"include/Renderer3D.hpp"
+		"src/Renderer3D.cpp"
+	)
 endif()
 
 
@@ -233,6 +236,7 @@ endif()
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/miniaudio")
 
 target_link_libraries(${TAKO_DLL} PUBLIC yaml-cpp)
+target_link_libraries(${TAKO_DLL} PRIVATE nlohmann_json::nlohmann_json)
 
 #imgui
 if (TAKO_IMGUI)

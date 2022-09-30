@@ -25,4 +25,14 @@ namespace tako::Assets
 	{
 		return FileSystem::GetFileSize(GetAssetPath(filePath).c_str());
 	}
+
+	static std::string ReadAssetText(const char* filePath)
+	{
+		auto path = GetAssetPath(filePath);
+		auto size = FileSystem::GetFileSize(path.c_str());
+		std::string str(size, '\0');
+		size_t read;
+		FileSystem::ReadFile(path.c_str(), (U8*) str.data(), size, read);
+		return str;
+	}
 }
