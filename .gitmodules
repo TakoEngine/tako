@@ -25,9 +25,6 @@
 [submodule "dependencies/imgui"]
 	path = dependencies/imgui
 	url = https://github.com/ocornut/imgui.git
-[submodule "dependencies/LDtkLoader"]
-	path = dependencies/LDtkLoader
-	url = https://github.com/Madour/LDtkLoader.git
 [submodule "dependencies/json"]
 	path = dependencies/json
 	url = https://github.com/nlohmann/json.git
