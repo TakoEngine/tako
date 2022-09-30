@@ -33,9 +33,9 @@ namespace tako::Jam::LDtkImporter
 			tl.name = level["identifier"];
 			int levelWidth = level["pxWid"];
 			int levelHeight = level["pxHei"];
+			int i = 0;
 			for (auto& layer : level["layerInstances"])
 			{
-
 				std::string type = layer["__type"];
 				if (type == "Tiles")
 				{
@@ -50,11 +50,27 @@ namespace tako::Jam::LDtkImporter
 					}
 					tl.tileLayers.emplace_back(std::move(l));
 				}
+				else if (type == "Entities")
+				{
+					tl.entityLayerIndex = i;
+					for (auto& entity : layer["entityInstances"])
+					{
+						TileEntity ent;
+						ent.typeName = entity["__identifier"];
+						ent.position = { entity["px"][0], levelHeight - entity["px"][1].get<float>()};
+						ent.size = { entity["width"], entity["height"]};
+						ent.fields = entity["fieldInstances"];
+						tl.entities.push_back(ent);
+					}
+				}
+				i++;
 			}
+
 			tl.backgroundColor = Color(level["__bgColor"].get<std::string>());
+			tl.entityLayerIndex = tl.tileLayers.size() - 1 - tl.entityLayerIndex;
+			std::reverse(tl.tileLayers.begin(), tl.tileLayers.end());
 			world.levels[level["uid"]] = std::move(tl);
 		}
-
 		return world;
 	}
 }

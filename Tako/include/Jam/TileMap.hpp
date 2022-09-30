@@ -2,12 +2,21 @@
 #include <vector>
 #include <map>
 #include "OpenGLPixelArtDrawer.hpp"
+#include <nlohmann/json.hpp>
 
 namespace tako::Jam
 {
 	struct TileInformation
 	{
 
+	};
+
+	struct TileEntity
+	{
+		std::string typeName;
+		Vector2 position;
+		Vector2 size;
+		nlohmann::json fields;
 	};
 
 	struct TileLayer
@@ -21,6 +30,8 @@ namespace tako::Jam
 		std::string name;
 		Color backgroundColor;
 		std::vector<TileLayer> tileLayers;
+		std::vector<TileEntity> entities;
+		int entityLayerIndex;
 	};
 
 	struct TileWorld
