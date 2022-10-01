@@ -74,6 +74,7 @@ namespace tako::Jam::LDtkImporter
 
 			tl.backgroundColor = Color(level["__bgColor"].get<std::string>());
 			tl.entityLayerIndex = tl.tileLayers.size() - 1 - tl.entityLayerIndex;
+			tl.size = { (float) levelWidth, (float) levelHeight };
 			std::reverse(tl.tileLayers.begin(), tl.tileLayers.end());
 			world.levels[level["uid"]] = std::move(tl);
 		}

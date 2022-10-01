@@ -33,6 +33,7 @@ namespace tako::Jam
 		std::vector<TileEntity> entities;
 		std::vector<int> collision;
 		int entityLayerIndex;
+		Vector2 size;
 	};
 
 	struct TileWorld
