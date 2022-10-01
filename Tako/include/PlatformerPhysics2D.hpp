@@ -76,7 +76,15 @@ namespace tako::Jam::PlatformerPhysics2D
 		}
 	};
 
-	void CalculateMovement(float timeStep, std::vector<Node>& nodes)
+	struct TileCollisionMap
+	{
+		std::vector<int>& tiles;
+		Vector2 tileSize;
+		int width;
+		int height;
+	};
+
+	static void CalculateMovement(float timeStep, std::vector<Node>& nodes)
 	{
 		for (Node& node : nodes)
 		{
@@ -86,20 +94,21 @@ namespace tako::Jam::PlatformerPhysics2D
 
 	namespace
 	{
-		float& AccessVectorOffset(Vector2& vec, size_t axisOffset)
+		inline float& AccessVectorOffset(Vector2& vec, size_t axisOffset)
 		{
 			auto charPtr = ((char*) &vec) + axisOffset;
 			return *((float*)charPtr);
 		}
 
 		template<typename ColCallback>
-		void StepAxis(Node& node, std::vector<Node>& nodes, size_t axisOffset, ColCallback callback)
+		void StepAxis(Node& node, std::vector<Node>& nodes, TileCollisionMap& tilemap, size_t axisOffset, ColCallback callback)
 		{
 			float& mov = AccessVectorOffset(node.movement, axisOffset);
 			float& pos = AccessVectorOffset(node.position, axisOffset);
 			float& vel = AccessVectorOffset(node.velocity, axisOffset);
 			float step = mathf::clamp(mov, -1, 1);
 			pos += step;
+			auto nodeRec = node.CalcRec();
 			Node* collidedWith = nullptr;
 			float collidedWithOverlap = -1;
 			for (Node& other : nodes)
@@ -109,7 +118,6 @@ namespace tako::Jam::PlatformerPhysics2D
 					continue;
 				}
 
-				auto nodeRec = node.CalcRec();
 				auto otherRec = other.CalcRec();
 				if (Rect::Overlap(nodeRec, otherRec))
 				{
@@ -121,13 +129,42 @@ namespace tako::Jam::PlatformerPhysics2D
 					}
 				}
 			}
-			if (collidedWith)
+
+			int gridX = nodeRec.x / tilemap.tileSize.x;
+			int gridY = tilemap.height - nodeRec.y / tilemap.tileSize.y;
+			for (int x = -1; x <= 1; x++)
+			{
+				auto xg = gridX + x;
+				if (xg < 0 || xg >= tilemap.width) continue;
+				for (int y = -1; y <= 1; y++)
+				{
+					auto yg = gridY + y;
+					if (yg < 0 || yg >= tilemap.height) continue;
+					if (tilemap.tiles[xg + yg * tilemap.width])
+					{
+						auto gridRec = Rect(xg * tilemap.tileSize.x + tilemap.tileSize.x / 2, tilemap.height * tilemap.tileSize.y - yg * tilemap.tileSize.y - tilemap.tileSize.y / 2, tilemap.tileSize.x, tilemap.tileSize.y);
+						if (Rect::Overlap(nodeRec, gridRec))
+						{
+							auto overlap = axisOffset == offsetof(Vector2, x) ? Rect::OverlapDiffX(nodeRec, gridRec) : Rect::OverlapDiffY(nodeRec, gridRec);
+							if (overlap > collidedWithOverlap)
+							{
+								collidedWith = nullptr;
+								collidedWithOverlap = overlap;
+							}
+						}
+					}
+				}
+			}
+			if (collidedWithOverlap > 0)
 			{
 				pos -= collidedWithOverlap * mathf::sign(step);
 				step = 0;
 				mov = 0;
 				vel = 0;
-				callback(node, *collidedWith);
+				if (collidedWith)
+				{
+					callback(node, *collidedWith);
+				}
 			}
 			if (mathf::abs(step) < 1)
 			{
@@ -141,7 +178,7 @@ namespace tako::Jam::PlatformerPhysics2D
 	}
 
 	template<typename ColCallback>
-	void SimulatePhysics(std::vector<Node>& nodes, ColCallback callback)
+	void SimulatePhysics(std::vector<Node>& nodes, TileCollisionMap tilemap, ColCallback callback)
 	{
 		bool hadDelta = true;
 		while (hadDelta)
@@ -157,7 +194,7 @@ namespace tako::Jam::PlatformerPhysics2D
 				}
 
 				hadDelta = true;
-				StepAxis(node, nodes, offsetof(Vector2, x), callback);
+				StepAxis(node, nodes, tilemap, offsetof(Vector2, x), callback);
 			}
 
 			//Vertical
@@ -169,7 +206,7 @@ namespace tako::Jam::PlatformerPhysics2D
 				}
 
 				hadDelta = true;
-				StepAxis(node, nodes, offsetof(Vector2, y), callback);
+				StepAxis(node, nodes, tilemap, offsetof(Vector2, y), callback);
 			}
 		}
 	}

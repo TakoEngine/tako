@@ -31,6 +31,7 @@ namespace tako::Jam
 		Color backgroundColor;
 		std::vector<TileLayer> tileLayers;
 		std::vector<TileEntity> entities;
+		std::vector<int> collision;
 		int entityLayerIndex;
 	};
 
