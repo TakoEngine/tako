@@ -72,6 +72,13 @@ namespace tako::Jam::LDtkImporter
 				}
 			}
 
+			for (auto& neighbour : level["__neighbours"])
+			{
+				tl.neighbours.push_back(neighbour["levelUid"]);
+			}
+
+			tl.worldX = level["worldX"];
+			tl.worldY = level["worldY"];
 			tl.backgroundColor = Color(level["__bgColor"].get<std::string>());
 			tl.entityLayerIndex = tl.tileLayers.size() - 1 - tl.entityLayerIndex;
 			tl.size = { (float) levelWidth, (float) levelHeight };

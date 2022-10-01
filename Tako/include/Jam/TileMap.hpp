@@ -32,7 +32,10 @@ namespace tako::Jam
 		std::vector<TileLayer> tileLayers;
 		std::vector<TileEntity> entities;
 		std::vector<int> collision;
+		std::vector<int> neighbours;
 		int entityLayerIndex;
+		int worldX;
+		int worldY;
 		Vector2 size;
 	};
 
