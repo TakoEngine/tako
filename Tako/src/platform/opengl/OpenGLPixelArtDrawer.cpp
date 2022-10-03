@@ -216,7 +216,10 @@ namespace tako
 		glBindBuffer(GL_ARRAY_BUFFER, spriteVBO);
 		glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(ImageVertex), &vertices[0], GL_STATIC_DRAW);
 
-		return new OpenGLSprite(texture, spriteVBO);
+		auto sprite = new OpenGLSprite(texture, spriteVBO);
+		sprite->width = std::abs(w);
+		sprite->height = h;
+		return sprite;
 	}
 
 	void OpenGLPixelArtDrawer::UpdateTexture(Texture& texture, const Bitmap& bitmap)

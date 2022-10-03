@@ -12,6 +12,8 @@ namespace tako
 
 		inline const Texture GetTexture() const { return m_texture; }
 		inline GLuint GetBuffer() const { return m_buffer; }
+		float width;
+		float height;
 	private:
 		const Texture m_texture;
 		GLuint m_buffer;
