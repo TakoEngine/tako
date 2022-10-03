@@ -34,6 +34,10 @@ namespace tako
 	void Audio::Play(AudioClip* clip, bool looping)
 	{
 		ma_sound_set_looping(&clip->sound, looping);
+		if (looping)
+		{
+			ma_sound_set_volume(&clip->sound, 0.6f);
+		}
 		auto result = ma_sound_start(&clip->sound);
 		ASSERT(result == MA_SUCCESS);
 	}
