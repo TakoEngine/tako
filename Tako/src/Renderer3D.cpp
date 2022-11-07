@@ -87,13 +87,11 @@ namespace tako
 
 	void Renderer3D::Begin()
 	{
-		m_context->Begin();
 		m_context->BindPipeline(&m_pipeline);
 	}
 
 	void Renderer3D::End()
 	{
-		m_context->End();
 	}
 
 	void Renderer3D::DrawMesh(const Mesh& mesh, const Material& material, const Matrix4& model)
