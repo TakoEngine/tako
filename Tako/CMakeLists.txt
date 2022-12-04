@@ -39,7 +39,7 @@ add_library(${TAKO_DLL}
 	"include/Material.hpp"
 	"include/Pipeline.hpp"
 	"include/GameConfig.hpp"
-	"include/PlatformerPhysics2D.hpp"
+	"include/Jam/PlatformerPhysics2D.hpp"
 	"include/Assets.hpp"
 	"include/Application.hpp"
 	"src/Application.cpp"

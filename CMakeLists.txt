@@ -16,7 +16,9 @@ if (NOT EMSCRIPTEN)
     add_subdirectory("dependencies/assimp" EXCLUDE_FROM_ALL)
 endif()
 add_subdirectory("Tako")
-add_subdirectory("Sandbox")
-add_subdirectory("SandboxVulkan")
+
+# Examples
+add_subdirectory("Examples/Sandbox")
+add_subdirectory("Examples/SandboxVulkan")
 add_subdirectory("Examples/JamPhysics2D")
 add_subdirectory("Examples/LDtkImport")
