@@ -1,10 +1,11 @@
-#pragma once
-#include "Math.hpp"
 #include <vector>
+#include "Math.hpp"
+
+export module PlatformerPhysics2D;
 
 namespace tako::Jam::PlatformerPhysics2D
 {
-	struct Rect
+	export struct Rect
 	{
 		float x;
 		float y;
@@ -62,7 +63,7 @@ namespace tako::Jam::PlatformerPhysics2D
 
 	};
 
-	struct Node
+	export struct Node
 	{
 		Vector2& position;
 		Vector2& velocity;
@@ -76,7 +77,7 @@ namespace tako::Jam::PlatformerPhysics2D
 		}
 	};
 
-	struct TileCollisionMap
+	export struct TileCollisionMap
 	{
 		std::vector<int>& tiles;
 		Vector2 tileSize;
@@ -84,7 +85,7 @@ namespace tako::Jam::PlatformerPhysics2D
 		int height;
 	};
 
-	static void CalculateMovement(float timeStep, std::vector<Node>& nodes)
+	export void CalculateMovement(float timeStep, std::vector<Node>& nodes)
 	{
 		for (Node& node : nodes)
 		{
@@ -177,8 +178,8 @@ namespace tako::Jam::PlatformerPhysics2D
 		}
 	}
 
-	template<typename ColCallback>
-	void SimulatePhysics(std::vector<Node>& nodes, TileCollisionMap tilemap, ColCallback callback)
+	export template<typename ColCallback>
+	void SimulatePhysics(std::vector<Node>& nodes, TileCollisionMap& tilemap, ColCallback callback)
 	{
 		bool hadDelta = true;
 		while (hadDelta)

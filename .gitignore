@@ -45,3 +45,4 @@
 #clangd
 /.cache
 compile_commands.json
+vc140.pdb
