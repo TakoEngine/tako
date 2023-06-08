@@ -1,9 +1,10 @@
+import PlatformerPhysics2D;
+
 #include "Tako.hpp"
 #ifdef TAKO_OPENGL
 #include "OpenGLPixelArtDrawer.hpp"
 #endif
 #include <vector>
-#include "PlatformerPhysics2D.hpp"
 #include <time.h>
 #include <stdlib.h>
 
@@ -104,7 +105,7 @@ public:
 			});
 		}
 		tako::Jam::PlatformerPhysics2D::CalculateMovement(dt, nodes);
-		tako::Jam::PlatformerPhysics2D::SimulatePhysics(nodes, [](auto& self, auto& other) { LOG("col!");});
+		tako::Jam::PlatformerPhysics2D::SimulatePhysics(nodes, m_tilemap, [](auto& self, auto& other) { LOG("col!");});
 	}
 
 	void Draw()
@@ -124,6 +125,14 @@ private:
 	tako::OpenGLPixelArtDrawer* m_drawer;
 	tako::GraphicsContext* m_context;
 	std::vector<PhysicsObject> m_nodes;
+	std::vector<int> m_tiles;
+	tako::Jam::PlatformerPhysics2D::TileCollisionMap m_tilemap
+	{
+		m_tiles,
+		{16, 16},
+		0,
+		0
+	};
 	float spawnDelta = 0;
 };
 
@@ -133,15 +142,15 @@ void Setup(void* gameData, const tako::SetupData& setup)
 	game->Setup(setup);
 }
 
-void Update(void* gameData, tako::Input* input, float dt)
+void Update(const tako::GameStageData stageData, tako::Input* input, float dt)
 {
-	auto game = reinterpret_cast<JamPhysics2DGame*>(gameData);
+	auto game = reinterpret_cast<JamPhysics2DGame*>(stageData.gameData);
 	game->Update(input, dt);
 }
 
-void Draw(void* gameData)
+void Draw(const tako::GameStageData stageData)
 {
-	auto game = reinterpret_cast<JamPhysics2DGame*>(gameData);
+	auto game = reinterpret_cast<JamPhysics2DGame*>(stageData.gameData);
 	game->Draw();
 }
 
@@ -152,4 +161,5 @@ void tako::InitTakoConfig(GameConfig& config)
 	config.Draw = Draw;
 	config.graphicsAPI = tako::GraphicsAPI::OpenGL;
 	config.gameDataSize = sizeof(JamPhysics2DGame);
+	config.frameDataSize = 1;
 }

@@ -1,6 +1,4 @@
-#include "EntryPoint.hpp"
 #include "Tako.hpp"
-#include "World.hpp"
 #include "Timer.hpp"
 #include "Resources.hpp"
 #include "Allocators/PoolAllocator.hpp"
@@ -26,6 +24,8 @@
 #endif
 #include "imgui_impl_opengl3.h"
 #endif
+
+export module EntryPoint;
 
 namespace tako
 {
@@ -161,7 +161,7 @@ namespace tako
 
 	}
 
-	int RunGameLoop(int argc, char* argv[])
+	export int RunGameLoop(int argc, char* argv[])
 	{
 		LOG("Init!");
 		Application::argc = argc;

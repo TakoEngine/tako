@@ -24,10 +24,6 @@ add_library(${TAKO_DLL}
 	"include/Audio.hpp"
 	"src/Audio.cpp"
 	"include/Entity.hpp"
-	"include/World.hpp"
-	"src/World.cpp"
-	"include/EntryPoint.hpp"
-	"src/EntryPoint.cpp"
 	"include/Font.hpp"
 	"include/Timer.hpp"
 	"include/Resources.hpp"
@@ -39,7 +35,6 @@ add_library(${TAKO_DLL}
 	"include/Material.hpp"
 	"include/Pipeline.hpp"
 	"include/GameConfig.hpp"
-	"include/Jam/PlatformerPhysics2D.hpp"
 	"include/Assets.hpp"
 	"include/Application.hpp"
 	"src/Application.cpp"
@@ -48,7 +43,16 @@ add_library(${TAKO_DLL}
 	"include/Reflection.hpp"
 	"src/Reflection.cpp"
 	"include/Jam/LDtkImporter.hpp"
-	"include/Jam/TileMap.hpp"
+)
+
+target_sources(
+	${TAKO_DLL} PUBLIC
+	FILE_SET cxx_modules TYPE CXX_MODULES FILES
+	"src/ECS/Archetype.cppm"
+	"src/ECS/World.cppm"
+	"src/EntryPoint.cppm"
+	"src/Jam/PlatformerPhysics2D.cppm"
+	"src/Jam/TileMap.cppm"
 )
 
 function(set_feature define val)
@@ -100,7 +104,7 @@ endif()
 
 if (WIN32)
 target_sources(${TAKO_DLL} PRIVATE
-	"src/platform/win32/Main.cpp"
+	"src/platform/win32/Main.cppm"
 	"src/platform/win32/Window.cpp"
 	"src/platform/win32/Log.cpp"
 	#"src/platform/win32/FileSystem.cpp"
@@ -294,5 +298,5 @@ endif(TAKO_EDITOR)
 
 target_link_libraries(${TAKO_DLL} PUBLIC fmt)
 
-add_executable(ECSBench "test/ECSBench.cpp")
+add_executable(ECSBench "test/ECSBench.cppm")
 target_link_libraries(ECSBench PRIVATE tako)

@@ -1,4 +1,3 @@
-#pragma once
 #include "NumberTypes.hpp"
 #include "Entity.hpp"
 #include "Utility.hpp"
@@ -9,11 +8,12 @@
 #include <algorithm>
 #include <optional>
 
+export module Tako.Archetype;
+
 namespace tako
 {
 
-
-	class ComponentIDGenerator
+	export class ComponentIDGenerator
 	{
 		static U8 Identifier(std::size_t size)
 		{
@@ -23,7 +23,7 @@ namespace tako
 			return id;
 		}
 
-		static std::map<U8, std::size_t> m_componentSizes;
+		inline static std::map<U8, std::size_t> m_componentSizes = {};
 	public:
 		template<typename C>
 		static U8 GetID()
@@ -43,70 +43,65 @@ namespace tako
 		}
 	};
 
-
-
-	namespace
+	export template<typename C, typename... Cs>
+	U64 GetArchetypeHash()
 	{
-		template<typename C, typename... Cs>
-		U64 GetArchetypeHash()
+		U64 bit = 1 << static_cast<U64>(ComponentIDGenerator::GetID<C>());
+		if constexpr (sizeof...(Cs) == 0)
 		{
-			U64 bit = 1 << static_cast<U64>(ComponentIDGenerator::GetID<C>());
-			if constexpr (sizeof...(Cs) == 0)
-			{
-				return bit;
-			}
-			else
-			{
-				return bit | GetArchetypeHash<Cs...>();
-			}
+			return bit;
 		}
-
-		struct CompInfo
+		else
 		{
-			U8 id;
-			std::size_t size;
-		};
-
-		template<std::size_t index, std::size_t size, typename C, typename... Cs>
-		void FillIDArray(std::array<CompInfo, size>& arr)
-		{
-			CompInfo info;
-			info.id = ComponentIDGenerator::GetID<C>();
-			info.size = sizeof(C);
-			arr[index] = info;
-			if constexpr (sizeof...(Cs) > 0)
-			{
-				FillIDArray<index + 1, size, Cs...>(arr);
-			}
+			return bit | GetArchetypeHash<Cs...>();
 		}
+	}
 
-		template<typename... Cs>
-		std::array<CompInfo, sizeof...(Cs)> GetIDArray()
+	struct CompInfo
+	{
+		U8 id;
+		std::size_t size;
+	};
+
+	template<std::size_t index, std::size_t size, typename C, typename... Cs>
+	void FillIDArray(std::array<CompInfo, size>& arr)
+	{
+		CompInfo info;
+		info.id = ComponentIDGenerator::GetID<C>();
+		info.size = sizeof(C);
+		arr[index] = info;
+		if constexpr (sizeof...(Cs) > 0)
 		{
-			std::array<CompInfo, sizeof...(Cs)> arr;
-			FillIDArray<0, sizeof...(Cs), Cs...>(arr);
-			return arr;
+			FillIDArray<index + 1, size, Cs...>(arr);
 		}
+	}
+
+	template<typename... Cs>
+	std::array<CompInfo, sizeof...(Cs)> GetIDArray()
+	{
+		std::array<CompInfo, sizeof...(Cs)> arr;
+		FillIDArray<0, sizeof...(Cs), Cs...>(arr);
+		return arr;
+	}
 
 		
-		std::size_t CalculateEntitySize()
-		{
-			return sizeof(Entity);
-		}
+	std::size_t CalculateEntitySize()
+	{
+		return sizeof(Entity);
+	}
 
-		template<typename C, typename... Cs>
-		std::size_t CalculateEntitySize()
+	template<typename C, typename... Cs>
+	std::size_t CalculateEntitySize()
+	{
+		if constexpr (sizeof...(Cs) == 0)
 		{
-			if constexpr (sizeof...(Cs) == 0)
-			{
-				return sizeof(C) + sizeof(Entity);
-			}
-			else
-			{
-				return sizeof(C) + CalculateEntitySize<Cs...>();
-			}
-			
+			return sizeof(C) + sizeof(Entity);
 		}
+		else
+		{
+			return sizeof(C) + CalculateEntitySize<Cs...>();
+		}
+			
 	}
 
 /*
@@ -120,12 +115,12 @@ namespace tako
 */
 	constexpr std::size_t CHUNK_SIZE = 16 * 1024; //16kb
 
-	struct ChunkHeader
+	export struct ChunkHeader
 	{
 		U16 last = 0;
 	};
 
-	struct Chunk
+	export struct Chunk
 	{
 		ChunkHeader header;
 		U8 data[CHUNK_SIZE - sizeof(ChunkHeader)];
@@ -190,9 +185,9 @@ namespace tako
 		return FillComponentTypeInfo(infos, compInfos, infoCount, elementSize);
 	}
 
-	struct Archetype;
+	export struct Archetype;
 
-	class EntityHandle
+	export class EntityHandle
 	{
 	public:
 		Entity id;
@@ -204,7 +199,7 @@ namespace tako
 		friend class World;
 	};
 
-	struct Archetype
+	export struct Archetype
 	{
 		U64 componentHash;
 		std::vector<std::unique_ptr<Chunk>> chunks;

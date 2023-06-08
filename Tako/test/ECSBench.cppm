@@ -1,7 +1,9 @@
 #define TAKO_FORCE_LOG
-#include "World.hpp"
 #include "Math.hpp"
 #include <chrono>
+
+import Tako.Archetype;
+import Tako.World;
 
 struct Position
 {
@@ -21,7 +23,7 @@ public:
 		Start();
 	}
 
-	double Start()
+	void Start()
 	{
 		m_start = std::chrono::high_resolution_clock::now();
 	}
@@ -59,10 +61,6 @@ void RunTimed(std::string_view name, Cb callback)
 
 int main()
 {
-	//Generate ids to remove performance impact
-	tako::ComponentIDGenerator::GetID<Position>();
-	tako::ComponentIDGenerator::GetID<Velocity>();
-
 	tako::World world;
 	for (int i = 0; i < COMP_COUNT; i++)
 	{

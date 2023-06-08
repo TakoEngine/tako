@@ -1,17 +1,18 @@
-#pragma once
 #include <vector>
 #include <map>
 #include "OpenGLPixelArtDrawer.hpp"
 #include <nlohmann/json.hpp>
 
+export module Tako.TileMap;
+
 namespace tako::Jam
 {
-	struct TileInformation
+	export struct TileInformation
 	{
 
 	};
 
-	struct TileEntity
+	export struct TileEntity
 	{
 		std::string typeName;
 		Vector2 position;
@@ -19,13 +20,13 @@ namespace tako::Jam
 		nlohmann::json fields;
 	};
 
-	struct TileLayer
+	export struct TileLayer
 	{
 		std::string name;
 		Bitmap composite;
 	};
 
-	struct TileMap
+	export struct TileMap
 	{
 		std::string name;
 		Color backgroundColor;
@@ -39,7 +40,7 @@ namespace tako::Jam
 		Vector2 size;
 	};
 
-	struct TileWorld
+	export struct TileWorld
 	{
 		std::map<int, TileMap> levels;
 	};

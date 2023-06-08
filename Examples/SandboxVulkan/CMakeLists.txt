@@ -1,5 +1,5 @@
 include(tako)
-add_executable(sandboxVulkan "Sandbox.cpp")
+add_executable(sandboxVulkan "Sandbox.cppm")
 tako_setup(sandboxVulkan)
 target_link_libraries(sandboxVulkan PRIVATE tako)
 if (DEFINED EMSCRIPTEN)

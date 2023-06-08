@@ -1,5 +1,6 @@
+import EntryPoint;
+
 #include <Windows.h>
-#include "EntryPoint.hpp"
 
 int main(int argc, char* argv[])
 {

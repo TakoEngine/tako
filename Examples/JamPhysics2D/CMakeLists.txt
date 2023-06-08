@@ -1,5 +1,5 @@
 include(tako)
-add_executable(jamPhysics2D WIN32 "JamPhysics2D.cpp")
+add_executable(jamPhysics2D "JamPhysics2D.cppm")
 tako_setup(jamPhysics2D)
 target_link_libraries(jamPhysics2D PRIVATE tako)
 if (DEFINED EMSCRIPTEN)
