@@ -1,3 +1,4 @@
+module;
 #include <vector>
 #include <map>
 #include "OpenGLPixelArtDrawer.hpp"

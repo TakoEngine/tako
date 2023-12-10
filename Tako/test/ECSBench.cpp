@@ -2,7 +2,6 @@
 #include "Math.hpp"
 #include <chrono>
 
-import Tako.Archetype;
 import Tako.World;
 
 struct Position

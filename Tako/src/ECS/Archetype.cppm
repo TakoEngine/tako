@@ -1,3 +1,4 @@
+module;
 #include "NumberTypes.hpp"
 #include "Entity.hpp"
 #include "Utility.hpp"
@@ -191,12 +192,12 @@ namespace tako
 	{
 	public:
 		Entity id;
-	private:
+	//private:
 		Archetype* archeType;
 		Chunk* chunk;
 		int indexChunk;
-		friend class Archetype;
-		friend class World;
+	//	friend class Archetype;
+	//	friend class World;
 	};
 
 	export struct Archetype

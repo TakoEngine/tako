@@ -1,0 +1,13 @@
+FROM archlinux:latest
+
+RUN pacman -Syyu --noconfirm
+RUN pacman-db-upgrade
+RUN pacman -S --noconfirm sudo
+RUN useradd -m -G wheel -s /bin/bash tako && echo '%wheel ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+USER tako
+
+RUN sudo pacman -S --noconfirm git vim cmake clang ninja python glslang \
+    libxi libxrandr libxinerama libxcursor libgl mesa \
+    vulkan-headers vulkan-icd-loader extra-cmake-modules \
+    wayland-protocols libxi libxrandr libxcursor libxkbcommon libxinerama

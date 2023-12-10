@@ -1,4 +1,4 @@
-#include "EntryPoint.hpp"
+import EntryPoint;
 
 int main(int argc, char* argv[])
 {
