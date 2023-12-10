@@ -47,8 +47,7 @@ add_library(${TAKO_DLL}
 
 target_sources(
 	${TAKO_DLL} PUBLIC
-	FILE_SET cxx_modules TYPE CXX_MODULES FILES
-	"src/ECS/Archetype.cppm"
+	FILE_SET CXX_MODULES FILES
 	"src/ECS/World.cppm"
 	"src/EntryPoint.cppm"
 	"src/Jam/PlatformerPhysics2D.cppm"
@@ -91,7 +90,7 @@ endif()
 
 if (TAKO_MAC OR TAKO_LINUX)
 set_feature(TAKO_OPENGL true)
-set_feature(TAKO_VULKAN true)
+set_feature(TAKO_VULKAN false)
 set_feature(TAKO_GLFW true)
 set_feature(TAKO_GLAD true)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -298,5 +297,5 @@ endif(TAKO_EDITOR)
 
 target_link_libraries(${TAKO_DLL} PUBLIC fmt)
 
-add_executable(ECSBench "test/ECSBench.cppm")
+add_executable(ECSBench "test/ECSBench.cpp")
 target_link_libraries(ECSBench PRIVATE tako)

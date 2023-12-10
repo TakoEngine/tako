@@ -1,3 +1,4 @@
+module;
 #include "Tako.hpp"
 #include "Timer.hpp"
 #include "Resources.hpp"
