@@ -94,88 +94,85 @@ namespace tako::Jam::PlatformerPhysics2D
 		}
 	}
 
-	namespace
+	inline float& AccessVectorOffset(Vector2& vec, size_t axisOffset)
 	{
-		inline float& AccessVectorOffset(Vector2& vec, size_t axisOffset)
-		{
-			auto charPtr = ((char*) &vec) + axisOffset;
-			return *((float*)charPtr);
-		}
+		auto charPtr = ((char*) &vec) + axisOffset;
+		return *((float*)charPtr);
+	}
 
-		template<typename ColCallback>
-		void StepAxis(Node& node, std::vector<Node>& nodes, TileCollisionMap& tilemap, size_t axisOffset, ColCallback callback)
+	template<typename ColCallback>
+	void StepAxis(Node& node, std::vector<Node>& nodes, TileCollisionMap& tilemap, size_t axisOffset, ColCallback callback)
+	{
+		float& mov = AccessVectorOffset(node.movement, axisOffset);
+		float& pos = AccessVectorOffset(node.position, axisOffset);
+		float& vel = AccessVectorOffset(node.velocity, axisOffset);
+		float step = mathf::clamp(mov, -1, 1);
+		pos += step;
+		auto nodeRec = node.CalcRec();
+		Node* collidedWith = nullptr;
+		float collidedWithOverlap = -1;
+		for (Node& other : nodes)
 		{
-			float& mov = AccessVectorOffset(node.movement, axisOffset);
-			float& pos = AccessVectorOffset(node.position, axisOffset);
-			float& vel = AccessVectorOffset(node.velocity, axisOffset);
-			float step = mathf::clamp(mov, -1, 1);
-			pos += step;
-			auto nodeRec = node.CalcRec();
-			Node* collidedWith = nullptr;
-			float collidedWithOverlap = -1;
-			for (Node& other : nodes)
+			if (&node == &other)
 			{
-				if (&node == &other)
-				{
-					continue;
-				}
-
-				auto otherRec = other.CalcRec();
-				if (Rect::Overlap(nodeRec, otherRec))
-				{
-					auto overlap = axisOffset == offsetof(Vector2, x) ? Rect::OverlapDiffX(nodeRec, otherRec) : Rect::OverlapDiffY(nodeRec, otherRec);
-					if (overlap > collidedWithOverlap)
-					{
-						collidedWith = &other;
-						collidedWithOverlap = overlap;
-					}
-				}
+				continue;
 			}
 
-			int gridX = nodeRec.x / tilemap.tileSize.x;
-			int gridY = tilemap.height - nodeRec.y / tilemap.tileSize.y;
-			for (int x = -1; x <= 1; x++)
+			auto otherRec = other.CalcRec();
+			if (Rect::Overlap(nodeRec, otherRec))
 			{
-				auto xg = gridX + x;
-				if (xg < 0 || xg >= tilemap.width) continue;
-				for (int y = -1; y <= 1; y++)
+				auto overlap = axisOffset == offsetof(Vector2, x) ? Rect::OverlapDiffX(nodeRec, otherRec) : Rect::OverlapDiffY(nodeRec, otherRec);
+				if (overlap > collidedWithOverlap)
 				{
-					auto yg = gridY + y;
-					if (yg < 0 || yg >= tilemap.height) continue;
-					if (tilemap.tiles[xg + yg * tilemap.width])
+					collidedWith = &other;
+					collidedWithOverlap = overlap;
+				}
+			}
+		}
+
+		int gridX = nodeRec.x / tilemap.tileSize.x;
+		int gridY = tilemap.height - nodeRec.y / tilemap.tileSize.y;
+		for (int x = -1; x <= 1; x++)
+		{
+			auto xg = gridX + x;
+			if (xg < 0 || xg >= tilemap.width) continue;
+			for (int y = -1; y <= 1; y++)
+			{
+				auto yg = gridY + y;
+				if (yg < 0 || yg >= tilemap.height) continue;
+				if (tilemap.tiles[xg + yg * tilemap.width])
+				{
+					auto gridRec = Rect(xg * tilemap.tileSize.x + tilemap.tileSize.x / 2, tilemap.height * tilemap.tileSize.y - yg * tilemap.tileSize.y - tilemap.tileSize.y / 2, tilemap.tileSize.x, tilemap.tileSize.y);
+					if (Rect::Overlap(nodeRec, gridRec))
 					{
-						auto gridRec = Rect(xg * tilemap.tileSize.x + tilemap.tileSize.x / 2, tilemap.height * tilemap.tileSize.y - yg * tilemap.tileSize.y - tilemap.tileSize.y / 2, tilemap.tileSize.x, tilemap.tileSize.y);
-						if (Rect::Overlap(nodeRec, gridRec))
+						auto overlap = axisOffset == offsetof(Vector2, x) ? Rect::OverlapDiffX(nodeRec, gridRec) : Rect::OverlapDiffY(nodeRec, gridRec);
+						if (overlap > collidedWithOverlap)
 						{
-							auto overlap = axisOffset == offsetof(Vector2, x) ? Rect::OverlapDiffX(nodeRec, gridRec) : Rect::OverlapDiffY(nodeRec, gridRec);
-							if (overlap > collidedWithOverlap)
-							{
-								collidedWith = nullptr;
-								collidedWithOverlap = overlap;
-							}
+							collidedWith = nullptr;
+							collidedWithOverlap = overlap;
 						}
 					}
 				}
 			}
-			if (collidedWithOverlap > 0)
+		}
+		if (collidedWithOverlap > 0)
+		{
+			pos -= collidedWithOverlap * mathf::sign(step);
+			step = 0;
+			mov = 0;
+			vel = 0;
+			if (collidedWith)
 			{
-				pos -= collidedWithOverlap * mathf::sign(step);
-				step = 0;
-				mov = 0;
-				vel = 0;
-				if (collidedWith)
-				{
-					callback(node, *collidedWith);
-				}
+				callback(node, *collidedWith);
 			}
-			if (mathf::abs(step) < 1)
-			{
-				mov = 0;
-			}
-			else
-			{
-				mov -= step;
-			}
+		}
+		if (mathf::abs(step) < 1)
+		{
+			mov = 0;
+		}
+		else
+		{
+			mov -= step;
 		}
 	}
 

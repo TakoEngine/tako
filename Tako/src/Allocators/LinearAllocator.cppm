@@ -1,11 +1,13 @@
-#pragma once
-#include "Allocators/Allocator.hpp"
+module;
 #include "Utility.hpp"
 #include "NumberTypes.hpp"
+export module Tako.Allocators.LinearAllocator;
+
+import Tako.Allocators.Allocator;
 
 namespace tako::Allocators
 {
-	class LinearAllocator final : public Allocator
+	export class LinearAllocator final : public Allocator
 	{
 	public:
 		LinearAllocator(void* data, size_t dataSize)

@@ -1,10 +1,12 @@
-#pragma once
-#include "Allocators/Allocator.hpp"
+module;
 #include "NumberTypes.hpp"
+export module Tako.Allocators.FreeListAllocator;
+
+import Tako.Allocators.Allocator;
 
 namespace tako::Allocators
 {
-	class FreeListAllocator final : public Allocator
+	export class FreeListAllocator final : public Allocator
 	{
 		struct Node
 		{

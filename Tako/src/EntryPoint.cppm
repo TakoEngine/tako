@@ -2,11 +2,8 @@ module;
 #include "Tako.hpp"
 #include "Timer.hpp"
 #include "Resources.hpp"
-#include "Allocators/PoolAllocator.hpp"
 //#include "OpenGLPixelArtDrawer.hpp"
-#include "Renderer3D.hpp"
 #include "JobSystem.hpp"
-#include "Application.hpp"
 #include "Serialization.hpp"
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
@@ -27,6 +24,11 @@ module;
 #endif
 
 export module EntryPoint;
+
+import Tako.Audio;
+import Tako.Renderer3D;
+import Tako.Application;
+import Tako.Allocators.PoolAllocator;
 
 namespace tako
 {

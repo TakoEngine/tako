@@ -1,11 +1,13 @@
-#pragma once
-#include "Allocators/Allocator.hpp"
+module;
 #include "Utility.hpp"
 #include "NumberTypes.hpp"
+export module Tako.Allocators.PoolAllocator;
+
+import Tako.Allocators.Allocator;
 
 namespace tako::Allocators
 {
-	class PoolAllocator final : public Allocator
+	export class PoolAllocator final : public Allocator
 	{
 		struct Node
 		{

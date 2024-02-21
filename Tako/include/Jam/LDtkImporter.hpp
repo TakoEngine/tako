@@ -1,7 +1,8 @@
 #pragma once
 #include "Assets.hpp"
-#include "Jam/TileMap.hpp"
 #include <nlohmann/json.hpp>
+
+import Tako.TileMap;
 
 namespace tako::Jam::LDtkImporter
 {

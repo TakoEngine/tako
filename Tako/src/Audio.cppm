@@ -1,9 +1,35 @@
-#include "Audio.hpp"
+module;
+
 #include "Utility.hpp"
 #include "Assets.hpp"
-
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
+#include <array>
+export module Tako.Audio;
+
+namespace tako
+{
+	export class AudioClip
+	{
+	public:
+	private:
+		AudioClip();
+		ma_sound sound;
+		friend class Audio;
+	};
+
+	export class Audio
+	{
+	public:
+		Audio();
+		void Init();
+		AudioClip* Load(const char* file);
+		static void Play(AudioClip* clip, bool looping = false);
+		void Play(const char* soundFile);
+	private:
+		ma_engine m_engine;
+	};
+}
 
 
 namespace tako

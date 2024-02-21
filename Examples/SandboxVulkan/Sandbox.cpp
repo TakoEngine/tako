@@ -1,6 +1,7 @@
 #include "Tako.hpp"
-#include "Renderer3D.hpp"
 #include "FileSystem.hpp"
+
+import Tako.Renderer3D;
 
 float PingPong(float val, float max)
 {
