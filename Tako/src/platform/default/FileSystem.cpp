@@ -2,7 +2,8 @@
 #include "Utility.hpp"
 #include <filesystem>
 #include <fstream>
-#include "Application.hpp"
+
+import Tako.Application;
 
 namespace tako::FileSystem
 {

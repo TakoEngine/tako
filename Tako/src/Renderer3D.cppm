@@ -1,4 +1,6 @@
-#include "Renderer3D.hpp"
+module;
+#include "GraphicsContext.hpp"
+#include "VertexBuffer.hpp"
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "../tinyobjloader/tiny_obj_loader.h" //TODO: why
 #include <assimp/Importer.hpp>
@@ -7,6 +9,76 @@
 #include <vector>
 #include <array>
 #include "FileSystem.hpp"
+export module Tako.Renderer3D;
+
+namespace tako
+{
+	struct Vertex
+	{
+		Vector3 pos;
+		Vector3 normal;
+		Vector3 color;
+		Vector2 uv;
+
+		constexpr bool operator==(const Vertex& other) const
+		{
+			return
+				pos == other.pos &&
+				normal == other.normal &&
+				color == other.color &&
+				uv == other.uv;
+		}
+	};
+
+	export struct Mesh
+	{
+		Buffer vertexBuffer;
+		Buffer indexBuffer;
+		uint16_t indexCount;
+	};
+
+	export struct Node
+	{
+		Mesh mesh;
+		Material mat;
+	};
+
+	export struct Model
+	{
+		std::vector<Mesh> meshes;
+		std::vector<Material> materials;
+		std::vector<Texture> textures;
+		std::vector<Node> nodes;
+	};
+
+	export class Renderer3D
+	{
+	public:
+		Renderer3D(GraphicsContext* context);
+
+		void Begin();
+		void End();
+
+		void DrawMesh(const Mesh& mesh, const Material& material, const Matrix4& model);
+		void DrawMeshInstanced(const Mesh& mesh, const Material& material, size_t instanceCount, const Matrix4* transforms);
+		void DrawCube(const Matrix4& model, const Material& material);
+		void DrawModel(const Model& model, const Matrix4& transform);
+		void DrawModelInstanced(const Model& model, size_t instanceCount, const Matrix4* transforms);
+		Mesh CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices);
+
+		void SetCameraView(const Matrix4& view);
+		void SetLightPosition(Vector3 lightPos);
+
+		Model LoadModel(const char* file);
+		Mesh LoadMesh(const char* file);
+		Texture CreateTexture(const Bitmap& bitmap);
+	protected:
+		GraphicsContext* m_context;
+		Mesh m_cubeMesh;
+		Pipeline m_pipeline;
+	};
+}
+
 
 namespace tako
 {

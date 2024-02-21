@@ -1,9 +1,12 @@
-#pragma once
+module;
+#include "Utility.hpp"
 #include "NumberTypes.hpp"
+#include <utility>
+export module Tako.SmallVec;
 
 namespace tako
 {
-	template<typename T, size_t startCapacity = 10>
+	export template<typename T, size_t startCapacity = 10>
 	class SmallVec
 	{
 	public:

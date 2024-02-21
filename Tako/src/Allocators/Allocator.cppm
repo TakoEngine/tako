@@ -1,9 +1,10 @@
-#pragma once
+module;
 #include <cstddef>
+export module Tako.Allocators.Allocator;
 
 namespace tako
 {
-	class Allocator
+	export class Allocator
 	{
 	public:
 		virtual ~Allocator() {};

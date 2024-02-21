@@ -4,6 +4,8 @@
 
 namespace tako
 {
+	class Audio;
+
 	struct SetupData
 	{
 		GraphicsContext* context;

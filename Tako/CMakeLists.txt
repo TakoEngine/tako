@@ -1,50 +1,49 @@
 include(tako)
 set(TAKO_DLL "tako")
 add_library(${TAKO_DLL}
+	"src/Math.cpp"
+	"src/Bitmap.cpp"
+	"src/GraphicsContext.cpp"
+	"src/PixelArtDrawer.cpp"
+	"src/Event.cpp"
+	"src/Input.cpp"
+	"src/Resources.cpp"
+	"src/Serialization.cpp"
+	"src/Reflection.cpp"
+)
+
+target_sources(
+	${TAKO_DLL} PUBLIC
+	FILE_SET HEADERS FILES
 	"include/Window.hpp"
 	"include/Log.hpp"
 	"include/Utility.hpp"
 	"include/FileSystem.hpp"
 	"include/NumberTypes.hpp"
 	"include/Math.hpp"
-	"src/Math.cpp"
 	"include/Bitmap.hpp"
-	"src/Bitmap.cpp"
 	"include/GraphicsContext.hpp"
-	"src/GraphicsContext.cpp"
 	"include/Texture.hpp"
 	"include/PixelArtDrawer.hpp"
-	"src/PixelArtDrawer.cpp"
 	"include/Tako.hpp"
 	"include/Event.hpp"
-	"src/Event.cpp"
 	"include/Input.hpp"
-	"src/Input.cpp"
 	"include/Sprite.hpp"
-	"include/Audio.hpp"
-	"src/Audio.cpp"
 	"include/Entity.hpp"
 	"include/Font.hpp"
 	"include/Timer.hpp"
 	"include/Resources.hpp"
-	"src/Resources.cpp"
 	"include/GraphicsAPI.hpp"
 	"include/IGraphicsContext.hpp"
-	"include/SmallVec.hpp"
 	"include/VertexBuffer.hpp"
 	"include/Material.hpp"
 	"include/Pipeline.hpp"
 	"include/GameConfig.hpp"
 	"include/Assets.hpp"
-	"include/Application.hpp"
-	"src/Application.cpp"
 	"include/Serialization.hpp"
-	"src/Serialization.cpp"
 	"include/Reflection.hpp"
-	"src/Reflection.cpp"
 	"include/Jam/LDtkImporter.hpp"
 )
-
 target_sources(
 	${TAKO_DLL} PUBLIC
 	FILE_SET CXX_MODULES FILES
@@ -52,6 +51,13 @@ target_sources(
 	"src/EntryPoint.cppm"
 	"src/Jam/PlatformerPhysics2D.cppm"
 	"src/Jam/TileMap.cppm"
+	"src/SmallVec.cppm"
+	"src/Application.cppm"
+	"src/Audio.cppm"
+	"src/Allocators/Allocator.cppm"
+	"src/Allocators/FreeListAllocator.cppm"
+	"src/Allocators/LinearAllocator.cppm"
+	"src/Allocators/PoolAllocator.cppm"
 )
 
 function(set_feature define val)
@@ -228,9 +234,9 @@ if (NOT EMSCRIPTEN)
 	target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/assimp/include")
 	target_link_libraries(${TAKO_DLL} PUBLIC assimp)
 
-	target_sources(${TAKO_DLL} PRIVATE
-		"include/Renderer3D.hpp"
-		"src/Renderer3D.cpp"
+	target_sources(${TAKO_DLL} PUBLIC
+		FILE_SET CXX_MODULES FILES
+		"src/Renderer3D.cppm"
 	)
 endif()
 

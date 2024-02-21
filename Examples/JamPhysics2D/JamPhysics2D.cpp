@@ -1,5 +1,3 @@
-import PlatformerPhysics2D;
-
 #include "Tako.hpp"
 #ifdef TAKO_OPENGL
 #include "OpenGLPixelArtDrawer.hpp"
@@ -7,6 +5,8 @@ import PlatformerPhysics2D;
 #include <vector>
 #include <time.h>
 #include <stdlib.h>
+
+import PlatformerPhysics2D;
 
 struct PhysicsObject
 {

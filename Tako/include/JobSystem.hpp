@@ -8,8 +8,8 @@
 #include <deque>
 #include <chrono>
 
-#include "Allocators/FreeListAllocator.hpp"
-#include "Allocators/PoolAllocator.hpp"
+import Tako.Allocators.FreeListAllocator;
+import Tako.Allocators.PoolAllocator;
 
 namespace tako
 {

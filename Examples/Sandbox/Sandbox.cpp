@@ -9,6 +9,8 @@
 #endif
 #include "Serialization.hpp"
 
+import Tako.Audio;
+
 static tako::Texture tree;
 static tako::Texture tileset;
 static tako::Sprite* sprite;
