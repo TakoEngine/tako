@@ -2,8 +2,7 @@ module;
 #include <vector>
 #include <map>
 #include "OpenGLPixelArtDrawer.hpp"
-#include <nlohmann/json.hpp>
-
+//#include <nlohmann/json.hpp>
 export module Tako.TileMap;
 
 namespace tako::Jam
@@ -18,7 +17,7 @@ namespace tako::Jam
 		std::string typeName;
 		Vector2 position;
 		Vector2 size;
-		nlohmann::json fields;
+		//nlohmann::json fields;
 	};
 
 	export struct TileLayer

@@ -1,9 +1,10 @@
 #pragma once
 #include "Utility.hpp"
-#include "Bitmap.hpp"
 #include <map>
 #include <utility>
 #include <string_view>
+
+import Tako.Bitmap;
 
 namespace tako
 {

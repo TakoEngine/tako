@@ -1,12 +1,15 @@
 #pragma once
 #include "GraphicsAPI.hpp"
 #include "Window.hpp"
-#include "Event.hpp"
 #include "Texture.hpp"
-#include "Bitmap.hpp"
 #include "VertexBuffer.hpp"
 #include "Material.hpp"
 #include "Pipeline.hpp"
+
+import Tako.Math;
+import Tako.Bitmap;
+import Tako.NumberTypes;
+import Tako.Event;
 
 namespace tako
 {

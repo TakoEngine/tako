@@ -4,6 +4,9 @@
 #include <GLFW/glfw3.h>
 #include <map>
 
+import Tako.Math;
+import Tako.Event;
+
 namespace tako
 {
 	namespace

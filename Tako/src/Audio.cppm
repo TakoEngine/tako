@@ -1,11 +1,11 @@
 module;
-
 #include "Utility.hpp"
-#include "Assets.hpp"
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 #include <array>
 export module Tako.Audio;
+
+import Tako.Assets;
 
 namespace tako
 {

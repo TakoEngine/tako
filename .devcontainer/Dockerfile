@@ -1,4 +1,4 @@
-FROM fedora:39
+FROM fedora:40
 
 RUN sudo dnf install -y wget
 COPY ./install-cmake.sh /tmp/
@@ -8,6 +8,7 @@ RUN useradd -m -G wheel -s /bin/bash tako && echo '%wheel ALL=(ALL) NOPASSWD:ALL
 
 USER tako
 
-RUN sudo dnf install -y git clang clang-tools-extra ninja-build
+RUN sudo dnf install -y git python openssh-server xauth
+RUN sudo dnf install -y clang clang-tools-extra ninja-build
 RUN sudo dnf install -y libXcursor-devel libXi-devel libXinerama-devel libXrandr-devel
 RUN sudo dnf install -y vim

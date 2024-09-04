@@ -1,9 +1,13 @@
-#pragma once
-#include "FileSystem.hpp"
+module;
+#include "NumberTypes.hpp"
+#include <string>
+export module Tako.Assets;
+
+import Tako.FileSystem;
 
 namespace tako::Assets
 {
-	static std::string GetAssetPath(const char* filePath)
+	export std::string GetAssetPath(const char* filePath)
 	{
 #ifndef TAKO_EMSCRIPTEN
 		return FileSystem::GetExecutablePath() + "/Assets" + filePath;
@@ -12,7 +16,7 @@ namespace tako::Assets
 #endif
 	}
 
-	static bool ReadAssetFile(
+	export bool ReadAssetFile(
 		const char* filePath,
 		U8* buffer,
 		size_t bufferSize,
@@ -21,12 +25,12 @@ namespace tako::Assets
 		return FileSystem::ReadFile(GetAssetPath(filePath).c_str(), buffer, bufferSize, bytesRead);
 	}
 
-	static size_t GetAssetFileSize(const char* filePath)
+	export size_t GetAssetFileSize(const char* filePath)
 	{
 		return FileSystem::GetFileSize(GetAssetPath(filePath).c_str());
 	}
 
-	static std::string ReadAssetText(const char* filePath)
+	export std::string ReadAssetText(const char* filePath)
 	{
 		auto path = GetAssetPath(filePath);
 		auto size = FileSystem::GetFileSize(path.c_str());

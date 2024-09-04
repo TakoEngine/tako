@@ -1,11 +1,12 @@
-#pragma once
-
+module;
 #include <vector>
 #include <functional>
 #include <iostream>
-#include "Math.hpp"
+export module Tako.Event;
 
-namespace tako
+import Tako.Math;
+
+export namespace tako
 {
 	enum class EventType
 	{
@@ -31,6 +32,11 @@ namespace tako
 		}
 	};
 
+	std::ostream& operator<<(std::ostream& os, const Event& evt)
+	{
+		evt.DebugPrint(os);
+		return os;
+	}
 
 
 #define EVENT_CLASS_TYPE(type) \

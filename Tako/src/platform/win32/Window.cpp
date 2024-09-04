@@ -2,7 +2,6 @@
 #include <Windows.h>
 #include "WinUtility.hpp"
 #include "Bitmap.hpp"
-#include "FileSystem.hpp"
 #include <algorithm>
 #include <vector>
 #include <array>
@@ -11,6 +10,8 @@
 #ifdef TAKO_IMGUI
 #include "imgui_impl_win32.h"
 #endif
+
+import Tako.FileSystem;
 
 using namespace tako::literals;
 

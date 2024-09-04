@@ -1,7 +1,9 @@
 #pragma once
-#include "Event.hpp"
-#include "Math.hpp"
 #include <array>
+#include <cstddef>
+
+import Tako.Math;
+import Tako.Event;
 
 namespace tako
 {

@@ -2,10 +2,9 @@
 #ifdef TAKO_GLFW
 #include "GLFW/glfw3.h"
 #endif
-#include "Math.hpp"
-#include "Bitmap.hpp"
 #include "OpenGLPixelArtDrawer.hpp"
 #include "OpenGL.hpp"
+#include "Utility.hpp"
 
 #ifdef TAKO_WIN32
 #include <Windows.h>
@@ -23,6 +22,9 @@ auto GetGLProcAddress(const char* name)
 	return procAddress;
 }
 #endif
+
+import Tako.Bitmap;
+import Tako.Math;
 
 namespace tako
 {

@@ -1,11 +1,14 @@
-#include "FileSystem.hpp"
+module;
 #include "Utility.hpp"
+#include "NumberTypes.hpp"
 #include <filesystem>
 #include <fstream>
+#include <string>
+export module Tako.FileSystem:OS;
 
 import Tako.Application;
 
-namespace tako::FileSystem
+export namespace tako::FileSystem
 {
 	bool ReadFile(const char* filePath,
 					U8* buffer,

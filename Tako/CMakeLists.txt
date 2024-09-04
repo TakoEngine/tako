@@ -1,11 +1,8 @@
 include(tako)
 set(TAKO_DLL "tako")
 add_library(${TAKO_DLL}
-	"src/Math.cpp"
-	"src/Bitmap.cpp"
 	"src/GraphicsContext.cpp"
 	"src/PixelArtDrawer.cpp"
-	"src/Event.cpp"
 	"src/Input.cpp"
 	"src/Resources.cpp"
 	"src/Serialization.cpp"
@@ -18,15 +15,11 @@ target_sources(
 	"include/Window.hpp"
 	"include/Log.hpp"
 	"include/Utility.hpp"
-	"include/FileSystem.hpp"
 	"include/NumberTypes.hpp"
-	"include/Math.hpp"
-	"include/Bitmap.hpp"
 	"include/GraphicsContext.hpp"
 	"include/Texture.hpp"
 	"include/PixelArtDrawer.hpp"
 	"include/Tako.hpp"
-	"include/Event.hpp"
 	"include/Input.hpp"
 	"include/Sprite.hpp"
 	"include/Entity.hpp"
@@ -39,21 +32,26 @@ target_sources(
 	"include/Material.hpp"
 	"include/Pipeline.hpp"
 	"include/GameConfig.hpp"
-	"include/Assets.hpp"
 	"include/Serialization.hpp"
 	"include/Reflection.hpp"
-	"include/Jam/LDtkImporter.hpp"
 )
 target_sources(
 	${TAKO_DLL} PUBLIC
 	FILE_SET CXX_MODULES FILES
 	"src/ECS/World.cppm"
+	"src/NumberTypes.cppm"
+	"src/Math.cppm"
+	"src/Bitmap.cppm"
+	"src/Event.cppm"
 	"src/EntryPoint.cppm"
 	"src/Jam/PlatformerPhysics2D.cppm"
 	"src/Jam/TileMap.cppm"
+	"src/Jam/LDtkImporter.cppm"
 	"src/SmallVec.cppm"
 	"src/Application.cppm"
+	"src/FileSystem.cppm"
 	"src/Audio.cppm"
+	"src/Assets.cppm"
 	"src/Allocators/Allocator.cppm"
 	"src/Allocators/FreeListAllocator.cppm"
 	"src/Allocators/LinearAllocator.cppm"
@@ -112,29 +110,34 @@ target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/win32/Main.cppm"
 	"src/platform/win32/Window.cpp"
 	"src/platform/win32/Log.cpp"
-	#"src/platform/win32/FileSystem.cpp"
-	"src/platform/default/FileSystem.cpp"
 	"include/WinUtility.hpp"
 	"src/platform/win32/WinUtility.cpp"
 	"src/platform/default/Timer.cpp"
+	PUBLIC FILE_SET CXX_MODULES FILES
+	"src/platform/default/FileSystem.cppm"
 )
 elseif (EMSCRIPTEN)
 target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/web/Window.cpp"
 	"src/platform/web/Log.cpp"
-	"src/platform/web/FileSystem.cpp"
 	"src/platform/web/Timer.cpp"
-	"src/platform/default/Main.cpp")
+	"src/platform/default/Main.cpp"
+	PUBLIC FILE_SET CXX_MODULES FILES
+	"src/platform/web/FileSystem.cppm"
+	)
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 target_sources(${TAKO_DLL} PRIVATE
-		"src/platform/default/FileSystem.cpp"
 		"src/platform/default/Main.cpp"
-		"src/platform/default/Log.cpp")
+		"src/platform/default/Log.cpp"
+		PUBLIC FILE_SET CXX_MODULES FILES
+		"src/platform/default/FileSystem.cppm"
+		)
 elseif (UNIX AND NOT APPLE)
 target_sources(${TAKO_DLL} PRIVATE
-		"src/platform/default/FileSystem.cpp"
 		"src/platform/default/Main.cpp"
-		"src/platform/default/Log.cpp")
+		"src/platform/default/Log.cpp"
+		PUBLIC FILE_SET CXX_MODULES FILES
+		"src/platform/default/FileSystem.cppm")
 endif()
 
 if (TAKO_OPENGL)
