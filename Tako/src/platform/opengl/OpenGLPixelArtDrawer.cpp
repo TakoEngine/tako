@@ -1,4 +1,5 @@
 #include "OpenGLPixelArtDrawer.hpp"
+#include "Utility.hpp"
 #include <vector>
 #include <array>
 

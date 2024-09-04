@@ -1,6 +1,7 @@
 module;
 #include "GraphicsContext.hpp"
 #include "VertexBuffer.hpp"
+#include "Utility.hpp"
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "../tinyobjloader/tiny_obj_loader.h" //TODO: why
 #include <assimp/Importer.hpp>
@@ -8,8 +9,9 @@ module;
 #include <assimp/postprocess.h>
 #include <vector>
 #include <array>
-#include "FileSystem.hpp"
 export module Tako.Renderer3D;
+
+import Tako.FileSystem;
 
 namespace tako
 {

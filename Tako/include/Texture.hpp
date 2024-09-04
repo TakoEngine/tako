@@ -1,5 +1,6 @@
 #pragma once
-#include "NumberTypes.hpp"
+
+import Tako.NumberTypes;
 
 namespace tako
 {

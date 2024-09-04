@@ -1,6 +1,5 @@
 #pragma once
 #include "Utility.hpp"
-#include "FileSystem.hpp"
 #include "Reflection.hpp"
 #include <type_traits>
 
@@ -42,16 +41,5 @@ namespace tako::Serialization
 	std::string Serialize(const T& t)
 	{
 		return Encode(&t, Reflection::Resolver::Get<T>());
-	}
-
-	static void TestYaml()
-	{
-		auto path = FileSystem::GetExecutablePath() + "/testComp.yaml";
-		auto comp = Deserialize<TestComponent>(FileSystem::ReadText(path.c_str()).c_str());
-		LOG("{} {} {} {} {} {} {}", comp.index, comp.type, comp.flying, comp.trample, comp.haste, comp.pos.x, comp.pos.y);
-		comp.trample = !comp.trample;
-		comp.index *= 2;
-		auto node = Serialize(comp);
-		LOG("{}", node);
 	}
 }

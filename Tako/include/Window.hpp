@@ -1,9 +1,10 @@
 #pragma once
 #include "GraphicsAPI.hpp"
 #include "WindowHandle.hpp"
-//#include <memory>
-#include "Event.hpp"
 #include <functional>
+#include <memory>
+
+import Tako.Event;
 
 namespace tako
 {

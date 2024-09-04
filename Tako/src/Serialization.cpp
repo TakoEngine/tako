@@ -1,4 +1,5 @@
 #include "Serialization.hpp"
+#include "NumberTypes.hpp"
 #include <yaml-cpp/yaml.h>
 
 namespace tako::Serialization

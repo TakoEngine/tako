@@ -1,8 +1,9 @@
 #define TAKO_FORCE_LOG
-#include "Math.hpp"
+#include "Utility.hpp"
 #include <chrono>
 
 import Tako.World;
+import Tako.Math;
 
 struct Position
 {

@@ -1,10 +1,13 @@
-#pragma once
-#include "Assets.hpp"
+module;
 #include <nlohmann/json.hpp>
+export module Tako.LDtkImporter;
 
+import Tako.Math;
 import Tako.TileMap;
+import Tako.Assets;
+import Tako.Bitmap;
 
-namespace tako::Jam::LDtkImporter
+export namespace tako::Jam::LDtkImporter
 {
 	class Map
 	{
@@ -12,7 +15,7 @@ namespace tako::Jam::LDtkImporter
 	private:
 
 	};
-	static TileWorld LoadWorld(const char* projectFile)
+	TileWorld LoadWorld(const char* projectFile)
 	{
 		auto json = nlohmann::json::parse(Assets::ReadAssetText(projectFile));
 
@@ -63,7 +66,7 @@ namespace tako::Jam::LDtkImporter
 						ent.typeName = entity["__identifier"];
 						ent.position = { entity["px"][0], levelHeight - entity["px"][1].get<float>()};
 						ent.size = { entity["width"], entity["height"]};
-						ent.fields = entity["fieldInstances"];
+						//ent.fields = entity["fieldInstances"];
 						tl.entities.push_back(ent);
 					}
 				}

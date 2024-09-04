@@ -5,7 +5,6 @@
 #include "Window.hpp"
 #include "GraphicsContext.hpp"
 #include "Utility.hpp"
-#include "FileSystem.hpp"
 #include "Input.hpp"
 #include "Resources.hpp"
 //#include <emscripten.h>

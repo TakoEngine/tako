@@ -1,7 +1,7 @@
 #include "Tako.hpp"
-#include "FileSystem.hpp"
 
 import Tako.Renderer3D;
+import Tako.FileSystem;
 
 float PingPong(float val, float max)
 {

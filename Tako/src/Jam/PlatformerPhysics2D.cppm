@@ -1,8 +1,9 @@
 module;
 #include <vector>
-#include "Math.hpp"
+#include <cmath>
+export module Tako.PlatformerPhysics2D;
 
-export module PlatformerPhysics2D;
+import Tako.Math;
 
 namespace tako::Jam::PlatformerPhysics2D
 {

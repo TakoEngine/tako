@@ -1,4 +1,3 @@
-#include "Event.hpp"
 #include "Tako.hpp"
 #include "Font.hpp"
 #ifdef TAKO_OPENGL
@@ -10,6 +9,7 @@
 #include "Serialization.hpp"
 
 import Tako.Audio;
+import Tako.Event;
 
 static tako::Texture tree;
 static tako::Texture tileset;

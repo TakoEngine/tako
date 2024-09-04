@@ -1,11 +1,11 @@
 #pragma once
 
-#include "Math.hpp"
-#include "Bitmap.hpp"
 #include "Texture.hpp"
 #include "Sprite.hpp"
 #include "GraphicsContext.hpp"
 #include <unordered_map>
+
+import Tako.Math;
 
 namespace tako
 {

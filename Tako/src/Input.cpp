@@ -1,5 +1,4 @@
 #include "Input.hpp"
-#include "Event.hpp"
 #include "Utility.hpp"
 
 namespace tako

@@ -2,7 +2,9 @@
 #ifdef TAKO_OPENGL
 #include "OpenGLPixelArtDrawer.hpp"
 #endif
-#include "Jam/LDtkImporter.hpp"
+
+import Tako.TileMap;
+import Tako.LDtkImporter;
 
 struct GameData
 {

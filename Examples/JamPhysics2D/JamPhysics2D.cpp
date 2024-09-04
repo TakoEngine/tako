@@ -6,7 +6,7 @@
 #include <time.h>
 #include <stdlib.h>
 
-import PlatformerPhysics2D;
+import Tako.PlatformerPhysics2D;
 
 struct PhysicsObject
 {

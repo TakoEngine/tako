@@ -1,6 +1,8 @@
 #include "PixelArtDrawer.hpp"
-#include "Assets.hpp"
 #include <array>
+#include "Utility.hpp"
+
+import Tako.Assets;
 
 namespace tako
 {
