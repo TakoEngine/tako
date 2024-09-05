@@ -1,7 +1,11 @@
 #pragma once
-#include "GraphicsContext.hpp"
 #include "OpenGLSprite.hpp"
 #include "OpenGL.hpp"
+#include "VertexBuffer.hpp"
+
+import Tako.Math;
+import Tako.GraphicsContext;
+import Tako.Bitmap;
 
 namespace tako
 {

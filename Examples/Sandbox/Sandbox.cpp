@@ -1,15 +1,15 @@
 #include "Tako.hpp"
-#include "Font.hpp"
 #ifdef TAKO_OPENGL
 #include "OpenGLPixelArtDrawer.hpp"
 #endif
 #ifdef TAKO_IMGUI
 #include "imgui.h"
 #endif
-#include "Serialization.hpp"
 
 import Tako.Audio;
 import Tako.Event;
+import Tako.Font;
+import Tako.Serialization;
 
 static tako::Texture tree;
 static tako::Texture tileset;

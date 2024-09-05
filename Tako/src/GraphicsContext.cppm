@@ -1,15 +1,17 @@
-#pragma once
+module;
 #include "IGraphicsContext.hpp"
-#include <memory>
-#include <type_traits>
+#include "Utility.hpp"
 #ifdef TAKO_OPENGL
 #include "OpenGLContext.hpp"
 #endif
 #if TAKO_VULKAN
 #include "VulkanContext.hpp"
 #endif
+#include <memory>
+#include <type_traits>
+export module Tako.GraphicsContext;
 
-namespace tako
+export namespace tako
 {
 	constexpr GraphicsAPI SupportedAPIs[] =
 	{
@@ -41,4 +43,40 @@ namespace tako
 
 	std::unique_ptr<GraphicsContext> CreateGraphicsContext(Window *window, GraphicsAPI api);
 	GraphicsAPI ResolveGraphicsAPI(GraphicsAPI api);
+}
+
+
+namespace tako
+{
+	std::unique_ptr<GraphicsContext> CreateGraphicsContext(Window *window, GraphicsAPI api)
+	{
+		ASSERT(api != GraphicsAPI::Default);
+		if constexpr (SingleAPI)
+		{
+			ASSERT(api == SupportedAPIs[0]);
+			return std::make_unique<APITypeMap<SupportedAPIs[0]>::type>(window);
+		}
+		switch (api)
+		{
+#ifdef TAKO_OPENGL
+			case GraphicsAPI::OpenGL:
+				return std::make_unique<OpenGLContext>(window);
+#endif
+#ifdef TAKO_VULKAN
+			case GraphicsAPI::Vulkan:
+				return std::make_unique<VulkanContext>(window);
+#endif
+			default: return nullptr;
+		}
+	}
+
+	GraphicsAPI ResolveGraphicsAPI(GraphicsAPI api)
+	{
+		if (api == GraphicsAPI::Default)
+		{
+			ASSERT(SupportedAPICount > 0);
+			return SupportedAPIs[SupportedAPICount - 1];
+		}
+		return api;
+	}
 }

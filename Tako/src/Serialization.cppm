@@ -1,22 +1,31 @@
-#include "Serialization.hpp"
-#include "NumberTypes.hpp"
+module;
+#include "Reflection.hpp"
+#include "Utility.hpp"
 #include <yaml-cpp/yaml.h>
+#include <type_traits>
+export module Tako.Serialization;
+
+import Tako.NumberTypes;
 
 namespace tako::Serialization
 {
-	REFLECT_START(SubComp)
-		REFLECT_FIELD(x)
-		REFLECT_FIELD(y)
-	REFLECT_END()
+	export void Decode(const char* text, void* data, const Reflection::StructInformation* info);
 
-	REFLECT_START(TestComponent)
-		REFLECT_FIELD(index)
-		REFLECT_FIELD(type)
-		REFLECT_FIELD(flying)
-		REFLECT_FIELD(trample)
-		REFLECT_FIELD(haste)
-		REFLECT_FIELD(pos)
-	REFLECT_END()
+	export template<typename T, std::enable_if_t<Reflection::Resolver::IsReflected<T>::value, bool> = true>
+	T Deserialize(const char* text)
+	{
+		T t = {};
+		Decode(text, &t, Reflection::Resolver::Get<T>());
+		return t;
+	}
+
+	export std::string Encode(const void* data, const Reflection::StructInformation* info);
+
+	export template<typename T, std::enable_if_t<Reflection::Resolver::IsReflected<T>::value, bool> = true>
+	std::string Serialize(const T& t)
+	{
+		return Encode(&t, Reflection::Resolver::Get<T>());
+	}
 
 	void EmitPrimitive(const void* data, const Reflection::StructInformation::Field* info, ::YAML::Emitter& out)
 	{

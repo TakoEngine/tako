@@ -2,10 +2,15 @@
 
 #include "Texture.hpp"
 #include "Sprite.hpp"
-#include "GraphicsContext.hpp"
+#include "VertexBuffer.hpp"
+#include "Material.hpp"
+#include "Pipeline.hpp"
 #include <unordered_map>
+#include <string>
 
 import Tako.Math;
+import Tako.GraphicsContext;
+import Tako.Bitmap;
 
 namespace tako
 {

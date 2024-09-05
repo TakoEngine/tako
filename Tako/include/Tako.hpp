@@ -3,14 +3,15 @@
 #include <iostream>
 //
 #include "Window.hpp"
-#include "GraphicsContext.hpp"
 #include "Utility.hpp"
-#include "Input.hpp"
 #include "Resources.hpp"
 //#include <emscripten.h>
 #include "PixelArtDrawer.hpp"
 #include "GameConfig.hpp"
-#include "JobSystem.hpp"
+
+import Tako.Input;
+import Tako.JobSystem;
+import Tako.GraphicsContext;
 
 namespace tako
 {

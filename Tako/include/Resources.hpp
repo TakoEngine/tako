@@ -1,8 +1,11 @@
 #pragma once
-#include "GraphicsContext.hpp"
+#include "Texture.hpp"
 #include <unordered_map>
 #include <string>
 #include <string_view>
+
+import Tako.GraphicsContext;
+import Tako.Bitmap;
 
 namespace tako
 {

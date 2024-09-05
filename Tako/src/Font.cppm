@@ -1,14 +1,16 @@
-#pragma once
+module;
 #include "Utility.hpp"
 #include <map>
 #include <utility>
 #include <string_view>
+export module Tako.Font;
 
+import Tako.NumberTypes;
 import Tako.Bitmap;
 
 namespace tako
 {
-	class Font
+	export class Font
 	{
 	public:
 		Font(const char* filePath, I32 width, I32 height, I32 xOff, I32 yOff, I32 xSkip, I32 ySkip, std::string_view charSet) : m_source(Bitmap::FromFile(filePath))

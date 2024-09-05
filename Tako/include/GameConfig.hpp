@@ -1,6 +1,7 @@
 #pragma once
-#include "Input.hpp"
 #include "Resources.hpp"
+
+import Tako.Input;
 
 namespace tako
 {

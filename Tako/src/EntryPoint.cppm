@@ -3,8 +3,6 @@ module;
 #include "Timer.hpp"
 #include "Resources.hpp"
 //#include "OpenGLPixelArtDrawer.hpp"
-#include "JobSystem.hpp"
-#include "Serialization.hpp"
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
 #endif
@@ -28,6 +26,8 @@ export module EntryPoint;
 import Tako.Audio;
 import Tako.Renderer3D;
 import Tako.Application;
+import Tako.Serialization;
+import Tako.JobSystem;
 import Tako.Allocators.PoolAllocator;
 
 namespace tako
