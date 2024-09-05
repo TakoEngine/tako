@@ -1,4 +1,4 @@
-#pragma once
+module;
 #include "Utility.hpp"
 #include <thread>
 #include <atomic>
@@ -7,6 +7,7 @@
 #include <vector>
 #include <deque>
 #include <chrono>
+export module Tako.JobSystem;
 
 import Tako.Allocators.FreeListAllocator;
 import Tako.Allocators.PoolAllocator;
@@ -35,8 +36,8 @@ namespace tako
 		};
 	}
 
-	class JobSystem;
-	class Job
+	export class JobSystem;
+	export class Job
 	{
 	public:
 		Job(size_t functorSize): m_functorSize(functorSize)
@@ -84,7 +85,7 @@ namespace tako
 		char m_functorData[];
 	};
 
-	class JobQueue
+	export class JobQueue
 	{
 	public:
 		JobQueue() noexcept {}

@@ -1,6 +1,7 @@
 module;
-#include "GraphicsContext.hpp"
+#include "IGraphicsContext.hpp"
 #include "VertexBuffer.hpp"
+#include "Pipeline.hpp"
 #include "Utility.hpp"
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "../tinyobjloader/tiny_obj_loader.h" //TODO: why
@@ -12,6 +13,7 @@ module;
 export module Tako.Renderer3D;
 
 import Tako.FileSystem;
+import Tako.GraphicsContext;
 
 namespace tako
 {

@@ -1,11 +1,8 @@
 include(tako)
 set(TAKO_DLL "tako")
 add_library(${TAKO_DLL}
-	"src/GraphicsContext.cpp"
 	"src/PixelArtDrawer.cpp"
-	"src/Input.cpp"
 	"src/Resources.cpp"
-	"src/Serialization.cpp"
 	"src/Reflection.cpp"
 )
 
@@ -16,14 +13,11 @@ target_sources(
 	"include/Log.hpp"
 	"include/Utility.hpp"
 	"include/NumberTypes.hpp"
-	"include/GraphicsContext.hpp"
 	"include/Texture.hpp"
 	"include/PixelArtDrawer.hpp"
 	"include/Tako.hpp"
-	"include/Input.hpp"
 	"include/Sprite.hpp"
 	"include/Entity.hpp"
-	"include/Font.hpp"
 	"include/Timer.hpp"
 	"include/Resources.hpp"
 	"include/GraphicsAPI.hpp"
@@ -32,7 +26,6 @@ target_sources(
 	"include/Material.hpp"
 	"include/Pipeline.hpp"
 	"include/GameConfig.hpp"
-	"include/Serialization.hpp"
 	"include/Reflection.hpp"
 )
 target_sources(
@@ -42,7 +35,9 @@ target_sources(
 	"src/NumberTypes.cppm"
 	"src/Math.cppm"
 	"src/Bitmap.cppm"
+	"src/Font.cppm"
 	"src/Event.cppm"
+	"src/Input.cppm"
 	"src/EntryPoint.cppm"
 	"src/Jam/PlatformerPhysics2D.cppm"
 	"src/Jam/TileMap.cppm"
@@ -50,8 +45,11 @@ target_sources(
 	"src/SmallVec.cppm"
 	"src/Application.cppm"
 	"src/FileSystem.cppm"
+	"src/Serialization.cppm"
 	"src/Audio.cppm"
 	"src/Assets.cppm"
+	"src/GraphicsContext.cppm"
+	"src/JobSystem.cppm"
 	"src/Allocators/Allocator.cppm"
 	"src/Allocators/FreeListAllocator.cppm"
 	"src/Allocators/LinearAllocator.cppm"
