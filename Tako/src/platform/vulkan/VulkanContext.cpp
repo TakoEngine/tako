@@ -5,13 +5,14 @@
 #endif
 #include "Utility.hpp"
 #include <algorithm>
-#include "SmallVec.hpp"
 #include <vector>
 #include <array>
 #include <set>
 #include <limits>
-#include "Math.hpp"
 #include <chrono>
+
+import Tako.SmallVec;
+import Tako.Math;
 
 #ifdef  TAKO_WIN32
 static std::array<const char*, 2> vkWinExtensions = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME };

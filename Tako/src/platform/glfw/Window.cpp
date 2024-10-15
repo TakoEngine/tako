@@ -48,11 +48,17 @@ namespace tako
 		};
 	}
 
+	void GlfwErrorCallback(int code, const char* description)
+	{
+		LOG_ERR("GLFW error {}: {}", code, description);
+	}
+
 	class Window::WindowImpl
 	{
 	public:
 		WindowImpl(GraphicsAPI api)
 		{
+			glfwSetErrorCallback(GlfwErrorCallback);
 			if (!glfwInit()) {
 				LOG_ERR("Error GLFW INIT");
 				return;

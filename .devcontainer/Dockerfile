@@ -10,5 +10,6 @@ USER tako
 
 RUN sudo dnf install -y git python openssh-server xauth
 RUN sudo dnf install -y clang clang-tools-extra ninja-build
-RUN sudo dnf install -y libXcursor-devel libXi-devel libXinerama-devel libXrandr-devel
+RUN sudo dnf install -y libXcursor-devel libXi-devel libXinerama-devel libXrandr-devel wayland-devel libxkbcommon-devel
+RUN sudo dnf install -y vulkan-headers vulkan-loader vulkan-loader-devel mesa-vulkan-drivers glslang glx-utils gdb
 RUN sudo dnf install -y vim
