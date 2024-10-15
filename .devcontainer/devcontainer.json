@@ -22,7 +22,16 @@
 				"ms-vscode.cpptools-extension-pack"
 			]
 		}
-	}
+	},
+	"containerEnv": {
+		"DISPLAY": "${localEnv:DISPLAY}"
+	},
+	"remoteEnv": {
+		"DOCKER_BUILDKIT": "0"
+	},
+	"runArgs": [
+		"--volume=/tmp/.X11-unix:/tmp/.X11-unix"
+	]
 
 	// Configure tool-specific properties.
 	// "customizations": {},
