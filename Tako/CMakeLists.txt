@@ -4,6 +4,7 @@ add_library(${TAKO_DLL}
 	"src/PixelArtDrawer.cpp"
 	"src/Resources.cpp"
 	"src/Reflection.cpp"
+	"src/AudioImpl.cpp"
 )
 
 target_sources(
@@ -155,6 +156,10 @@ target_include_directories(${TAKO_DLL} PUBLIC "src/platform/opengl")
 		"src/platform/opengl/glad/glad.h"
 		"src/platform/opengl/KHR/khrplatform.h"
 	)
+	else()
+		find_package(OpenGL REQUIRED)
+		include_directories(${OPENGL_INCLUDE_DIR})
+		target_include_directories(${TAKO_DLL} PUBLIC ${OPENGL_INCLUDE_DIR})
 	endif(TAKO_GLAD)
 
 function(add_shader filename)

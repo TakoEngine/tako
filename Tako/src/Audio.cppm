@@ -1,7 +1,6 @@
 module;
-#include "Utility.hpp"
-#define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
+#include "Utility.hpp"
 #include <array>
 export module Tako.Audio;
 

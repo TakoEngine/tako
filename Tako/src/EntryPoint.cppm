@@ -24,7 +24,7 @@ module;
 export module EntryPoint;
 
 import Tako.Audio;
-import Tako.Renderer3D;
+//import Tako.Renderer3D;
 import Tako.Application;
 import Tako.Serialization;
 import Tako.JobSystem;
