@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.30)
 project("tako")
 
 set(CMAKE_CXX_STANDARD 20)
-#set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Magic to enable C++20 modules
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -25,6 +25,6 @@ add_subdirectory("Tako")
 
 # Examples
 add_subdirectory("Examples/Sandbox")
-add_subdirectory("Examples/SandboxVulkan")
+#add_subdirectory("Examples/SandboxVulkan")
 add_subdirectory("Examples/JamPhysics2D")
 add_subdirectory("Examples/LDtkImport")

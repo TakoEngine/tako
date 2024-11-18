@@ -18,7 +18,7 @@ function(tako_assets_dir dir)
 
     message(${dir})
     if (DEFINED EMSCRIPTEN)
-        set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "--preload-file ${dir}@" PARENT_SCOPE)
+        #set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "--preload-file ${dir}@" PARENT_SCOPE)
     else()
         execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${dir} ${CMAKE_CURRENT_BINARY_DIR}/Assets)
     endif()

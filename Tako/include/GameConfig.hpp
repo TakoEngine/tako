@@ -2,11 +2,10 @@
 #include "Resources.hpp"
 
 import Tako.Input;
+import Tako.Audio;
 
 namespace tako
 {
-	class Audio;
-
 	struct SetupData
 	{
 		GraphicsContext* context;

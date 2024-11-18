@@ -1,10 +1,12 @@
 #include "Window.hpp"
-#include "Bitmap.hpp"
 #include "string.h"
 #include <algorithm>
 #include <limits>
 #include <map>
 #include <emscripten/html5.h>
+
+import Tako.Math;
+import Tako.Bitmap;
 
 using namespace tako::literals;
 
