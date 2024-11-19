@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-EM_VERSION='3.1.69'
+EM_VERSION='3.1.71'
 
 env
 cd $HOME

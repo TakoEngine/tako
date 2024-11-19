@@ -116,7 +116,8 @@ public:
 
 		for (const auto& node : m_nodes)
 		{
-			drawer->DrawRectangle(node.position.x - node.bounds.w / 2, node.position.y - node.bounds.h / 2, node.bounds.w, node.bounds.h, {255, 0, 0, 255});
+			auto color = node.stationary ? tako::Color(0, 255, 0, 255) : tako::Color(255, 0, 0, 255);
+			drawer->DrawRectangle(node.position.x - node.bounds.w / 2, node.position.y - node.bounds.h / 2, node.bounds.w, node.bounds.h, color);
 		}
 
 		m_context->End();

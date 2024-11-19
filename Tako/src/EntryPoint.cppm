@@ -40,7 +40,7 @@ namespace tako
 		tako::Resources& resources;
 		void* gameData;
 		GameConfig& config;
-		//JobSystem& jobSys;
+		JobSystem& jobSys;
 		std::atomic<bool>& keepRunning;
 		Allocators::PoolAllocator frameDataPool;
 		std::atomic_flag frameDataPoolLock = ATOMIC_FLAG_INIT;
@@ -80,7 +80,7 @@ namespace tako
 		}
 #endif
  */
-		//data->jobSys.ScheduleForThread(0, [=]()
+		data->jobSys.ScheduleForThread(0, [=]()
 		{
 			data->window.Poll();
 #ifdef TAKO_IMGUI
@@ -93,21 +93,21 @@ namespace tako
 #endif
 			ImGui::NewFrame();
 #endif
-			//data->jobSys.Schedule([=]()
+			data->jobSys.Schedule([=]()
 			{
 				data->input.Update();
-			};
-		};
+			});
+		});
 
-		//while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
+		while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
 		void* frameData = data->frameDataPool.Allocate();
-		//data->frameDataPoolLock.clear(std::memory_order_release);
+		data->frameDataPoolLock.clear(std::memory_order_release);
 
-		//data->jobSys.Continuation([=]()
+		data->jobSys.Continuation([=]()
 		{
 			if (data->config.Update)
 			{
-				//data->jobSys.Schedule([=]()
+				data->jobSys.Schedule([=]()
 				{
 					GameStageData stageData
 					{
@@ -115,13 +115,13 @@ namespace tako
 						frameData
 					};
 					data->config.Update(stageData, &data->input, dt);
-				};
+				});
 			}
-			//data->jobSys.Continuation([=]()
+			data->jobSys.Continuation([=]()
 			{
 				if (data->window.ShouldExit() || !data->keepRunning)
 				{
-					//data->jobSys.Stop();
+					data->jobSys.Stop();
 					return;
 				}
 				//LOG("Start Draw {}", thisFrame);
@@ -148,19 +148,19 @@ namespace tako
 				}
 #endif
 
-				//data->jobSys.ScheduleForThread(0, [=]()
+				data->jobSys.ScheduleForThread(0, [=]()
 				{
 					data->context.Present();
 					//LOG("Tick End");
-				};
+				});
 
-				//data->jobSys.ScheduleDetached(std::bind(Tick, p));
+				data->jobSys.ScheduleDetached(std::bind(Tick, p));
 
-				//while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
+				while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
 				data->frameDataPool.Deallocate(frameData);
-				//data->frameDataPoolLock.clear(std::memory_order_release);
-			};
-		};
+				data->frameDataPoolLock.clear(std::memory_order_release);
+			});
+		});
 
 	}
 
@@ -169,8 +169,8 @@ namespace tako
 		LOG("Init!");
 		Application::argc = argc;
 		Application::argv = argv;
-		//JobSystem jobSys;
-		//jobSys.Init();
+		JobSystem jobSys;
+		jobSys.Init();
 		GameConfig config = {};
 		tako::InitTakoConfig(config);
 
@@ -265,7 +265,7 @@ namespace tako
 			resources,
 			gameData,
 			config,
-			//jobSys,
+			jobSys,
 			keepRunning,
 			{ framePoolData, framePoolSize, config.frameDataSize },
 #ifdef TAKO_EDITOR
@@ -273,15 +273,15 @@ namespace tako
 #endif
 		};
 
-#ifndef TAKO_EMSCRIPTEN
-		///*
+#ifdef TAKO_EMSCRIPTEN
+		/*
 		while (!window.ShouldExit() && keepRunning)
 		{
 			Tick(&data);
 		}
-		//*/
-		//jobSys.Schedule(std::bind(Tick, &data));
-		//jobSys.JoinAsWorker();
+		*/
+		jobSys.Schedule(std::bind(Tick, &data));
+		jobSys.JoinAsWorker();
 #else
 		emscripten_set_main_loop_arg(Tick, &data, 0, 1);
 #endif

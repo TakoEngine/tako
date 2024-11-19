@@ -14,27 +14,25 @@ import Tako.Allocators.PoolAllocator;
 
 namespace tako
 {
-	namespace
+
+	export struct JobFunctorBase
 	{
-		struct JobFunctorBase
+		virtual ~JobFunctorBase() {}
+		virtual void operator()() = 0;
+	};
+
+	export template <typename Functor>
+	struct JobFunctor final : JobFunctorBase
+	{
+		JobFunctor(Functor&& func) : f(std::move(func)) {}
+
+		void operator()() override
 		{
-			virtual ~JobFunctorBase() {}
-			virtual void operator()() = 0;
-		};
+			f();
+		}
 
-		template <typename Functor>
-		struct JobFunctor final : JobFunctorBase
-		{
-			JobFunctor(Functor&& func) : f(std::move(func)) {}
-
-			void operator()() override
-			{
-				f();
-			}
-
-			Functor f;
-		};
-	}
+		Functor f;
+	};
 
 	export class JobSystem;
 	export class Job
@@ -52,7 +50,7 @@ namespace tako
 			{
 				reinterpret_cast<JobFunctorBase*>(&m_functorData[0])->~JobFunctorBase();
 			}
-			new (&m_functorData) JobFunctor<Functor>(std::move(func));
+			new (&m_functorData) JobFunctor(std::move(func));
 			m_functorActive = true;
 		}
 
@@ -127,7 +125,7 @@ namespace tako
 		void Init()
 		{
 			m_threadIndex = 0;
-			m_threadCount = std::thread::hardware_concurrency();
+			m_threadCount = 4;//std::thread::hardware_concurrency();
 			LOG("Threads: {}", m_threadCount);
 			m_localQueues.reserve(m_threadCount);
 			m_globalQueues.reserve(m_threadCount);
@@ -139,10 +137,24 @@ namespace tako
 
 			for (unsigned int i = 1; i < m_threadCount; i++)
 			{
+				LOG("Creating Thread: {}", i);
 				std::thread thread(&JobSystem::WorkerThread, this, i);
+				/*
+				std::thread thread([this, i]()
+				{
+					LOG("Hello Thread!");
+				});
+				*/
+				//std::thread thread;
+				LOG("Created Thread: {}", i);
 				thread.detach();
 				m_workers.push_back(std::move(thread));
 			}
+		}
+
+		static void Heyo()
+		{
+			LOG("HEYO!");
 		}
 
 		void JoinAsWorker()
@@ -247,7 +259,7 @@ namespace tako
 				//job = new (ptr) Job(functorSize);
 				job = new (ptr) Job(128 - sizeof(Job));
 			}
-			job->SetFunctor(std::move(func));
+			job->SetFunctor<Functor>(std::move(func));
 			return job;
 		}
 
@@ -280,6 +292,7 @@ namespace tako
 
 		void WorkerThread(unsigned int threadIndex)
 		{
+			LOG("Inside thread");
 			m_threadIndex = threadIndex;
 			while (!m_stop)
 			{

@@ -41,10 +41,10 @@ struct GameData
 void InitAudio(GameData* gameData, tako::Audio* audio)
 {
 	LOG("Manual Audio init!");
-	audio->Init();
-	clipMiss = audio->Load("/Miss.wav");
-	clipMusic = audio->Load("/garden-of-kittens.mp3");
-	tako::Audio::Play(clipMusic, true);
+	//audio->Init();
+	//clipMiss = audio->Load("/Miss.wav");
+	//clipMusic = audio->Load("/garden-of-kittens.mp3");
+	//tako::Audio::Play(clipMusic, true);
 	gameData->audioInited = true;
 }
 
@@ -124,17 +124,17 @@ void Update(const tako::GameStageData stageData, tako::Input* input, float dt)
 	{
 		if (input->GetAnyDown())
 		{
-			InitAudio(gameData, g_audio);
+			//InitAudio(gameData, g_audio);
 		}
 		else
 		{
-			return;
+			//return;
 		}
 	}
 
 	delta += dt;
 	if (delta > 1) {
-		tako::Audio::Play(clipMiss);
+		//tako::Audio::Play(clipMiss);
 		delta = 0;
 	}
 	float speed = 60;
@@ -162,7 +162,7 @@ void Update(const tako::GameStageData stageData, tako::Input* input, float dt)
 	}
 	if (input->GetKeyDown(tako::Key::Space))
 	{
-		g_audio->Play("/Bump.wav");
+		//g_audio->Play("/Bump.wav");
 	}
 
 	static float gradOff = 0;
