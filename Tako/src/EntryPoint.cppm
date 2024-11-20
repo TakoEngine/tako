@@ -2,9 +2,11 @@ module;
 #include "Tako.hpp"
 #include "Timer.hpp"
 #include "Resources.hpp"
+#include <thread>
 //#include "OpenGLPixelArtDrawer.hpp"
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
+#include <emscripten/proxying.h>
 #endif
 #ifdef TAKO_EDITOR
 #include "FileWatcher.hpp"
@@ -43,7 +45,12 @@ namespace tako
 		GameConfig& config;
 		JobSystem& jobSys;
 		std::atomic<bool>& keepRunning;
+		
 		Allocators::PoolAllocator frameDataPool;
+#ifdef EMSCRIPTEN
+		pthread_t mainThread;
+		emscripten::ProxyingQueue proxyQueue;
+#endif
 		std::atomic_flag frameDataPoolLock = ATOMIC_FLAG_INIT;
 		std::atomic<int> frame = 0;
 		int openFrames = 1;
@@ -94,15 +101,15 @@ namespace tako
 #endif
 			ImGui::NewFrame();
 #endif
-			data->jobSys.Schedule([=]()
-			{
-				data->input.Update();
-			});
+			data->input.Update();
 		});
 
+		/*
 		while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
 		void* frameData = data->frameDataPool.Allocate();
 		data->frameDataPoolLock.clear(std::memory_order_release);
+		*/
+		void* frameData = malloc(data->config.frameDataSize);
 
 		data->jobSys.Continuation([=]()
 		{
@@ -126,31 +133,31 @@ namespace tako
 					return;
 				}
 				//LOG("Start Draw {}", thisFrame);
-				data->context.Begin();
-				if (data->config.Draw)
+				//data->jobSys.Schedule([=]()
+				data->proxyQueue.proxySync(data->mainThread, [=]()
 				{
-					GameStageData stageData
+					data->context.Begin();
+					if (data->config.Draw)
 					{
-						data->gameData,
-						frameData
-					};
-					data->config.Draw(stageData);
-				}
-				data->context.End();
+						GameStageData stageData
+						{
+							data->gameData,
+							frameData
+						};
+						data->config.Draw(stageData);
+					}
+					data->context.End();
 #ifdef TAKO_IMGUI
-				ImGui::EndFrame();
-				ImGui::Render();
-				ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+					ImGui::EndFrame();
+					ImGui::Render();
+					ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-				if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-				{
-					ImGui::UpdatePlatformWindows();
-					ImGui::RenderPlatformWindowsDefault();
-				}
+					if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+					{
+						ImGui::UpdatePlatformWindows();
+						ImGui::RenderPlatformWindowsDefault();
+					}
 #endif
-
-				data->jobSys.ScheduleForThread(0, [=]()
-				{
 					data->context.Present();
 					//LOG("Tick End");
 				});
@@ -159,9 +166,15 @@ namespace tako
 					data->jobSys.ScheduleDetached(std::bind(Tick, p));
 				#endif
 
-				while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
-				data->frameDataPool.Deallocate(frameData);
-				data->frameDataPoolLock.clear(std::memory_order_release);
+				data->jobSys.Continuation([=]()
+				{
+					/*
+					while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
+					data->frameDataPool.Deallocate(frameData);
+					data->frameDataPoolLock.clear(std::memory_order_release);
+					*/
+					free(frameData);
+				});
 			});
 		});
 
@@ -173,15 +186,17 @@ namespace tako
 		data->jobSys.Init();
 		if (data->config.Setup)
 		{
-			data->config.Setup(data->gameData, { &data->context, &data->resources, &data->audio });
+			data->jobSys.RunJob([=]()
+			{
+				data->config.Setup(data->gameData, { &data->context, &data->resources, &data->audio });
+			});
 		}
-		data->jobSys.ScheduleDetached(std::bind(Tick, p));
 	}
 
 	void ScheduleTick(void* p)
 	{
 		TickStruct* data = reinterpret_cast<TickStruct*>(p);
-		data->jobSys.ScheduleDetached(std::bind(Tick, p));
+		data->jobSys.RunJob(std::bind(Tick, p));
 	}
 
 	export int RunGameLoop(int argc, char* argv[])
@@ -293,6 +308,10 @@ namespace tako
 			jobSys,
 			keepRunning,
 			{ framePoolData, framePoolSize, config.frameDataSize },
+#ifdef EMSCRIPTEN
+			pthread_self(),
+#endif
+
 #ifdef TAKO_EDITOR
 			watcher
 #endif

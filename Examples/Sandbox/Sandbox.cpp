@@ -180,7 +180,7 @@ void Update(const tako::GameStageData stageData, tako::Input* input, float dt)
 			bitmap.SetPixel(x, y, col);
 		}
 	}
-	g_drawer->UpdateTexture(bufferTex, bitmap);
+	//g_drawer->UpdateTexture(bufferTex, bitmap);
 	mousePos = input->GetMousePosition();
 #ifdef TAKO_IMGUI
 	ImGui::Begin("Test");

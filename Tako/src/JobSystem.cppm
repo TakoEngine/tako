@@ -201,6 +201,14 @@ namespace tako
 			m_runningJob->m_continuation = AllocateJob(std::move(job));
 		}
 
+		template<typename Functor>
+		static void RunJob(Functor&& job)
+		{
+			ASSERT(m_runningJob == nullptr);
+			m_runningJob = AllocateJob(std::move(job));
+			ExecuteJob(m_runningJob);
+		}
+
 	private:
 		std::vector<std::thread> m_workers;
 		static inline std::vector<JobQueue> m_localQueues;
@@ -286,9 +294,16 @@ namespace tako
 			return job;
 		}
 
+		static void ExecuteJob(Job* job)
+		{
+			//LOG("Start job({})", m_threadIndex);
+			(*job)();
+			m_runningJob = nullptr;
+			OnJobDone(job);
+		}
+
 		void WorkerThread(unsigned int threadIndex)
 		{
-			LOG("Inside thread");
 			m_threadIndex = threadIndex;
 			while (!m_stop)
 			{
@@ -300,10 +315,7 @@ namespace tako
 				m_runningJob = job;
 				if (job != nullptr)
 				{
-					//LOG("Start job({})", m_threadIndex);
-					(*job)();
-					m_runningJob = nullptr;
-					OnJobDone(job);
+					ExecuteJob(job);
 				}
 				else
 				{
@@ -315,11 +327,10 @@ namespace tako
 					std::unique_lock lk(m_cvMutex);
 					m_cv.wait_for(lk, std::chrono::microseconds(1000));
 				}
-
 			}
 		}
 
-		void OnJobDone(Job* job)
+		static void OnJobDone(Job* job)
 		{
 			auto left = job->m_jobsLeft.fetch_sub(1);
 			if (left == 1)
