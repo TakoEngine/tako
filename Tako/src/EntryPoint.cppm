@@ -37,6 +37,7 @@ namespace tako
 		tako::Window& window;
 		tako::GraphicsContext& context;
 		tako::Input& input;
+		tako::Audio& audio;
 		tako::Resources& resources;
 		void* gameData;
 		GameConfig& config;
@@ -80,7 +81,7 @@ namespace tako
 		}
 #endif
  */
-		data->jobSys.ScheduleForThread(0, [=]()
+		data->jobSys.Schedule([=]()
 		{
 			data->window.Poll();
 #ifdef TAKO_IMGUI
@@ -154,7 +155,9 @@ namespace tako
 					//LOG("Tick End");
 				});
 
-				data->jobSys.ScheduleDetached(std::bind(Tick, p));
+				#ifndef EMSCRIPTEN
+					data->jobSys.ScheduleDetached(std::bind(Tick, p));
+				#endif
 
 				while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
 				data->frameDataPool.Deallocate(frameData);
@@ -164,13 +167,32 @@ namespace tako
 
 	}
 
+	void EmscriptenDelayed(void* p)
+	{
+		TickStruct* data = reinterpret_cast<TickStruct*>(p);
+		data->jobSys.Init();
+		if (data->config.Setup)
+		{
+			data->config.Setup(data->gameData, { &data->context, &data->resources, &data->audio });
+		}
+		data->jobSys.ScheduleDetached(std::bind(Tick, p));
+	}
+
+	void ScheduleTick(void* p)
+	{
+		TickStruct* data = reinterpret_cast<TickStruct*>(p);
+		data->jobSys.ScheduleDetached(std::bind(Tick, p));
+	}
+
 	export int RunGameLoop(int argc, char* argv[])
 	{
 		LOG("Init!");
 		Application::argc = argc;
 		Application::argv = argv;
 		JobSystem jobSys;
-		jobSys.Init();
+		#ifndef EMSCRIPTEN
+			jobSys.Init();
+		#endif
 		GameConfig config = {};
 		tako::InitTakoConfig(config);
 
@@ -207,10 +229,12 @@ namespace tako
 
 		Resources resources(context.get());
 		void* gameData = malloc(config.gameDataSize);
+#ifndef EMSCRIPTEN
 		if (config.Setup)
 		{
 			config.Setup(gameData, { context.get(), &resources, &audio });
 		}
+#endif
 		tako::Broadcaster broadcaster;
 #ifdef TAKO_EDITOR
 		tako::FileWatcher watcher("./Assets");
@@ -262,6 +286,7 @@ namespace tako
 			window,
 			*context,
 			input,
+			audio,
 			resources,
 			gameData,
 			config,
@@ -273,17 +298,14 @@ namespace tako
 #endif
 		};
 
-#ifdef TAKO_EMSCRIPTEN
-		/*
-		while (!window.ShouldExit() && keepRunning)
-		{
-			Tick(&data);
-		}
-		*/
+		
+
+#ifndef TAKO_EMSCRIPTEN
 		jobSys.Schedule(std::bind(Tick, &data));
 		jobSys.JoinAsWorker();
 #else
-		emscripten_set_main_loop_arg(Tick, &data, 0, 1);
+		emscripten_push_main_loop_blocker(EmscriptenDelayed, &data);
+		emscripten_set_main_loop_arg(ScheduleTick, &data, 0, 1);
 #endif
 
 		free(framePoolData);

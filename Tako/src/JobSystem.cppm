@@ -7,6 +7,9 @@ module;
 #include <vector>
 #include <deque>
 #include <chrono>
+#ifdef EMSCRIPTEN
+#include <emscripten.h>
+#endif
 export module Tako.JobSystem;
 
 import Tako.Allocators.FreeListAllocator;
@@ -125,7 +128,11 @@ namespace tako
 		void Init()
 		{
 			m_threadIndex = 0;
-			m_threadCount = 4;//std::thread::hardware_concurrency();
+			#ifdef EMSCRIPTEN
+				m_threadCount = emscripten_run_script_int("navigator.hardwareConcurrency");
+			#else
+				m_threadCount = std::thread::hardware_concurrency();
+			#endif
 			LOG("Threads: {}", m_threadCount);
 			m_localQueues.reserve(m_threadCount);
 			m_globalQueues.reserve(m_threadCount);
@@ -135,26 +142,15 @@ namespace tako
 				m_globalQueues.emplace_back();
 			}
 
-			for (unsigned int i = 1; i < m_threadCount; i++)
+			int workerTarget = m_threadCount - 1;
+			m_workers.resize(workerTarget);
+			for (unsigned int i = 0; i < workerTarget; i++)
 			{
-				LOG("Creating Thread: {}", i);
-				std::thread thread(&JobSystem::WorkerThread, this, i);
-				/*
-				std::thread thread([this, i]()
-				{
-					LOG("Hello Thread!");
-				});
-				*/
-				//std::thread thread;
-				LOG("Created Thread: {}", i);
+				int threadIndex = i + 1;
+				LOG("Creating Thread: {}", threadIndex);
+				std::thread& thread = m_workers[i] = std::thread(&JobSystem::WorkerThread, this, threadIndex);
 				thread.detach();
-				m_workers.push_back(std::move(thread));
 			}
-		}
-
-		static void Heyo()
-		{
-			LOG("HEYO!");
 		}
 
 		void JoinAsWorker()
