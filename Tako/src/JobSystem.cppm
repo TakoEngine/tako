@@ -7,6 +7,9 @@ module;
 #include <vector>
 #include <deque>
 #include <chrono>
+#ifdef EMSCRIPTEN
+#include <emscripten.h>
+#endif
 export module Tako.JobSystem;
 
 import Tako.Allocators.FreeListAllocator;
@@ -14,27 +17,25 @@ import Tako.Allocators.PoolAllocator;
 
 namespace tako
 {
-	namespace
+
+	export struct JobFunctorBase
 	{
-		struct JobFunctorBase
+		virtual ~JobFunctorBase() {}
+		virtual void operator()() = 0;
+	};
+
+	export template <typename Functor>
+	struct JobFunctor final : JobFunctorBase
+	{
+		JobFunctor(Functor&& func) : f(std::move(func)) {}
+
+		void operator()() override
 		{
-			virtual ~JobFunctorBase() {}
-			virtual void operator()() = 0;
-		};
+			f();
+		}
 
-		template <typename Functor>
-		struct JobFunctor final : JobFunctorBase
-		{
-			JobFunctor(Functor&& func) : f(std::move(func)) {}
-
-			void operator()() override
-			{
-				f();
-			}
-
-			Functor f;
-		};
-	}
+		Functor f;
+	};
 
 	export class JobSystem;
 	export class Job
@@ -52,7 +53,7 @@ namespace tako
 			{
 				reinterpret_cast<JobFunctorBase*>(&m_functorData[0])->~JobFunctorBase();
 			}
-			new (&m_functorData) JobFunctor<Functor>(std::move(func));
+			new (&m_functorData) JobFunctor(std::move(func));
 			m_functorActive = true;
 		}
 
@@ -127,7 +128,11 @@ namespace tako
 		void Init()
 		{
 			m_threadIndex = 0;
-			m_threadCount = std::thread::hardware_concurrency();
+			#ifdef EMSCRIPTEN
+				m_threadCount = emscripten_run_script_int("navigator.hardwareConcurrency");
+			#else
+				m_threadCount = std::thread::hardware_concurrency();
+			#endif
 			LOG("Threads: {}", m_threadCount);
 			m_localQueues.reserve(m_threadCount);
 			m_globalQueues.reserve(m_threadCount);
@@ -137,11 +142,14 @@ namespace tako
 				m_globalQueues.emplace_back();
 			}
 
-			for (unsigned int i = 1; i < m_threadCount; i++)
+			int workerTarget = m_threadCount - 1;
+			m_workers.resize(workerTarget);
+			for (unsigned int i = 0; i < workerTarget; i++)
 			{
-				std::thread thread(&JobSystem::WorkerThread, this, i);
+				int threadIndex = i + 1;
+				LOG("Creating Thread: {}", threadIndex);
+				std::thread& thread = m_workers[i] = std::thread(&JobSystem::WorkerThread, this, threadIndex);
 				thread.detach();
-				m_workers.push_back(std::move(thread));
 			}
 		}
 
@@ -191,6 +199,14 @@ namespace tako
 		static void Continuation(Functor&& job)
 		{
 			m_runningJob->m_continuation = AllocateJob(std::move(job));
+		}
+
+		template<typename Functor>
+		static void RunJob(Functor&& job)
+		{
+			ASSERT(m_runningJob == nullptr);
+			m_runningJob = AllocateJob(std::move(job));
+			ExecuteJob(m_runningJob);
 		}
 
 	private:
@@ -247,7 +263,7 @@ namespace tako
 				//job = new (ptr) Job(functorSize);
 				job = new (ptr) Job(128 - sizeof(Job));
 			}
-			job->SetFunctor(std::move(func));
+			job->SetFunctor<Functor>(std::move(func));
 			return job;
 		}
 
@@ -278,6 +294,14 @@ namespace tako
 			return job;
 		}
 
+		static void ExecuteJob(Job* job)
+		{
+			//LOG("Start job({})", m_threadIndex);
+			(*job)();
+			m_runningJob = nullptr;
+			OnJobDone(job);
+		}
+
 		void WorkerThread(unsigned int threadIndex)
 		{
 			m_threadIndex = threadIndex;
@@ -291,10 +315,7 @@ namespace tako
 				m_runningJob = job;
 				if (job != nullptr)
 				{
-					//LOG("Start job({})", m_threadIndex);
-					(*job)();
-					m_runningJob = nullptr;
-					OnJobDone(job);
+					ExecuteJob(job);
 				}
 				else
 				{
@@ -306,11 +327,10 @@ namespace tako
 					std::unique_lock lk(m_cvMutex);
 					m_cv.wait_for(lk, std::chrono::microseconds(1000));
 				}
-
 			}
 		}
 
-		void OnJobDone(Job* job)
+		static void OnJobDone(Job* job)
 		{
 			auto left = job->m_jobsLeft.fetch_sub(1);
 			if (left == 1)

@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 
-EM_VERSION='3.1.69'
+EM_VERSION='3.1.71'
+
+EMSDK_PATH=$HOME
 
 env
-cd $HOME
+cd $EMSDK_PATH
 git clone https://github.com/emscripten-core/emsdk.git
 cd emsdk
 
@@ -13,10 +15,10 @@ git pull
 
 source ./emsdk_env.sh
 
-echo 'source "$HOME/emsdk/emsdk_env.sh"' >> $HOME/.bash_profile
+echo "source \"$EMSDK_PATH/emsdk/emsdk_env.sh\"" >> $HOME/.bash_profile
 
 # Workaround for clang-scan-deps
-cd $HOME
+cd $EMSDK_PATH
 git clone https://github.com/eliemichel/cpp20-cmake-emscripten-template.git
-chmod +x $HOME/cpp20-cmake-emscripten-template/cmake/EmscriptenScanDepsFix/emscan-deps
-sed -i '20s%.*%args.append("-I/home/tako/emsdk/upstream/emscripten/system/include")%' $HOME/cpp20-cmake-emscripten-template/cmake/EmscriptenScanDepsFix/emscan-deps.py
+chmod +x $EMSDK_PATH/cpp20-cmake-emscripten-template/cmake/EmscriptenScanDepsFix/emscan-deps
+sed -i "20s%.*%args.append(\"-I$EMSDK_PATH/emsdk/upstream/emscripten/system/include\")%" $EMSDK_PATH/cpp20-cmake-emscripten-template/cmake/EmscriptenScanDepsFix/emscan-deps.py
