@@ -1,0 +1,4 @@
+target_sources(${TAKO_DLL} PRIVATE
+	PUBLIC FILE_SET CXX_MODULES FILES
+	"WebGPUContext.cppm"
+)

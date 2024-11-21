@@ -137,7 +137,11 @@ void tako::InitTakoConfig(GameConfig& config)
 	config.Setup = Setup;
 	config.Update = Update;
 	config.Draw = Draw;
+#ifdef EMSCRIPTEN
+	config.graphicsAPI = tako::GraphicsAPI::WebGPU;
+#else
 	config.graphicsAPI = tako::GraphicsAPI::Vulkan;
+#endif
 	config.gameDataSize = sizeof(SandBoxGame);
 	config.frameDataSize = sizeof(FrameData);
 }

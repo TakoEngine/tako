@@ -50,6 +50,7 @@ target_sources(
 	"src/Audio.cppm"
 	"src/Assets.cppm"
 	"src/GraphicsContext.cppm"
+	"src/Renderer3D.cppm"
 	"src/JobSystem.cppm"
 	"src/Allocators/Allocator.cppm"
 	"src/Allocators/FreeListAllocator.cppm"
@@ -82,6 +83,7 @@ endif(WIN32)
 if (EMSCRIPTEN)
 set_feature(TAKO_EMSCRIPTEN true)
 set_feature(TAKO_OPENGL true)
+set_feature(TAKO_WEBGPU true)
 set_feature(TAKO_VULKAN false)
 set_feature(TAKO_EDITOR false)
 set_feature(TAKO_IMGUI false)
@@ -217,6 +219,10 @@ compile_shader("shader.frag.glsl")
 
 endif(TAKO_VULKAN)
 
+if (TAKO_WEBGPU)
+	add_subdirectory("src/platform/webgpu")
+endif()
+
 if (TAKO_GLFW)
 target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/glfw/Window.cpp"
@@ -239,11 +245,6 @@ target_include_directories(${TAKO_DLL} PUBLIC "${CMAKE_BINARY_DIR}/shader")
 if (NOT EMSCRIPTEN)
 	target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/assimp/include")
 	target_link_libraries(${TAKO_DLL} PUBLIC assimp)
-
-	target_sources(${TAKO_DLL} PUBLIC
-		FILE_SET CXX_MODULES FILES
-		"src/Renderer3D.cppm"
-	)
 endif()
 
 

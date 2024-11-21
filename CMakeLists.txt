@@ -35,6 +35,6 @@ add_subdirectory("Tako")
 
 # Examples
 add_subdirectory("Examples/Sandbox")
-#add_subdirectory("Examples/SandboxVulkan")
+add_subdirectory("Examples/Sandbox3D")
 add_subdirectory("Examples/JamPhysics2D")
 add_subdirectory("Examples/LDtkImport")
