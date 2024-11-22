@@ -45,7 +45,6 @@ namespace tako
 		GameConfig& config;
 		JobSystem& jobSys;
 		std::atomic<bool>& keepRunning;
-		
 		Allocators::PoolAllocator frameDataPool;
 #ifdef EMSCRIPTEN
 		pthread_t mainThread;
@@ -317,7 +316,6 @@ namespace tako
 #endif
 		};
 
-		
 
 #ifndef TAKO_EMSCRIPTEN
 		jobSys.Schedule(std::bind(Tick, &data));

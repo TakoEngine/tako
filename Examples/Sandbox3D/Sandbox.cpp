@@ -142,6 +142,7 @@ void tako::InitTakoConfig(GameConfig& config)
 #else
 	config.graphicsAPI = tako::GraphicsAPI::Vulkan;
 #endif
+	config.initAudioDelayed = true;
 	config.gameDataSize = sizeof(SandBoxGame);
 	config.frameDataSize = sizeof(FrameData);
 }

@@ -81,14 +81,18 @@ namespace tako
 	class Window::WindowImpl
 	{
 	public:
-		WindowImpl()
+		WindowImpl(GraphicsAPI api)
 		{
-			EmscriptenWebGLContextAttributes attributes;
-			emscripten_webgl_init_context_attributes(&attributes);
-			attributes.alpha = false;
-			attributes.antialias = false;
-			m_contextHandle = emscripten_webgl_create_context(HTML_TARGET, &attributes);
-			emscripten_webgl_make_context_current(m_contextHandle);
+			if (api == GraphicsAPI::OpenGL)
+			{
+				EmscriptenWebGLContextAttributes attributes;
+				emscripten_webgl_init_context_attributes(&attributes);
+				attributes.alpha = false;
+				attributes.antialias = false;
+				m_contextHandle = emscripten_webgl_create_context(HTML_TARGET, &attributes);
+				emscripten_webgl_make_context_current(m_contextHandle);
+			}
+
 			double width, height;
 			emscripten_get_element_css_size(HTML_TARGET, &width, &height);
 			Resize(width, height);
@@ -229,7 +233,7 @@ namespace tako
 	};
 
 
-	Window::Window(GraphicsAPI api) : m_impl(new WindowImpl())
+	Window::Window(GraphicsAPI api) : m_impl(new WindowImpl(api))
 	{
 	}
 
