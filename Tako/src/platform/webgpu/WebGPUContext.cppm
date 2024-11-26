@@ -89,8 +89,9 @@ namespace tako
 
 			//Render
 			wgpuRenderPassEncoderSetPipeline(renderPass, m_pipeline);
-			wgpuRenderPassEncoderSetVertexBuffer(renderPass, 0, m_vertexBuffer, 0, wgpuBufferGetSize(m_vertexBuffer));
-			wgpuRenderPassEncoderDraw(renderPass, m_vertexCount, 1, 0, 0);
+			wgpuRenderPassEncoderSetVertexBuffer(renderPass, 0, m_pointBuffer, 0, wgpuBufferGetSize(m_pointBuffer));
+			wgpuRenderPassEncoderSetIndexBuffer(renderPass, m_indexBuffer, WGPUIndexFormat_Uint16, 0, wgpuBufferGetSize(m_indexBuffer));
+			wgpuRenderPassEncoderDrawIndexed(renderPass, m_indexCount, 1, 0, 0, 0);
 
 			//End
 			wgpuRenderPassEncoderEnd(renderPass);
@@ -309,40 +310,41 @@ namespace tako
 
 		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) override
 		{
-			std::vector<float> vertexData =
+			//m_vertexCount = static_cast<uint32_t>(vertexData.size() / 5);
+
+			WGPUBufferUsage usage;
+			size_t elementSize;
+			switch (bufferType)
 			{
-				// x0,  y0,  r0,  g0,  b0
-				-0.5, -0.5, 1.0, 0.0, 0.0,
-
-				// x1,  y1,  r1,  g1,  b1
-				+0.5, -0.5, 0.0, 1.0, 0.0,
-
-				+0.0,   +0.5, 0.0, 0.0, 1.0,
-				-0.55f, -0.5, 1.0, 1.0, 0.0,
-				-0.05f, +0.5, 1.0, 0.0, 1.0,
-				-0.55f, +0.5, 0.0, 1.0, 1.0
-			};
-
-			m_vertexCount = static_cast<uint32_t>(vertexData.size() / 5);
+				case BufferType::Vertex:
+					usage = WGPUBufferUsage_Vertex;
+					elementSize = sizeof(float);
+					break;
+				case BufferType::Index:
+					usage = WGPUBufferUsage_Index;
+					elementSize = sizeof(U16);
+					break;
+			}
 
 			WGPUBufferDescriptor bufferDesc{};
 			bufferDesc.nextInChain = nullptr;
-			bufferDesc.size = vertexData.size() * sizeof(float);
-			bufferDesc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Vertex;
+			bufferDesc.size = bufferSize * elementSize;
+			bufferDesc.usage = WGPUBufferUsage_CopyDst | usage;
 			bufferDesc.mappedAtCreation = false;
-			m_vertexBuffer = wgpuDeviceCreateBuffer(m_device, &bufferDesc);
+			WGPUBuffer buffer = wgpuDeviceCreateBuffer(m_device, &bufferDesc);
 
-			wgpuQueueWriteBuffer(m_queue, m_vertexBuffer, 0, vertexData.data(), bufferDesc.size);
+			wgpuQueueWriteBuffer(m_queue, buffer, 0, bufferData, bufferDesc.size);
 
-			return {};
+			return {reinterpret_cast<U64>(buffer)};
 		}
 	private:
 		WGPUTextureView m_currentTargetView;
 
 		//TEMP
 		WGPURenderPipeline m_pipeline;
-		U32 m_vertexCount;
-		WGPUBuffer m_vertexBuffer;
+		U32 m_indexCount;
+		WGPUBuffer m_pointBuffer;
+		WGPUBuffer m_indexBuffer;
 
 		bool m_initComplete = false; //TODO: tie into "await" system
 		Window* m_window;
@@ -435,7 +437,25 @@ namespace tako
 				wgpuDeviceGetLimits(m_device, &supportedLimits);
 				LOG("device.maxVertexAttributes: {}", supportedLimits.limits.maxVertexAttributes);
 
-				CreateBuffer(tako::BufferType::Vertex, nullptr, 0);
+
+				std::vector<float> pointData =
+				{
+					// x,   y,     r,   g,   b
+					-0.5, -0.5,   1.0, 0.0, 0.0,
+					+0.5, -0.5,   0.0, 1.0, 0.0,
+					+0.5, +0.5,   0.0, 0.0, 1.0,
+					-0.5, +0.5,   1.0, 1.0, 0.0
+				};
+
+				std::vector<uint16_t> indexData =
+				{
+					0, 1, 2,
+					0, 2, 3
+				};
+
+				m_pointBuffer = reinterpret_cast<WGPUBuffer>(CreateBuffer(tako::BufferType::Vertex, pointData.data(), pointData.size()).value);
+				m_indexBuffer = reinterpret_cast<WGPUBuffer>(CreateBuffer(tako::BufferType::Index, indexData.data(), indexData.size()).value);
+				m_indexCount = indexData.size();
 			}
 			else
 			{
