@@ -229,14 +229,21 @@ namespace tako
 			pipelineDesc.nextInChain = nullptr;
 
 			WGPUVertexBufferLayout vertexBufferLayout{};
-			WGPUVertexAttribute positionAttrib;
-			positionAttrib.shaderLocation = 0;
-			positionAttrib.format = WGPUVertexFormat_Float32x2;
-			positionAttrib.offset = 0;
+			std::array<WGPUVertexAttribute, 2> vertexAttribs;
 
-			vertexBufferLayout.attributeCount = 1;
-			vertexBufferLayout.attributes = &positionAttrib;
-			vertexBufferLayout.arrayStride = 2 * sizeof(float);
+			// position
+			vertexAttribs[0].shaderLocation = 0;
+			vertexAttribs[0].format = WGPUVertexFormat_Float32x2;
+			vertexAttribs[0].offset = 0;
+
+			// color
+			vertexAttribs[1].shaderLocation = 1;
+			vertexAttribs[1].format = WGPUVertexFormat_Float32x3;
+			vertexAttribs[1].offset = 2 * sizeof(float);
+
+			vertexBufferLayout.attributeCount = vertexAttribs.size();
+			vertexBufferLayout.attributes = vertexAttribs.data();
+			vertexBufferLayout.arrayStride = 5 * sizeof(float);
 			vertexBufferLayout.stepMode = WGPUVertexStepMode_Vertex;
 
 			pipelineDesc.vertex.bufferCount = 1;
@@ -302,22 +309,21 @@ namespace tako
 
 		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) override
 		{
-			std::vector<float> vertexData = {
-				// x0, y0
-				-0.5, -0.5,
+			std::vector<float> vertexData =
+			{
+				// x0,  y0,  r0,  g0,  b0
+				-0.5, -0.5, 1.0, 0.0, 0.0,
 
-				// x1, y1
-				+0.5, -0.5,
+				// x1,  y1,  r1,  g1,  b1
+				+0.5, -0.5, 0.0, 1.0, 0.0,
 
-				// x2, y2
-				+0.0, +0.5,
-
-				-0.55f, -0.5,
-				-0.05f, +0.5,
-				-0.55f, +0.5
+				+0.0,   +0.5, 0.0, 0.0, 1.0,
+				-0.55f, -0.5, 1.0, 1.0, 0.0,
+				-0.05f, +0.5, 1.0, 0.0, 1.0,
+				-0.55f, +0.5, 0.0, 1.0, 1.0
 			};
 
-			m_vertexCount = static_cast<uint32_t>(vertexData.size() / 2);
+			m_vertexCount = static_cast<uint32_t>(vertexData.size() / 5);
 
 			WGPUBufferDescriptor bufferDesc{};
 			bufferDesc.nextInChain = nullptr;
@@ -525,8 +531,8 @@ namespace tako
 
 			requiredLimits.limits.maxVertexAttributes = 2;
 			requiredLimits.limits.maxVertexBuffers = 1;
-			requiredLimits.limits.maxBufferSize = 6 * 2 * sizeof(float);
-			requiredLimits.limits.maxVertexBufferArrayStride = 2 * sizeof(float);
+			requiredLimits.limits.maxBufferSize = 6 * 5 * sizeof(float);
+			requiredLimits.limits.maxVertexBufferArrayStride = 5 * sizeof(float);
 			requiredLimits.limits.maxInterStageShaderComponents = 3;
 
 			requiredLimits.limits.minUniformBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
