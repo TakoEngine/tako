@@ -87,7 +87,12 @@ namespace tako
 
 			WGPURenderPassEncoder renderPass = wgpuCommandEncoderBeginRenderPass(encoder, &renderPassDesc);
 
+			//Render
+			wgpuRenderPassEncoderSetPipeline(renderPass, m_pipeline);
+			wgpuRenderPassEncoderSetVertexBuffer(renderPass, 0, m_vertexBuffer, 0, wgpuBufferGetSize(m_vertexBuffer));
+			wgpuRenderPassEncoderDraw(renderPass, m_vertexCount, 1, 0, 0);
 
+			//End
 			wgpuRenderPassEncoderEnd(renderPass);
 			wgpuRenderPassEncoderRelease(renderPass);
 
@@ -183,7 +188,106 @@ namespace tako
 
 		virtual Pipeline CreatePipeline(const PipelineDescriptor& pipelineDescriptor) override
 		{
-			return {};
+			const char* shaderSource = R"(
+
+				struct VertexInput {
+					@location(0) position: vec2f,
+					@location(1) color: vec3f,
+				};
+
+				struct VertexOutput {
+					@builtin(position) position: vec4f,
+					@location(0) color: vec3f,
+				}
+
+				@vertex
+				fn vs_main(in: VertexInput) -> VertexOutput {
+					var out: VertexOutput;
+					out.position = vec4f(in.position, 0.0, 1.0);
+					out.color = in.color;
+					return out;
+				}
+
+				@fragment
+				fn fs_main(in: VertexOutput) -> @location(0) vec4f {
+					return vec4f(in.color, 1.0);
+				}
+			)";
+
+			WGPUShaderModuleDescriptor shaderDesc{};
+
+			WGPUShaderModuleWGSLDescriptor shaderCodeDesc{};
+			shaderCodeDesc.chain.next = nullptr;
+			shaderCodeDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
+			shaderCodeDesc.code = shaderSource;
+
+			shaderDesc.nextInChain = &shaderCodeDesc.chain;
+			shaderCodeDesc.code = shaderSource;
+			WGPUShaderModule shaderModule = wgpuDeviceCreateShaderModule(m_device, &shaderDesc);
+
+			WGPURenderPipelineDescriptor pipelineDesc{};
+			pipelineDesc.nextInChain = nullptr;
+
+			WGPUVertexBufferLayout vertexBufferLayout{};
+			WGPUVertexAttribute positionAttrib;
+			positionAttrib.shaderLocation = 0;
+			positionAttrib.format = WGPUVertexFormat_Float32x2;
+			positionAttrib.offset = 0;
+
+			vertexBufferLayout.attributeCount = 1;
+			vertexBufferLayout.attributes = &positionAttrib;
+			vertexBufferLayout.arrayStride = 2 * sizeof(float);
+			vertexBufferLayout.stepMode = WGPUVertexStepMode_Vertex;
+
+			pipelineDesc.vertex.bufferCount = 1;
+			pipelineDesc.vertex.buffers = &vertexBufferLayout;
+
+			pipelineDesc.vertex.module = shaderModule;
+			pipelineDesc.vertex.entryPoint = "vs_main";
+			pipelineDesc.vertex.constantCount = 0;
+			pipelineDesc.vertex.constants = nullptr;
+
+			pipelineDesc.primitive.topology = WGPUPrimitiveTopology_TriangleList;
+			pipelineDesc.primitive.stripIndexFormat = WGPUIndexFormat_Undefined;
+			pipelineDesc.primitive.frontFace = WGPUFrontFace_CCW;
+			pipelineDesc.primitive.cullMode = WGPUCullMode_None;
+
+			WGPUFragmentState fragmentState{};
+			fragmentState.module = shaderModule;
+			fragmentState.entryPoint = "fs_main";
+			fragmentState.constantCount = 0;
+			fragmentState.constants = nullptr;
+
+			//Blending
+			WGPUBlendState blendState{};
+			blendState.color.srcFactor = WGPUBlendFactor_SrcAlpha;
+			blendState.color.dstFactor = WGPUBlendFactor_OneMinusSrcAlpha;
+			blendState.color.operation = WGPUBlendOperation_Add;
+			blendState.alpha.srcFactor = WGPUBlendFactor_Zero;
+			blendState.alpha.dstFactor = WGPUBlendFactor_One;
+			blendState.alpha.operation = WGPUBlendOperation_Add;
+
+			WGPUColorTargetState colorTarget{};
+			colorTarget.format = m_surfaceFormat;
+			colorTarget.blend = &blendState;
+			colorTarget.writeMask = WGPUColorWriteMask_All;
+
+			fragmentState.targetCount = 1;
+			fragmentState.targets = &colorTarget;
+			pipelineDesc.fragment = &fragmentState;
+
+			pipelineDesc.depthStencil = nullptr;
+			pipelineDesc.multisample.count = 1;
+			pipelineDesc.multisample.mask = ~0u;
+			pipelineDesc.multisample.alphaToCoverageEnabled = false;
+			pipelineDesc.layout = nullptr;
+
+			WGPURenderPipeline pipeline = wgpuDeviceCreateRenderPipeline(m_device, &pipelineDesc);
+			m_pipeline = pipeline;
+
+			wgpuShaderModuleRelease(shaderModule);
+			//TODO: manage pipeline lifetime
+			return {reinterpret_cast<U64>(pipeline)};
 		}
 
 		virtual Material CreateMaterial(const Texture* texture) override
@@ -198,16 +302,48 @@ namespace tako
 
 		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) override
 		{
+			std::vector<float> vertexData = {
+				// x0, y0
+				-0.5, -0.5,
+
+				// x1, y1
+				+0.5, -0.5,
+
+				// x2, y2
+				+0.0, +0.5,
+
+				-0.55f, -0.5,
+				-0.05f, +0.5,
+				-0.55f, +0.5
+			};
+
+			m_vertexCount = static_cast<uint32_t>(vertexData.size() / 2);
+
+			WGPUBufferDescriptor bufferDesc{};
+			bufferDesc.nextInChain = nullptr;
+			bufferDesc.size = vertexData.size() * sizeof(float);
+			bufferDesc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Vertex;
+			bufferDesc.mappedAtCreation = false;
+			m_vertexBuffer = wgpuDeviceCreateBuffer(m_device, &bufferDesc);
+
+			wgpuQueueWriteBuffer(m_queue, m_vertexBuffer, 0, vertexData.data(), bufferDesc.size);
+
 			return {};
 		}
 	private:
 		WGPUTextureView m_currentTargetView;
+
+		//TEMP
+		WGPURenderPipeline m_pipeline;
+		U32 m_vertexCount;
+		WGPUBuffer m_vertexBuffer;
 
 		bool m_initComplete = false; //TODO: tie into "await" system
 		Window* m_window;
 		WGPUQueue m_queue;
 		WGPUDevice m_device;
 		WGPUAdapter m_adapter;
+		WGPUTextureFormat m_surfaceFormat = WGPUTextureFormat_Undefined;
 		WGPUSurface m_surface;
 		WGPUInstance m_instance;
 
@@ -220,7 +356,8 @@ namespace tako
 				deviceDesc.nextInChain = nullptr;
 				deviceDesc.label = "DefaultDevice";
 				deviceDesc.requiredFeatureCount = 0;
-				deviceDesc.requiredLimits = nullptr;
+				WGPURequiredLimits requiredLimits = GetRequiredLimits(adapter);
+				deviceDesc.requiredLimits = &requiredLimits;
 				deviceDesc.defaultQueue.nextInChain = nullptr;
 				deviceDesc.defaultQueue.label = "DefaultQueue";
 				deviceDesc.deviceLostCallback = DeviceLostCallback;
@@ -270,8 +407,8 @@ namespace tako
 				config.width = m_window->GetWidth();
 				config.height = m_window->GetHeight();
 
-				WGPUTextureFormat surfaceFormat = wgpuSurfaceGetPreferredFormat(m_surface, m_adapter);
-				config.format = surfaceFormat;
+				m_surfaceFormat = wgpuSurfaceGetPreferredFormat(m_surface, m_adapter);
+				config.format = m_surfaceFormat;
 				config.viewFormatCount = 0;
 				config.viewFormats = nullptr;
 				config.usage = WGPUTextureUsage_RenderAttachment;
@@ -282,6 +419,17 @@ namespace tako
 				wgpuSurfaceConfigure(m_surface, &config);
 				LOG("Renderer Setup Complete!")
 				m_initComplete = true;
+
+				WGPUSupportedLimits supportedLimits{};
+				supportedLimits.nextInChain = nullptr;
+
+				wgpuAdapterGetLimits(m_adapter, &supportedLimits);
+				LOG("adapter.maxVertexAttributes: {}", supportedLimits.limits.maxVertexAttributes);
+
+				wgpuDeviceGetLimits(m_device, &supportedLimits);
+				LOG("device.maxVertexAttributes: {}", supportedLimits.limits.maxVertexAttributes);
+
+				CreateBuffer(tako::BufferType::Vertex, nullptr, 0);
 			}
 			else
 			{
@@ -328,6 +476,63 @@ namespace tako
 			wgpuTextureRelease(surfaceTexture.texture);
 
 			return targetView;
+		}
+
+		void SetDefault(WGPULimits& limits) const
+		{
+			limits.maxTextureDimension1D = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxTextureDimension2D = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxTextureDimension3D = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxTextureArrayLayers = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxBindGroups = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxBindGroupsPlusVertexBuffers = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxBindingsPerBindGroup = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxDynamicUniformBuffersPerPipelineLayout = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxDynamicStorageBuffersPerPipelineLayout = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxSampledTexturesPerShaderStage = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxSamplersPerShaderStage = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxStorageBuffersPerShaderStage = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxStorageTexturesPerShaderStage = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxUniformBuffersPerShaderStage = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxUniformBufferBindingSize = WGPU_LIMIT_U64_UNDEFINED;
+			limits.maxStorageBufferBindingSize = WGPU_LIMIT_U64_UNDEFINED;
+			limits.minUniformBufferOffsetAlignment = WGPU_LIMIT_U32_UNDEFINED;
+			limits.minStorageBufferOffsetAlignment = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxVertexBuffers = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxBufferSize = WGPU_LIMIT_U64_UNDEFINED;
+			limits.maxVertexAttributes = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxVertexBufferArrayStride = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxInterStageShaderComponents = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxInterStageShaderVariables = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxColorAttachments = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxColorAttachmentBytesPerSample = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxComputeWorkgroupStorageSize = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxComputeInvocationsPerWorkgroup = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxComputeWorkgroupSizeX = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxComputeWorkgroupSizeY = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxComputeWorkgroupSizeZ = WGPU_LIMIT_U32_UNDEFINED;
+			limits.maxComputeWorkgroupsPerDimension = WGPU_LIMIT_U32_UNDEFINED;
+		}
+
+		WGPURequiredLimits GetRequiredLimits(WGPUAdapter adapter) const
+		{
+			WGPUSupportedLimits supportedLimits;
+			supportedLimits.nextInChain = nullptr;
+			wgpuAdapterGetLimits(adapter, &supportedLimits);
+
+			WGPURequiredLimits requiredLimits{};
+			SetDefault(requiredLimits.limits);
+
+			requiredLimits.limits.maxVertexAttributes = 2;
+			requiredLimits.limits.maxVertexBuffers = 1;
+			requiredLimits.limits.maxBufferSize = 6 * 2 * sizeof(float);
+			requiredLimits.limits.maxVertexBufferArrayStride = 2 * sizeof(float);
+			requiredLimits.limits.maxInterStageShaderComponents = 3;
+
+			requiredLimits.limits.minUniformBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
+			requiredLimits.limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minStorageBufferOffsetAlignment;
+
+			return requiredLimits;
 		}
 	};
 
