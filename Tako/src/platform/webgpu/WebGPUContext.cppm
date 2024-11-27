@@ -83,9 +83,21 @@ namespace tako
 			renderPassColorAttachment.clearValue = WGPUColor{ 0.2, 0.2, 0.2, 1.0 };
 			renderPassColorAttachment.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED; //Might cause problems with WGPU-native
 
+			WGPURenderPassDepthStencilAttachment depthStencilAttachment = {};
+			depthStencilAttachment.view = m_depthTextureView;
+			depthStencilAttachment.depthClearValue = 1.0f;
+			depthStencilAttachment.depthLoadOp = WGPULoadOp_Clear;
+			depthStencilAttachment.depthStoreOp = WGPUStoreOp_Store;
+			depthStencilAttachment.depthReadOnly = false;
+
+			depthStencilAttachment.stencilClearValue = 0;
+			depthStencilAttachment.stencilLoadOp = WGPULoadOp_Undefined;
+			depthStencilAttachment.stencilStoreOp = WGPUStoreOp_Undefined;
+			depthStencilAttachment.stencilReadOnly = true;
+
 			renderPassDesc.colorAttachmentCount = 1;
 			renderPassDesc.colorAttachments = &renderPassColorAttachment;
-			renderPassDesc.depthStencilAttachment = nullptr;
+			renderPassDesc.depthStencilAttachment = &depthStencilAttachment;
 			renderPassDesc.timestampWrites = nullptr;
 
 
@@ -204,7 +216,7 @@ namespace tako
 				@group(0) @binding(0) var<uniform> uniforms: Uniforms;
 
 				struct VertexInput {
-					@location(0) position: vec2f,
+					@location(0) position: vec3f,
 					@location(1) color: vec3f,
 				};
 
@@ -217,10 +229,16 @@ namespace tako
 				fn vs_main(in: VertexInput) -> VertexOutput {
 					var out: VertexOutput;
 
-					var offset = vec2f(-0.6875, -0.463);
-					offset += 0.3 * vec2f(cos(uniforms.time), sin(uniforms.time));
+					let angle = uniforms.time;
+					let alpha = cos(angle);
+					let beta = sin(angle);
+					var position = vec3f(
+						in.position.x,
+						alpha * in.position.y + beta * in.position.z,
+						alpha * in.position.z - beta * in.position.y,
+					);
 
-					out.position = vec4f(in.position.x + offset.x, in.position.y + offset.y, 0.0, 1.0);
+					out.position = vec4f(position.x, position.y, position.z * 0.5 + 0.5, 1.0);
 					out.color = in.color;
 					return out;
 				}
@@ -230,7 +248,7 @@ namespace tako
 					let color = in.color * uniforms.color.rgb;
 
 					let linear_color = pow(color, vec3f(2.2));
-					return vec4f(linear_color, 1.0);
+					return vec4f(in.color, 1.0);
 				}
 			)";
 
@@ -314,7 +332,16 @@ namespace tako
 			fragmentState.targets = &colorTarget;
 			pipelineDesc.fragment = &fragmentState;
 
-			pipelineDesc.depthStencil = nullptr;
+			WGPUDepthStencilState depthStencilState;
+			SetDefault(depthStencilState);
+			depthStencilState.depthCompare = WGPUCompareFunction_Less;
+			depthStencilState.depthWriteEnabled = true;
+			depthStencilState.format = m_depthTextureFormat;
+			depthStencilState.stencilReadMask = 0;
+			depthStencilState.stencilWriteMask = 0;
+
+			pipelineDesc.depthStencil = &depthStencilState;
+
 			pipelineDesc.multisample.count = 1;
 			pipelineDesc.multisample.mask = ~0u;
 			pipelineDesc.multisample.alphaToCoverageEnabled = false;
@@ -366,6 +393,8 @@ namespace tako
 			bindGroupDesc.entries = &binding;
 			m_bindGroup = wgpuDeviceCreateBindGroup(m_device, &bindGroupDesc);
 
+			CreateDepthTexture();
+
 			//TODO: manage pipeline lifetime
 			return {reinterpret_cast<U64>(pipeline)};
 		}
@@ -414,7 +443,6 @@ namespace tako
 			float _pad[3];
 		};
 		static_assert(sizeof(Uniforms) % 16 == 0);
-
 		WGPURenderPipeline m_pipeline;
 		U32 m_indexCount;
 		WGPUBuffer m_pointBuffer;
@@ -423,6 +451,10 @@ namespace tako
 		WGPUPipelineLayout m_layout;
     	WGPUBindGroupLayout m_bindGroupLayout;
 		WGPUBindGroup m_bindGroup;
+
+		WGPUTextureFormat m_depthTextureFormat = WGPUTextureFormat_Depth24Plus;
+		WGPUTexture m_depthTexture;
+		WGPUTextureView m_depthTextureView;
 
 		bool m_initComplete = false; //TODO: tie into "await" system
 		Window* m_window;
@@ -518,17 +550,23 @@ namespace tako
 
 				std::vector<float> pointData =
 				{
-					// x,   y,     r,   g,   b
-					-0.5, -0.5,   1.0, 0.0, 0.0,
-					+0.5, -0.5,   0.0, 1.0, 0.0,
-					+0.5, +0.5,   0.0, 0.0, 1.0,
-					-0.5, +0.5,   1.0, 1.0, 0.0
+					// The base
+					-0.5, -0.5, -0.3,    1.0, 1.0, 1.0,
+					+0.5, -0.5, -0.3,    1.0, 1.0, 1.0,
+					+0.5, +0.5, -0.3,    1.0, 1.0, 1.0,
+					-0.5, +0.5, -0.3,    1.0, 1.0, 1.0,
 				};
 
 				std::vector<uint16_t> indexData =
 				{
-					0, 1, 2,
-					0, 2, 3
+					// Base
+					0,  1,  2,
+					0,  2,  3,
+					// Sides
+					0,  1,  4,
+					1,  2,  4,
+					2,  3,  4,
+					3,  0,  4,
 				};
 
 				m_pointBuffer = reinterpret_cast<WGPUBuffer>(CreateBuffer(tako::BufferType::Vertex, pointData.data(), pointData.size()).value);
@@ -601,6 +639,33 @@ namespace tako
 			return buffer;
 		}
 
+		void CreateDepthTexture()
+		{
+			LOG("w: {} h: {}", (U32)m_window->GetWidth(), (U32) m_window->GetHeight());
+			WGPUTextureDescriptor depthTextureDesc;
+			depthTextureDesc.nextInChain = nullptr;
+			depthTextureDesc.dimension = WGPUTextureDimension_2D;
+			depthTextureDesc.format = m_depthTextureFormat;
+			depthTextureDesc.mipLevelCount = 1;
+			depthTextureDesc.sampleCount = 1;
+			depthTextureDesc.size = { (U32)m_window->GetWidth(), (U32) m_window->GetHeight(), 1};
+			depthTextureDesc.usage = WGPUTextureUsage_RenderAttachment;
+			depthTextureDesc.viewFormatCount = 1;
+			depthTextureDesc.viewFormats = &m_depthTextureFormat;
+			m_depthTexture = wgpuDeviceCreateTexture(m_device, &depthTextureDesc);
+
+			WGPUTextureViewDescriptor depthTextureViewDesc;
+			depthTextureViewDesc.nextInChain = nullptr;
+			depthTextureViewDesc.aspect = WGPUTextureAspect_DepthOnly;
+			depthTextureViewDesc.baseArrayLayer = 0;
+			depthTextureViewDesc.arrayLayerCount = 1;
+			depthTextureViewDesc.baseMipLevel = 0;
+			depthTextureViewDesc.mipLevelCount = 1;
+			depthTextureViewDesc.dimension = WGPUTextureViewDimension_2D;
+			depthTextureViewDesc.format = m_depthTextureFormat;
+			m_depthTextureView = wgpuTextureCreateView(m_depthTexture, &depthTextureViewDesc);
+		}
+
 		void SetDefault(WGPULimits& limits) const
 		{
 			limits.maxTextureDimension1D = WGPU_LIMIT_U32_UNDEFINED;
@@ -637,7 +702,8 @@ namespace tako
 			limits.maxComputeWorkgroupsPerDimension = WGPU_LIMIT_U32_UNDEFINED;
 		}
 
-		void SetDefault(WGPUBindGroupLayoutEntry &bindingLayout) {
+		void SetDefault(WGPUBindGroupLayoutEntry &bindingLayout) const
+		{
 			bindingLayout.buffer.nextInChain = nullptr;
 			bindingLayout.buffer.type = WGPUBufferBindingType_Undefined;
 			bindingLayout.buffer.hasDynamicOffset = false;
@@ -656,6 +722,28 @@ namespace tako
 			bindingLayout.texture.viewDimension = WGPUTextureViewDimension_Undefined;
 		}
 
+		void SetDefault(WGPUStencilFaceState &stencilFaceState) const
+		{
+			stencilFaceState.compare = WGPUCompareFunction_Always;
+			stencilFaceState.failOp = WGPUStencilOperation_Keep;
+			stencilFaceState.depthFailOp = WGPUStencilOperation_Keep;
+			stencilFaceState.passOp = WGPUStencilOperation_Keep;
+		}
+
+		void SetDefault(WGPUDepthStencilState &depthStencilState) const
+		{
+			depthStencilState.format = WGPUTextureFormat_Undefined;
+			depthStencilState.depthWriteEnabled = false;
+			depthStencilState.depthCompare = WGPUCompareFunction_Always;
+			depthStencilState.stencilReadMask = 0xFFFFFFFF;
+			depthStencilState.stencilWriteMask = 0xFFFFFFFF;
+			depthStencilState.depthBias = 0;
+			depthStencilState.depthBiasSlopeScale = 0;
+			depthStencilState.depthBiasClamp = 0;
+			SetDefault(depthStencilState.stencilFront);
+			SetDefault(depthStencilState.stencilBack);
+		}
+
 		WGPURequiredLimits GetRequiredLimits(WGPUAdapter adapter) const
 		{
 			WGPUSupportedLimits supportedLimits;
@@ -668,11 +756,14 @@ namespace tako
 			requiredLimits.limits.maxVertexAttributes = 2;
 			requiredLimits.limits.maxVertexBuffers = 1;
 			requiredLimits.limits.maxBufferSize = 6 * 5 * sizeof(float);
-			requiredLimits.limits.maxVertexBufferArrayStride = 5 * sizeof(float);
+			requiredLimits.limits.maxVertexBufferArrayStride = 6 * sizeof(float);
 			requiredLimits.limits.maxInterStageShaderComponents = 3;
 			requiredLimits.limits.maxBindGroups = 1;
 			requiredLimits.limits.maxUniformBuffersPerShaderStage = 1;
 			requiredLimits.limits.maxUniformBufferBindingSize = 16 * 4;
+			requiredLimits.limits.maxTextureDimension1D = 2160;
+			requiredLimits.limits.maxTextureDimension2D = 3840;
+			requiredLimits.limits.maxTextureArrayLayers = 1;
 
 			requiredLimits.limits.minUniformBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
 			requiredLimits.limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minStorageBufferOffsetAlignment;
