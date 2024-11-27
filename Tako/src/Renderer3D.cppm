@@ -146,7 +146,8 @@ namespace tako
 		std::vector<U8> vertCode;
 		std::vector<U8> fragCode;
 
-		std::array<PipelineVectorAttribute, 4> vertexAttributes = { PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec2 };
+		//std::array<PipelineVectorAttribute, 4> vertexAttributes = { PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec2 };
+		std::array<PipelineVectorAttribute, 2> vertexAttributes = { PipelineVectorAttribute::Vec2, PipelineVectorAttribute::Vec3 };
 		size_t pushConstant = sizeof(Matrix4);
 
 		PipelineDescriptor pipelineDescriptor;

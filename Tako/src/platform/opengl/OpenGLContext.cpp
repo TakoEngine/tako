@@ -161,7 +161,7 @@ namespace tako
 
 	}
 
-	void OpenGLContext::UpdateUniform(const void *uniformData, size_t uniformSize)
+	void OpenGLContext::UpdateUniform(const void *uniformData, size_t uniformSize, size_t offset)
 	{
 
 	}

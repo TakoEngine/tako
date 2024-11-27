@@ -62,7 +62,7 @@ namespace tako
 		virtual void BindMaterial(const Material* material) = 0;
 
 		virtual void UpdateCamera(const CameraUniformData& cameraData) = 0;
-		virtual void UpdateUniform(const void* uniformData, size_t uniformSize) = 0;
+		virtual void UpdateUniform(const void* uniformData, size_t uniformSize, size_t offset = 0) = 0;
 
 		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) = 0;
 		virtual void DrawIndexed(uint32_t indexCount, uint32_t matrixCount, const Matrix4* renderMatrix) = 0;
@@ -71,6 +71,6 @@ namespace tako
 		virtual Material CreateMaterial(const Texture* texture) = 0;
 		virtual Texture CreateTexture(const Bitmap& bitmap) = 0;
 		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) = 0;
-		
+
 	};
 }
