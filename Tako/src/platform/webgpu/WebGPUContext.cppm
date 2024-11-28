@@ -64,19 +64,19 @@ namespace tako
 				float t = emscripten_run_script_int("performance.now()") / 100;
 				UpdateUniform(&t, sizeof(float), offsetof(Uniforms, time));
 			}
-			WGPUTextureView targetView = GetNextSurfaceTextureView();
-			ASSERT(targetView);
+			m_targetView = GetNextSurfaceTextureView();
+			ASSERT(m_targetView);
 
 			WGPUCommandEncoderDescriptor encoderDesc = {};
 			encoderDesc.nextInChain = nullptr;
 			encoderDesc.label = "DefaultEncoder";
-			WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(m_device, &encoderDesc);
+			m_encoder = wgpuDeviceCreateCommandEncoder(m_device, &encoderDesc);
 
 			WGPURenderPassDescriptor renderPassDesc = {};
 			renderPassDesc.nextInChain = nullptr;
 
 			WGPURenderPassColorAttachment renderPassColorAttachment = {};
-			renderPassColorAttachment.view = targetView;
+			renderPassColorAttachment.view = m_targetView;
 			renderPassColorAttachment.resolveTarget = nullptr;
 			renderPassColorAttachment.loadOp = WGPULoadOp_Clear;
 			renderPassColorAttachment.storeOp = WGPUStoreOp_Store;
@@ -101,36 +101,44 @@ namespace tako
 			renderPassDesc.timestampWrites = nullptr;
 
 
-			WGPURenderPassEncoder renderPass = wgpuCommandEncoderBeginRenderPass(encoder, &renderPassDesc);
+			m_renderPass = wgpuCommandEncoderBeginRenderPass(m_encoder, &renderPassDesc);
 
 			//Render
+			/*
 			wgpuRenderPassEncoderSetPipeline(renderPass, m_pipeline);
 			wgpuRenderPassEncoderSetVertexBuffer(renderPass, 0, m_pointBuffer, 0, wgpuBufferGetSize(m_pointBuffer));
 			wgpuRenderPassEncoderSetIndexBuffer(renderPass, m_indexBuffer, WGPUIndexFormat_Uint16, 0, wgpuBufferGetSize(m_indexBuffer));
 			wgpuRenderPassEncoderSetBindGroup(renderPass, 0, m_bindGroup, 0, nullptr);
 
+
 			wgpuRenderPassEncoderDrawIndexed(renderPass, m_indexCount, 1, 0, 0, 0);
+			*/
 
 			//End
-			wgpuRenderPassEncoderEnd(renderPass);
-			wgpuRenderPassEncoderRelease(renderPass);
 
-			WGPUCommandBufferDescriptor cmdBufferDescriptor = {};
-			cmdBufferDescriptor.nextInChain = nullptr;
-			cmdBufferDescriptor.label = "Command buffer";
-			WGPUCommandBuffer command = wgpuCommandEncoderFinish(encoder, &cmdBufferDescriptor);
-			wgpuCommandEncoderRelease(encoder);
-
-			wgpuQueueSubmit(m_queue, 1, &command);
-			wgpuCommandBufferRelease(command);
-
-			wgpuTextureViewRelease(targetView);
 		}
 
 		virtual void End() override
 		{
 			//wgpuTextureViewRelease(m_currentTargetView);
 			//m_currentTargetView = nullptr;
+
+			wgpuRenderPassEncoderEnd(m_renderPass);
+			wgpuRenderPassEncoderRelease(m_renderPass);
+			m_renderPass = nullptr;
+
+			WGPUCommandBufferDescriptor cmdBufferDescriptor = {};
+			cmdBufferDescriptor.nextInChain = nullptr;
+			cmdBufferDescriptor.label = "Command buffer";
+			WGPUCommandBuffer command = wgpuCommandEncoderFinish(m_encoder, &cmdBufferDescriptor);
+			wgpuCommandEncoderRelease(m_encoder);
+			m_encoder = nullptr;
+
+			wgpuQueueSubmit(m_queue, 1, &command);
+			wgpuCommandBufferRelease(command);
+
+			wgpuTextureViewRelease(m_targetView);
+			m_targetView = nullptr;
 		}
 
 		virtual void Present() override
@@ -153,28 +161,31 @@ namespace tako
 
 		virtual U32 GetWidth() override
 		{
-			return 0;
+			return m_window->GetWidth();
 		}
 
 		virtual U32 GetHeight() override
 		{
-			return 0;
+			return m_window->GetHeight();
 		}
 
 
 		virtual void BindPipeline(const Pipeline* pipeline) override
 		{
-
+			WGPURenderPipeline wPipeline = reinterpret_cast<WGPURenderPipeline>(pipeline->value);
+			wgpuRenderPassEncoderSetPipeline(m_renderPass, wPipeline);
 		}
 
 		virtual void BindVertexBuffer(const Buffer* buffer) override
 		{
-
+			WGPUBuffer wBuffer = reinterpret_cast<WGPUBuffer>(buffer->value);
+			wgpuRenderPassEncoderSetVertexBuffer(m_renderPass, 0, wBuffer, 0, wgpuBufferGetSize(wBuffer));
 		}
 
 		virtual void BindIndexBuffer(const Buffer* buffer) override
 		{
-
+			WGPUBuffer wBuffer = reinterpret_cast<WGPUBuffer>(buffer->value);
+			wgpuRenderPassEncoderSetIndexBuffer(m_renderPass, wBuffer, WGPUIndexFormat_Uint16, 0, wgpuBufferGetSize(wBuffer));
 		}
 
 		virtual void BindMaterial(const Material* material) override
@@ -185,7 +196,7 @@ namespace tako
 
 		virtual void UpdateCamera(const CameraUniformData& cameraData) override
 		{
-
+			UpdateUniform(&cameraData.view, 2 * sizeof(Matrix4), offsetof(Uniforms, viewMatrix));
 		}
 
 		virtual void UpdateUniform(const void* uniformData, size_t uniformSize, size_t offset = 0) override
@@ -196,7 +207,9 @@ namespace tako
 
 		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) override
 		{
-
+			UpdateUniform(&renderMatrix, sizeof(Matrix4), offsetof(Uniforms, modelMatrix));
+			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 0, m_bindGroup, 0, nullptr);
+			wgpuRenderPassEncoderDrawIndexed(m_renderPass, indexCount, 1, 0, 0, 0);
 		}
 
 		virtual void DrawIndexed(uint32_t indexCount, uint32_t matrixCount, const Matrix4* renderMatrix) override
@@ -209,6 +222,9 @@ namespace tako
 		{
 			const char* shaderSource = R"(
 				struct Uniforms {
+					viewMatrix: mat4x4f,
+					projectionMatrix: mat4x4f,
+					modelMatrix: mat4x4f,
 					color: vec4f,
 					time: f32,
 				};
@@ -228,17 +244,7 @@ namespace tako
 				@vertex
 				fn vs_main(in: VertexInput) -> VertexOutput {
 					var out: VertexOutput;
-
-					let angle = uniforms.time;
-					let alpha = cos(angle);
-					let beta = sin(angle);
-					var position = vec3f(
-						in.position.x,
-						alpha * in.position.y + beta * in.position.z,
-						alpha * in.position.z - beta * in.position.y,
-					);
-
-					out.position = vec4f(position.x, position.y, position.z * 0.5 + 0.5, 1.0);
+					out.position = uniforms.projectionMatrix * uniforms.viewMatrix * uniforms.modelMatrix * vec4f(in.position, 1.0);
 					out.color = in.color;
 					return out;
 				}
@@ -374,6 +380,9 @@ namespace tako
 
 			// Create uniforms
 			Uniforms uniforms;
+			uniforms.projectionMatrix = Matrix4::perspective(45, GetWidth() / (float) GetHeight(), 1, 1000);;
+			uniforms.viewMatrix = Matrix4::cameraViewMatrix(Vector3(0, 0, 0), {});
+			uniforms.modelMatrix = Matrix4::identity;
 			uniforms.time = 1.0f;
 			uniforms.color = { 1.0f, 1.0f, 0.4f, 1.0f };
 			m_uniformBuffer = CreateWGPUBuffer(WGPUBufferUsage_Uniform, &uniforms, sizeof(Uniforms));
@@ -411,33 +420,31 @@ namespace tako
 
 		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) override
 		{
-			//m_vertexCount = static_cast<uint32_t>(vertexData.size() / 5);
-
 			WGPUBufferUsage usage;
-			size_t elementSize;
 			switch (bufferType)
 			{
 				case BufferType::Vertex:
 					usage = WGPUBufferUsage_Vertex;
-					elementSize = sizeof(float);
 					break;
 				case BufferType::Index:
 					usage = WGPUBufferUsage_Index;
-					elementSize = sizeof(U16);
 					break;
 			}
 
-			WGPUBuffer buffer = CreateWGPUBuffer(usage, bufferData, bufferSize * elementSize);
+			WGPUBuffer buffer = CreateWGPUBuffer(usage, bufferData, bufferSize);
 
 			return {reinterpret_cast<U64>(buffer)};
 		}
 
 	private:
-		WGPUTextureView m_currentTargetView;
+
 
 		//TEMP
 		struct Uniforms
 		{
+			Matrix4 viewMatrix;
+			Matrix4 projectionMatrix;
+			Matrix4 modelMatrix;
 			std::array<float, 4> color;
 			float time;
 			float _pad[3];
@@ -455,6 +462,10 @@ namespace tako
 		WGPUTextureFormat m_depthTextureFormat = WGPUTextureFormat_Depth24Plus;
 		WGPUTexture m_depthTexture;
 		WGPUTextureView m_depthTextureView;
+
+		WGPURenderPassEncoder m_renderPass;
+		WGPUTextureView m_targetView;
+		WGPUCommandEncoder m_encoder;
 
 		bool m_initComplete = false; //TODO: tie into "await" system
 		Window* m_window;
@@ -546,32 +557,6 @@ namespace tako
 
 				wgpuDeviceGetLimits(m_device, &supportedLimits);
 				LOG("device.maxVertexAttributes: {}", supportedLimits.limits.maxVertexAttributes);
-
-
-				std::vector<float> pointData =
-				{
-					// The base
-					-0.5, -0.5, -0.3,    1.0, 1.0, 1.0,
-					+0.5, -0.5, -0.3,    1.0, 1.0, 1.0,
-					+0.5, +0.5, -0.3,    1.0, 1.0, 1.0,
-					-0.5, +0.5, -0.3,    1.0, 1.0, 1.0,
-				};
-
-				std::vector<uint16_t> indexData =
-				{
-					// Base
-					0,  1,  2,
-					0,  2,  3,
-					// Sides
-					0,  1,  4,
-					1,  2,  4,
-					2,  3,  4,
-					3,  0,  4,
-				};
-
-				m_pointBuffer = reinterpret_cast<WGPUBuffer>(CreateBuffer(tako::BufferType::Vertex, pointData.data(), pointData.size()).value);
-				m_indexBuffer = reinterpret_cast<WGPUBuffer>(CreateBuffer(tako::BufferType::Index, indexData.data(), indexData.size()).value);
-				m_indexCount = indexData.size();
 			}
 			else
 			{
@@ -760,7 +745,7 @@ namespace tako
 			requiredLimits.limits.maxInterStageShaderComponents = 3;
 			requiredLimits.limits.maxBindGroups = 1;
 			requiredLimits.limits.maxUniformBuffersPerShaderStage = 1;
-			requiredLimits.limits.maxUniformBufferBindingSize = 16 * 4;
+			requiredLimits.limits.maxUniformBufferBindingSize = 16 * 4 * sizeof(float);
 			requiredLimits.limits.maxTextureDimension1D = 2160;
 			requiredLimits.limits.maxTextureDimension2D = 3840;
 			requiredLimits.limits.maxTextureArrayLayers = 1;

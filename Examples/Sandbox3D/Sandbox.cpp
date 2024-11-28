@@ -88,14 +88,14 @@ public:
 	void Draw(FrameData* frameData)
 	{
 		renderer->Begin();
-		renderer->SetLightPosition(frameData->lightPos);
+		//renderer->SetLightPosition(frameData->lightPos);
 		renderer->SetCameraView(tako::Matrix4::cameraViewMatrix(frameData->trans, frameData->rotation));
-		auto transform = tako::Matrix4::ScaleMatrix(frameData->zoom, frameData->zoom, frameData->zoom);
+		//auto transform = tako::Matrix4::ScaleMatrix(frameData->zoom, frameData->zoom, frameData->zoom);
 		//renderer->DrawMesh(golf, texture, );
 
-		renderer->DrawModel(model, transform);
+		//renderer->DrawModel(model, transform);
 
-		//renderer->DrawCube(tako::Matrix4::translation(0, -1, 0), model.materials[0]);
+		renderer->DrawCube(tako::Matrix4::translation(0, -1, 0), model.materials[0]);
 
 		renderer->End();
 	}
