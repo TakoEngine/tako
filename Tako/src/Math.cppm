@@ -356,6 +356,12 @@ export namespace tako
 			return *this;
 		}
 
+		constexpr Matrix4& Transpose()
+		{
+			*this = transpose(*this);
+			return *this;
+		}
+
 		constexpr static Matrix4 transpose(const Matrix4& m)
 		{
 			return Matrix4
@@ -605,7 +611,7 @@ export namespace tako
 
 			return m;
 		}
-		
+
 		static Matrix4 DirectionToRotation(const Vector3& direction, const Vector3& up = { 0, 1, 0 });
 
 		void Print();

@@ -22,7 +22,7 @@ static std::array<const char*, 1> vkWinValidationLayers = { "VK_LAYER_KHRONOS_va
 
 namespace tako
 {
-	
+
 
 	VkFormat PipelineAttributeToVkFormat(PipelineVectorAttribute att)
 	{
@@ -973,7 +973,7 @@ namespace tako
 		{
 			vkDestroyImage(m_vkDevice, image, nullptr);
 		}
-		
+
 		vkDestroyDescriptorSetLayout(m_vkDevice, m_descriptorSetLayoutUniform, nullptr);
 		vkDestroyDescriptorSetLayout(m_vkDevice, m_descriptorSetLayoutSampler, nullptr);
 		for (size_t i = 0; i < m_uniformBuffers.size(); i++)
@@ -1209,7 +1209,7 @@ namespace tako
 		constants.renderMatrix = renderMatrix;
 		vkCmdPushConstants(commandBuffer, m_currentPipeline->layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
 		*/
-		
+
 
 		vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, frame.modelIndex++);
 	}

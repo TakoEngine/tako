@@ -233,7 +233,9 @@ namespace tako
 
 				struct VertexInput {
 					@location(0) position: vec3f,
-					@location(1) color: vec3f,
+					@location(1) normal: vec3f,
+					@location(2) color: vec3f,
+					@location(3) uv: vec2f,
 				};
 
 				struct VertexOutput {
@@ -380,7 +382,7 @@ namespace tako
 
 			// Create uniforms
 			Uniforms uniforms;
-			uniforms.projectionMatrix = Matrix4::perspective(45, GetWidth() / (float) GetHeight(), 1, 1000);;
+			uniforms.projectionMatrix = Matrix4::perspective(45, GetWidth() / (float) GetHeight(), 1, 1000);
 			uniforms.viewMatrix = Matrix4::cameraViewMatrix(Vector3(0, 0, 0), {});
 			uniforms.modelMatrix = Matrix4::identity;
 			uniforms.time = 1.0f;
@@ -626,7 +628,6 @@ namespace tako
 
 		void CreateDepthTexture()
 		{
-			LOG("w: {} h: {}", (U32)m_window->GetWidth(), (U32) m_window->GetHeight());
 			WGPUTextureDescriptor depthTextureDesc;
 			depthTextureDesc.nextInChain = nullptr;
 			depthTextureDesc.dimension = WGPUTextureDimension_2D;
@@ -740,8 +741,8 @@ namespace tako
 
 			requiredLimits.limits.maxVertexAttributes = 2;
 			requiredLimits.limits.maxVertexBuffers = 1;
-			requiredLimits.limits.maxBufferSize = 6 * 5 * sizeof(float);
-			requiredLimits.limits.maxVertexBufferArrayStride = 6 * sizeof(float);
+			requiredLimits.limits.maxBufferSize = 11 * 5 * sizeof(float);
+			requiredLimits.limits.maxVertexBufferArrayStride = 11 * sizeof(float);
 			requiredLimits.limits.maxInterStageShaderComponents = 3;
 			requiredLimits.limits.maxBindGroups = 1;
 			requiredLimits.limits.maxUniformBuffersPerShaderStage = 1;

@@ -95,7 +95,7 @@ public:
 
 		//renderer->DrawModel(model, transform);
 
-		renderer->DrawCube(tako::Matrix4::translation(0, -1, 0), model.materials[0]);
+		renderer->DrawCube(tako::Matrix4::translation(0, 0, 0), model.materials[0]);
 
 		renderer->End();
 	}
@@ -108,7 +108,7 @@ private:
 	FrameData data
 	{
 		1,
-		{0, -2, 0},
+		{0, 0, -6},
 		{ 0, 10, -3 },
 		{}
 	};

@@ -121,7 +121,8 @@ elseif (EMSCRIPTEN)
 target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/web/Window.cpp"
 	"src/platform/web/Log.cpp"
-	"src/platform/web/Timer.cpp"
+	#"src/platform/web/Timer.cpp"
+	"src/platform/default/Timer.cpp" # Temporary, as emscripten_get_now() seems to be broken
 	"src/platform/default/Main.cpp"
 	PUBLIC FILE_SET CXX_MODULES FILES
 	"src/platform/web/FileSystem.cppm"
