@@ -245,7 +245,7 @@ namespace tako
 		auto matSearch = m_texMatMap.find(texture.value);
 		if (matSearch == m_texMatMap.end())
 		{
-			Texture tex = { texture, 42, 42 }; //Create dummy texture, needs a refactor
+			Texture tex = { texture, nullptr, 42, 42 }; //Create dummy texture, needs a refactor
 			auto material = m_context->CreateMaterial(&tex);
 			m_texMatMap[texture.value] = material;
 			m_context->BindMaterial(&material);
@@ -254,7 +254,7 @@ namespace tako
 		{
 			m_context->BindMaterial(&matSearch->second);
 		}
-		
+
 		m_context->DrawIndexed(6, model);
 	}
 

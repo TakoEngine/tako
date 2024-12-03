@@ -230,6 +230,8 @@ namespace tako
 				};
 
 				@group(0) @binding(0) var<uniform> uniforms: Uniforms;
+				@group(0) @binding(1) var gradientTexture: texture_2d<f32>;
+				@group(0) @binding(2) var textureSampler: sampler;
 
 				struct VertexInput {
 					@location(0) position: vec3f,
@@ -241,6 +243,8 @@ namespace tako
 				struct VertexOutput {
 					@builtin(position) position: vec4f,
 					@location(0) color: vec3f,
+					@location(1) normal: vec3f,
+					@location(2) uv: vec2f,
 				}
 
 				@vertex
@@ -248,15 +252,20 @@ namespace tako
 					var out: VertexOutput;
 					out.position = uniforms.projectionMatrix * uniforms.viewMatrix * uniforms.modelMatrix * vec4f(in.position, 1.0);
 					out.color = in.color;
+					out.normal = (uniforms.modelMatrix * vec4f(in.normal, 0.0)).xyz;
+					out.uv = in.uv;
 					return out;
 				}
 
 				@fragment
 				fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-					let color = in.color * uniforms.color.rgb;
+					let color = textureSample(gradientTexture, textureSampler, in.uv).rgb;
+					//let normal = normalize(in.normal);
+					//let lightDirection = vec3f(0.5, -0.9, 0.1);
+					//let shading = dot(lightDirection, normal);
+					//let color = in.color * shading;
 
-					let linear_color = pow(color, vec3f(2.2));
-					return vec4f(in.color, 1.0);
+					return vec4f(color, 1.0);
 				}
 			)";
 
@@ -354,17 +363,32 @@ namespace tako
 			pipelineDesc.multisample.mask = ~0u;
 			pipelineDesc.multisample.alphaToCoverageEnabled = false;
 
-			WGPUBindGroupLayoutEntry bindingLayout{};
+			std::array<WGPUBindGroupLayoutEntry, 3> bindingLayoutEntries;
+
+			WGPUBindGroupLayoutEntry& bindingLayout = bindingLayoutEntries[0];
 			SetDefault(bindingLayout);
 			bindingLayout.binding = 0;
 			bindingLayout.visibility = WGPUShaderStage_Vertex | WGPUShaderStage_Fragment;
 			bindingLayout.buffer.type = WGPUBufferBindingType_Uniform;
 			bindingLayout.buffer.minBindingSize = sizeof(Uniforms);
 
+			WGPUBindGroupLayoutEntry& textureBindingLayout = bindingLayoutEntries[1];
+			SetDefault(textureBindingLayout);
+			textureBindingLayout.binding = 1;
+			textureBindingLayout.visibility = WGPUShaderStage_Fragment;
+			textureBindingLayout.texture.sampleType = WGPUTextureSampleType_Float;
+			textureBindingLayout.texture.viewDimension = WGPUTextureViewDimension_2D;
+
+			WGPUBindGroupLayoutEntry& samplerBindingLayout = bindingLayoutEntries[2];
+			SetDefault(samplerBindingLayout);
+			samplerBindingLayout.binding = 2;
+			samplerBindingLayout.visibility = WGPUShaderStage_Fragment;
+			samplerBindingLayout.sampler.type = WGPUSamplerBindingType_Filtering;
+
 			WGPUBindGroupLayoutDescriptor bindGroupLayoutDesc{};
 			bindGroupLayoutDesc.nextInChain = nullptr;
-			bindGroupLayoutDesc.entryCount = 1;
-			bindGroupLayoutDesc.entries = &bindingLayout;
+			bindGroupLayoutDesc.entryCount = bindingLayoutEntries.size();
+			bindGroupLayoutDesc.entries = bindingLayoutEntries.data();
 			m_bindGroupLayout = wgpuDeviceCreateBindGroupLayout(m_device, &bindGroupLayoutDesc);
 
 			WGPUPipelineLayoutDescriptor layoutDesc{};
@@ -389,19 +413,43 @@ namespace tako
 			uniforms.color = { 1.0f, 1.0f, 0.4f, 1.0f };
 			m_uniformBuffer = CreateWGPUBuffer(WGPUBufferUsage_Uniform, &uniforms, sizeof(Uniforms));
 
-			WGPUBindGroupEntry binding{};
-			binding.nextInChain = nullptr;
-			binding.binding = 0;
-			binding.buffer = m_uniformBuffer;
-			binding.offset = 0;
-			binding.size = sizeof(Uniforms);
+			std::vector<WGPUBindGroupEntry> bindings(3);
+
+			bindings[0].nextInChain = nullptr;
+			bindings[0].binding = 0;
+			bindings[0].buffer = m_uniformBuffer;
+			bindings[0].offset = 0;
+			bindings[0].size = sizeof(Uniforms);
+
+			WGPUTextureView textureView = reinterpret_cast<WGPUTextureView>(CreateTexture(Bitmap::FromFile("/CrossGolf.png")).ptr);
+
+			bindings[1].nextInChain = nullptr;
+			bindings[1].binding = 1;
+			bindings[1].textureView = textureView;
+
+			WGPUSamplerDescriptor samplerDesc;
+			samplerDesc.nextInChain = nullptr;
+			samplerDesc.addressModeU = WGPUAddressMode_ClampToEdge;
+			samplerDesc.addressModeV = WGPUAddressMode_ClampToEdge;
+			samplerDesc.addressModeW = WGPUAddressMode_ClampToEdge;
+			samplerDesc.magFilter = WGPUFilterMode_Linear;
+			samplerDesc.minFilter = WGPUFilterMode_Linear;
+			samplerDesc.mipmapFilter = WGPUMipmapFilterMode_Linear;
+			samplerDesc.lodMinClamp = 0.0f;
+			samplerDesc.lodMaxClamp = 1.0f;
+			samplerDesc.compare = WGPUCompareFunction_Undefined;
+			samplerDesc.maxAnisotropy = 1;
+			WGPUSampler sampler = wgpuDeviceCreateSampler(m_device, &samplerDesc);
+
+			bindings[2].binding = 2;
+			bindings[2].sampler = sampler;
 
 			WGPUBindGroupDescriptor bindGroupDesc{};
 			bindGroupDesc.nextInChain = nullptr;
 			bindGroupDesc.layout = m_bindGroupLayout;
 
-			bindGroupDesc.entryCount = 1;
-			bindGroupDesc.entries = &binding;
+			bindGroupDesc.entryCount = bindings.size();
+			bindGroupDesc.entries = bindings.data();
 			m_bindGroup = wgpuDeviceCreateBindGroup(m_device, &bindGroupDesc);
 
 			CreateDepthTexture();
@@ -417,7 +465,52 @@ namespace tako
 
 		virtual Texture CreateTexture(const Bitmap& bitmap) override
 		{
-			return {};
+			WGPUTextureDescriptor textureDesc;
+			textureDesc.nextInChain = nullptr;
+			textureDesc.dimension = WGPUTextureDimension_2D;
+			textureDesc.size = { (U32) bitmap.Width(), (U32) bitmap.Height(), 1 };
+			textureDesc.mipLevelCount = 1;
+			textureDesc.sampleCount = 1;
+			textureDesc.format = m_textureFormat;
+			textureDesc.usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst;
+			textureDesc.viewFormatCount = 0;
+			textureDesc.viewFormats = nullptr;
+
+			WGPUTexture texture = wgpuDeviceCreateTexture(m_device, &textureDesc);
+
+			WGPUTextureViewDescriptor textureViewDesc;
+			textureViewDesc.nextInChain = nullptr;
+			textureViewDesc.aspect = WGPUTextureAspect_All;
+			textureViewDesc.baseArrayLayer = 0;
+			textureViewDesc.arrayLayerCount = 1;
+			textureViewDesc.baseMipLevel = 0;
+			textureViewDesc.mipLevelCount = 1;
+			textureViewDesc.dimension = WGPUTextureViewDimension_2D;
+			textureViewDesc.format = m_textureFormat;
+			WGPUTextureView textureView = wgpuTextureCreateView(texture, &textureViewDesc);
+			ASSERT(textureView != nullptr);
+
+
+			WGPUImageCopyTexture destination;
+			destination.nextInChain = nullptr;
+			destination.texture = texture;
+			destination.mipLevel = 0;
+			destination.origin = { 0, 0, 0 };
+			destination.aspect = WGPUTextureAspect_All;
+
+			WGPUTextureDataLayout source;
+			source.nextInChain = nullptr;
+			source.offset = 0;
+			source.bytesPerRow = 4 * textureDesc.size.width;
+			source.rowsPerImage = textureDesc.size.height;
+
+			size_t imageSize = sizeof(Color) * (U32) bitmap.Width() *  (U32) bitmap.Height();
+			wgpuQueueWriteTexture(m_queue, &destination, bitmap.GetData(), imageSize, &source, &textureDesc.size);
+
+			Texture tex;
+			tex.handle.value = reinterpret_cast<U64>(texture);
+			tex.ptr = textureView;
+			return tex;
 		}
 
 		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) override
@@ -464,6 +557,7 @@ namespace tako
 		WGPUTextureFormat m_depthTextureFormat = WGPUTextureFormat_Depth24Plus;
 		WGPUTexture m_depthTexture;
 		WGPUTextureView m_depthTextureView;
+		WGPUTextureFormat m_textureFormat = WGPUTextureFormat_RGBA8Unorm;
 
 		WGPURenderPassEncoder m_renderPass;
 		WGPUTextureView m_targetView;
@@ -741,15 +835,17 @@ namespace tako
 
 			requiredLimits.limits.maxVertexAttributes = 2;
 			requiredLimits.limits.maxVertexBuffers = 1;
-			requiredLimits.limits.maxBufferSize = 11 * 5 * sizeof(float);
+			requiredLimits.limits.maxBufferSize = 10000 * 11 * sizeof(float);
 			requiredLimits.limits.maxVertexBufferArrayStride = 11 * sizeof(float);
-			requiredLimits.limits.maxInterStageShaderComponents = 3;
+			requiredLimits.limits.maxInterStageShaderComponents = 8;
 			requiredLimits.limits.maxBindGroups = 1;
 			requiredLimits.limits.maxUniformBuffersPerShaderStage = 1;
 			requiredLimits.limits.maxUniformBufferBindingSize = 16 * 4 * sizeof(float);
 			requiredLimits.limits.maxTextureDimension1D = 2160;
 			requiredLimits.limits.maxTextureDimension2D = 3840;
 			requiredLimits.limits.maxTextureArrayLayers = 1;
+			requiredLimits.limits.maxSampledTexturesPerShaderStage = 1;
+			requiredLimits.limits.maxSamplersPerShaderStage = 1;
 
 			requiredLimits.limits.minUniformBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
 			requiredLimits.limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minStorageBufferOffsetAlignment;

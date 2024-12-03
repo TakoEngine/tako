@@ -11,6 +11,7 @@ namespace tako
 	struct Texture
 	{
 		TextureHandle handle;
+		void* ptr;
 		int width;
 		int height;
 	};

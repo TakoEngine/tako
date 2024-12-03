@@ -34,7 +34,7 @@ public:
 	{
 		renderer = new tako::Renderer3D(setup.context);
 		auto path = "/CrossGolf.glb";
-		model = renderer->LoadModel(path.c_str());
+		model = renderer->LoadModel(path);
 	}
 
 	void Update(tako::Input* input, float dt, FrameData* frameData)
