@@ -33,7 +33,7 @@ public:
 	void Setup(const tako::SetupData& setup)
 	{
 		renderer = new tako::Renderer3D(setup.context);
-		auto path = tako::FileSystem::GetExecutablePath() + "/Assets/CrossGolf.glb";
+		auto path = "/CrossGolf.glb";
 		model = renderer->LoadModel(path.c_str());
 	}
 
@@ -90,12 +90,11 @@ public:
 		renderer->Begin();
 		//renderer->SetLightPosition(frameData->lightPos);
 		renderer->SetCameraView(tako::Matrix4::cameraViewMatrix(frameData->trans, frameData->rotation));
-		//auto transform = tako::Matrix4::ScaleMatrix(frameData->zoom, frameData->zoom, frameData->zoom);
-		//renderer->DrawMesh(golf, texture, );
+		auto transform = tako::Matrix4::ScaleMatrix(frameData->zoom, frameData->zoom, frameData->zoom);
 
-		//renderer->DrawModel(model, transform);
+		renderer->DrawModel(model, transform);
 
-		renderer->DrawCube(tako::Matrix4::translation(0, 0, 0), model.materials[0]);
+		//renderer->DrawCube(tako::Matrix4::translation(0, 0, 0), model.materials[0]);
 
 		renderer->End();
 	}

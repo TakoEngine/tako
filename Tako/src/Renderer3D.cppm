@@ -14,8 +14,16 @@ module;
 #include <array>
 export module Tako.Renderer3D;
 
+import fastgltf;
 import Tako.FileSystem;
 import Tako.GraphicsContext;
+
+
+template <>
+struct fastgltf::ElementTraits<tako::Vector2> : fastgltf::ElementTraitsBase<tako::Vector2, AccessorType::Vec2, float> {};
+
+template <>
+struct fastgltf::ElementTraits<tako::Vector3> : fastgltf::ElementTraitsBase<tako::Vector3, AccessorType::Vec3, float> {};
 
 namespace tako
 {
@@ -238,144 +246,91 @@ namespace tako
 
 	Model Renderer3D::LoadModel(const char* file)
 	{
-		return {};
-		/*
-		Assimp::Importer importer;
-		const aiScene* scene = importer.ReadFile(file,
-			aiProcess_CalcTangentSpace |
-			aiProcess_Triangulate |
-			aiProcess_JoinIdenticalVertices |
-			aiProcess_SortByPType |
-			aiProcess_FlipUVs);
-
-		std::vector<Texture> textures;
-		textures.resize(scene->mNumTextures);
-		for (int t = 0; t < scene->mNumTextures; t++)
+		Model model;
+		fastgltf::Parser parser;
+		std::filesystem::path path(file);
+		auto data = fastgltf::GltfDataBuffer::FromPath(path);;
+		if( data.error() != fastgltf::Error::None)
 		{
-			auto tex = scene->mTextures[t];
-			if (tex->mHeight > 0)
-			{
-				Bitmap bmp(tex->mWidth, tex->mHeight);
-				for (int i = 0; i < tex->mWidth * tex->mHeight; i++)
-				{
-					auto& tx = tex->pcData[i];
-					bmp.GetData()[i] = { tx.r, tx.g, tx.b, tx.a };
-				}
-				textures[t] = m_context->CreateTexture(bmp);
-			}
-			else
-			{
-				textures[t] = m_context->CreateTexture(Bitmap::FromFileData(reinterpret_cast<const U8*>(tex->pcData), tex->mWidth));
-			}
+			LOG_ERR("gltf data error: {}", fastgltf::getErrorName(data.error()));
+			return {};
 		}
 
-		std::vector<Material> materials;
-		materials.resize(scene->mNumMeshes);
-
-		for (int matIndex = 0; matIndex < scene->mNumMaterials; matIndex++)
+		auto assetRes = parser.loadGltf(data.get(), path.parent_path(), fastgltf::Options::None);
+		if (assetRes.error() != fastgltf::Error::None)
 		{
-			auto mat = scene->mMaterials[matIndex];
-			auto diffuseTexCount = mat->GetTextureCount(aiTextureType_DIFFUSE);
-			if (diffuseTexCount > 0)
-			{
-				aiString texPath;
-				mat->GetTexture(aiTextureType_DIFFUSE, 0, &texPath);
-				materials[matIndex] = { m_context->CreateMaterial(&textures[(size_t)atoi(&texPath.C_Str()[1])]) };
-			}
-			//TODO: handle more cases
+			LOG_ERR("gltf asset error: {}", fastgltf::getErrorName(assetRes.error()));
+			return {};
 		}
 
-		std::vector<Mesh> meshes;
-		meshes.resize(scene->mNumMeshes);
-
-		std::vector<Node> nodes;
-		nodes.resize(scene->mNumMeshes);
-
-		for (int mIndex = 0; mIndex < scene->mNumMeshes; mIndex++)
+		auto& asset = assetRes.get();
+		fastgltf::iterateSceneNodes(asset, 0, fastgltf::math::fmat4x4(), [&](fastgltf::Node& node, fastgltf::math::fmat4x4 matrix)
 		{
-			auto mesh = scene->mMeshes[mIndex];
-			std::vector<Vertex> vertices;
-			vertices.resize(mesh->mNumVertices);
-			for (int v = 0; v < mesh->mNumVertices; v++)
+			if (node.meshIndex.has_value())
 			{
-				Vertex vert;
-
-				vert.pos = { mesh->mVertices[v].x, mesh->mVertices[v].y, mesh->mVertices[v].z };
-				vert.normal = { mesh->mNormals[v].x, mesh->mNormals[v].y, mesh->mNormals[v].z };
-				if (mesh->HasVertexColors(0))
+				std::vector<Vertex> vertices;
+				std::vector<U16> indices;
+				LOG("{}", node.name);
+				auto& rawMesh = asset.meshes[node.meshIndex.value()];
+				for (auto& primitive : rawMesh.primitives)
 				{
-					vert.color = { mesh->mColors[0][v].r, mesh->mColors[0][v].g, mesh->mColors[0][v].b };
-					LOG("{} {} {}", vert.color.x, vert.color.y, vert.color.z);
-				}
-				else
-				{
-					vert.color = { 1, 1, 1 };
-				}
-				if (mesh->GetNumUVChannels() >= 1)
-				{
-					vert.uv = { mesh->mTextureCoords[0][v].x, mesh->mTextureCoords[0][v].y };
-				}
-				else
-				{
-					vert.uv = { 0, 0 };
-				}
-				vertices[v] = vert;
-			}
+					//TODO: merge primitives
+					auto& indexAccessor = asset.accessors[primitive.indicesAccessor.value()];
+					indices.reserve(indexAccessor.count);
+					fastgltf::iterateAccessor<U32>(asset, indexAccessor, [&](U32 index)
+					{
+						indices.push_back(index);
+					});
 
-			std::vector<U16> indices;
-			indices.resize(mesh->mNumFaces * 3);
-			for (int f = 0; f < mesh->mNumFaces; f++)
-			{
-				indices[f * 3 + 0] = mesh->mFaces[f].mIndices[0];
-				indices[f * 3 + 1] = mesh->mFaces[f].mIndices[1];
-				indices[f * 3 + 2] = mesh->mFaces[f].mIndices[2];
-			}
 
-			auto finalMesh = CreateMesh(vertices, indices);
-			meshes[mIndex] = finalMesh;
+					auto& posAccessor = asset.accessors[primitive.findAttribute("POSITION")->accessorIndex];
+					vertices.resize(posAccessor.count);
+					fastgltf::iterateAccessorWithIndex<Vector3>(asset, posAccessor, [&](Vector3 pos, size_t index)
+					{
+						Vertex v;
+						v.pos = pos;
+						v.color = Vector3(1, 1, 1);
+						vertices[index] = v;
+					});
 
-			nodes[mIndex] = { finalMesh, materials[mesh->mMaterialIndex]};
-		}
+					auto normals = primitive.findAttribute("NORMAL");
+					if (normals != primitive.attributes.end())
+					{
+						auto& normalAccessor = asset.accessors[normals->accessorIndex];
+						fastgltf::iterateAccessorWithIndex<Vector3>(asset, normalAccessor, [&](Vector3 normal, size_t index)
+						{
+							vertices[index].normal = normal;
+						});
+					}
 
-		/*
-		for (int m = 0; m < scene->mNumMaterials; m++)
-		{
-			auto mat = scene->mMaterials[m];
-			LOG("{}", scene->mMaterials[m]->GetName().C_Str());
-			LOG("{}", scene->mMaterials[m]->mNumProperties);
-			auto diffuseTexCount = scene->mMaterials[m]->GetTextureCount(aiTextureType_DIFFUSE);
-			for (int t = 0; t < diffuseTexCount; t++)
-			{
-				aiString texPath;
-				scene->mMaterials[m]->GetTexture(aiTextureType_DIFFUSE, t, &texPath);
-				LOG("{}", texPath.C_Str());
-			}
-			auto baseTexCount = scene->mMaterials[m]->GetTextureCount(aiTextureType_BASE_COLOR);
-			for (int t = 0; t < baseTexCount; t++)
-			{
-				aiString texPath;
-				scene->mMaterials[m]->GetTexture(aiTextureType_BASE_COLOR, t, &texPath);
-				LOG("{}", texPath.C_Str());
-			}
-			for (int p = 0; p < scene->mMaterials[m]->mNumProperties; p++)
-			{
-				auto prop = scene->mMaterials[m]->mProperties[p];
-				switch (prop->mType)
-				{
+					auto colors = primitive.findAttribute("COLOR_0");
+					if (normals != primitive.attributes.end())
+					{
+						auto& colorAccessor = asset.accessors[colors->accessorIndex];
+						fastgltf::iterateAccessorWithIndex<Vector3>(asset, colorAccessor, [&](Vector3 color, size_t index)
+						{
+							vertices[index].color = color;
+						});
+					}
 
-				case aiPTI_String:
-					LOG("{} {}", prop->mKey.C_Str(), ((aiString*)prop->mData)->C_Str());
-					break;
-				case aiPTI_Float:
-					LOG("{} {} {}", prop->mKey.C_Str(), prop->mDataLength, *((float*)prop->mData));
+					auto uvs = primitive.findAttribute("TEXCOORD_0");
+					if (uvs != primitive.attributes.end())
+					{
+						auto& uvAccessor = asset.accessors[uvs->accessorIndex];
+						fastgltf::iterateAccessorWithIndex<Vector2>(asset, uvAccessor, [&](Vector2 uv, size_t index)
+						{
+							vertices[index].uv = uv;
+						});
+					}
+
+					Node node;
+					node.mesh = CreateMesh(vertices, indices);
+					model.nodes.push_back(node);
 				}
 			}
-		}
-		/
+		});
 
-
-		return { meshes, materials, textures, nodes };
-		*/
+		return model;
 	}
 
 	Mesh Renderer3D::LoadMesh(const char* file)

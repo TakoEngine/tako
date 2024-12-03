@@ -24,6 +24,11 @@ add_subdirectory("Utils")
 add_subdirectory("dependencies/fmt" EXCLUDE_FROM_ALL)
 add_subdirectory("dependencies/yaml-cpp" EXCLUDE_FROM_ALL)
 add_subdirectory("dependencies/json" EXCLUDE_FROM_ALL)
+
+set(FASTGLTF_COMPILE_AS_CPP20 ON CACHE BOOL "" FORCE)
+set(FASTGLTF_ENABLE_CPP_MODULES ON CACHE BOOL "" FORCE)
+add_subdirectory("dependencies/fastgltf" EXCLUDE_FROM_ALL)
+
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)

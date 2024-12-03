@@ -28,3 +28,6 @@
 [submodule "dependencies/json"]
 	path = dependencies/json
 	url = https://github.com/nlohmann/json.git
+[submodule "dependencies/fastgltf"]
+	path = dependencies/fastgltf
+	url = https://github.com/spnda/fastgltf.git
