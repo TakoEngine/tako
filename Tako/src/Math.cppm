@@ -596,6 +596,8 @@ export namespace tako
 			result[11] = -1;
 			result[14] = -(farDist * nearDist) / (farDist - nearDist);
 
+			//result[5] *= -1; // Correct for gltf following opengl convention
+
 			return result;
 		}
 

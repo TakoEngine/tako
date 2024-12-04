@@ -722,7 +722,7 @@ namespace tako
 
 		void CreateDepthTexture()
 		{
-			WGPUTextureDescriptor depthTextureDesc;
+			WGPUTextureDescriptor depthTextureDesc{};
 			depthTextureDesc.nextInChain = nullptr;
 			depthTextureDesc.dimension = WGPUTextureDimension_2D;
 			depthTextureDesc.format = m_depthTextureFormat;
@@ -734,7 +734,7 @@ namespace tako
 			depthTextureDesc.viewFormats = &m_depthTextureFormat;
 			m_depthTexture = wgpuDeviceCreateTexture(m_device, &depthTextureDesc);
 
-			WGPUTextureViewDescriptor depthTextureViewDesc;
+			WGPUTextureViewDescriptor depthTextureViewDesc{};
 			depthTextureViewDesc.nextInChain = nullptr;
 			depthTextureViewDesc.aspect = WGPUTextureAspect_DepthOnly;
 			depthTextureViewDesc.baseArrayLayer = 0;

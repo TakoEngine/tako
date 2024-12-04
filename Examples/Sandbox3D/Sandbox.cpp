@@ -22,7 +22,7 @@ float PingPong(float val, float max)
 struct FrameData
 {
 	float zoom = 1;
-	tako::Vector3 trans = { 0, -2, 0 };
+	tako::Vector3 trans = { 0, 2, 0 };
 	tako::Vector3 lightPos = { 0, 10, -3 };
 	tako::Quaternion rotation;
 };
@@ -43,20 +43,20 @@ public:
 		if (input->GetKey(tako::Key::Down))
 		{
 			//rotX -= dt;
-			data.rotation = data.rotation * tako::Quaternion::FromEuler({dt, 0, 0});
+			data.rotation = data.rotation * tako::Quaternion::FromEuler({dt*4, 0, 0});
 		}
 		if (input->GetKey(tako::Key::Up))
 		{
 			//rotX += dt;
-			data.rotation = data.rotation * tako::Quaternion::FromEuler({-dt, 0, 0});
+			data.rotation = data.rotation * tako::Quaternion::FromEuler({-dt*4, 0, 0});
 		}
 		if (input->GetKey(tako::Key::Left))
 		{
-			data.rotation = data.rotation * tako::Quaternion::FromEuler({0, -dt, 0});
+			data.rotation = data.rotation * tako::Quaternion::FromEuler({0, -dt*4, 0});
 		}
 		if (input->GetKey(tako::Key::Right))
 		{
-			data.rotation = data.rotation * tako::Quaternion::FromEuler({0, dt, 0});
+			data.rotation = data.rotation * tako::Quaternion::FromEuler({0, dt*4, 0});
 		}
 		tako::Vector3 movAxis;
 		if (input->GetKey(tako::Key::W))
@@ -75,6 +75,14 @@ public:
 		{
 			movAxis.x += dt;
 		}
+		if (input->GetKey(tako::Key::Space))
+		{
+			movAxis.y += dt;
+		}
+		if (input->GetKey(tako::Key::X))
+		{
+			movAxis.y -= dt;
+		}
 
 		data.trans += data.rotation * movAxis;
 		static float passed = 0;
@@ -90,6 +98,7 @@ public:
 		renderer->Begin();
 		//renderer->SetLightPosition(frameData->lightPos);
 		renderer->SetCameraView(tako::Matrix4::cameraViewMatrix(frameData->trans, frameData->rotation));
+		//renderer->SetCameraView(tako::Matrix4::lookAt(frameData->trans, tako::Vector3(0,0,0), tako::Vector3(0, 1, 0)));
 		auto transform = tako::Matrix4::ScaleMatrix(frameData->zoom, frameData->zoom, frameData->zoom);
 
 		renderer->DrawModel(model, transform);
@@ -107,7 +116,7 @@ private:
 	FrameData data
 	{
 		1,
-		{0, 0, -6},
+		{0, 2, 0},
 		{ 0, 10, -3 },
 		{}
 	};

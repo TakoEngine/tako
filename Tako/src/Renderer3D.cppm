@@ -264,6 +264,22 @@ namespace tako
 		}
 
 		auto& asset = assetRes.get();
+
+		for (auto& image : asset.images)
+		{
+			LOG("img: {}", image.name);
+		}
+
+		for (auto& texture : asset.textures)
+		{
+			LOG("tex: {}", texture.name);
+		}
+
+		for (auto& material : asset.materials)
+		{
+			LOG("mat: ", material.name);
+		}
+
 		fastgltf::iterateSceneNodes(asset, 0, fastgltf::math::fmat4x4(), [&](fastgltf::Node& node, fastgltf::math::fmat4x4 matrix)
 		{
 			if (node.meshIndex.has_value())
@@ -274,7 +290,7 @@ namespace tako
 				auto& rawMesh = asset.meshes[node.meshIndex.value()];
 				for (auto& primitive : rawMesh.primitives)
 				{
-					//TODO: merge primitives
+					//TODO: merge primitives if same material?
 					auto& indexAccessor = asset.accessors[primitive.indicesAccessor.value()];
 					indices.reserve(indexAccessor.count);
 					fastgltf::iterateAccessor<U32>(asset, indexAccessor, [&](U32 index)
@@ -289,6 +305,7 @@ namespace tako
 					{
 						Vertex v;
 						v.pos = pos;
+						v.pos.y *= -1;
 						v.color = Vector3(1, 1, 1);
 						vertices[index] = v;
 					});
@@ -321,6 +338,12 @@ namespace tako
 						{
 							vertices[index].uv = uv;
 						});
+					}
+
+					if (primitive.materialIndex.has_value())
+					{
+						auto materialIndex = primitive.materialIndex.value();
+						LOG("mat: {}", materialIndex);
 					}
 
 					Node node;
