@@ -265,11 +265,12 @@ namespace tako
 
 				@fragment
 				fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-					let color = textureSample(gradientTexture, textureSampler, in.uv).rgb;
-					//let normal = normalize(in.normal);
-					//let lightDirection = vec3f(0.5, -0.9, 0.1);
-					//let shading = dot(lightDirection, normal);
-					//let color = in.color * shading;
+					let normal = normalize(in.normal);
+					let lightDirection = vec3f(0.5, 0.9, 0.1);
+					let shading = dot(lightDirection, normal);
+
+					let baseColor = textureSample(gradientTexture, textureSampler, in.uv).rgb;
+					let color = baseColor * shading;
 
 					return vec4f(color, 1.0);
 				}
