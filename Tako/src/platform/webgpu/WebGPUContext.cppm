@@ -14,7 +14,7 @@ namespace tako
 	export class WebGPUContext final : public IGraphicsContext
 	{
 	public:
-		WebGPUContext(Window* window) : m_window(window)
+		WebGPUContext(Window* window) : m_width(window->GetWidth()), m_height(window->GetHeight())
 		{
 			WGPUInstanceDescriptor desc = {};
 			desc.nextInChain = nullptr;
@@ -150,7 +150,13 @@ namespace tako
 
 		virtual void Resize(int width, int height) override
 		{
+			m_width = width;
+			m_height = height;
 
+			TerminateDepthTexture();
+
+			ConfigureSurface();
+			CreateDepthTexture();
 		}
 
 		virtual void HandleEvent(Event &evt) override
@@ -161,12 +167,12 @@ namespace tako
 
 		virtual U32 GetWidth() override
 		{
-			return m_window->GetWidth();
+			return m_width;
 		}
 
 		virtual U32 GetHeight() override
 		{
-			return m_window->GetHeight();
+			return m_height;
 		}
 
 
@@ -564,7 +570,8 @@ namespace tako
 		WGPUCommandEncoder m_encoder;
 
 		bool m_initComplete = false; //TODO: tie into "await" system
-		Window* m_window;
+		//Window* m_window;
+		U32 m_width, m_height;
 		WGPUQueue m_queue;
 		WGPUDevice m_device;
 		WGPUAdapter m_adapter;
@@ -627,21 +634,8 @@ namespace tako
 				m_surface = wgpuInstanceCreateSurface(m_instance, &surfaceDescriptor);
 				ASSERT(m_surface);
 
-				WGPUSurfaceConfiguration config = {};
-				config.nextInChain = nullptr;
-				config.width = m_window->GetWidth();
-				config.height = m_window->GetHeight();
+				ConfigureSurface();
 
-				m_surfaceFormat = wgpuSurfaceGetPreferredFormat(m_surface, m_adapter);
-				config.format = m_surfaceFormat;
-				config.viewFormatCount = 0;
-				config.viewFormats = nullptr;
-				config.usage = WGPUTextureUsage_RenderAttachment;
-				config.device = m_device;
-				config.presentMode = WGPUPresentMode_Fifo;
-				config.alphaMode = WGPUCompositeAlphaMode_Auto;
-
-				wgpuSurfaceConfigure(m_surface, &config);
 				LOG("Renderer Setup Complete!")
 				m_initComplete = true;
 
@@ -720,6 +714,25 @@ namespace tako
 			return buffer;
 		}
 
+		void ConfigureSurface()
+		{
+			WGPUSurfaceConfiguration config = {};
+			config.nextInChain = nullptr;
+			config.width = m_width;
+			config.height = m_height;
+
+			m_surfaceFormat = wgpuSurfaceGetPreferredFormat(m_surface, m_adapter);
+			config.format = m_surfaceFormat;
+			config.viewFormatCount = 0;
+			config.viewFormats = nullptr;
+			config.usage = WGPUTextureUsage_RenderAttachment;
+			config.device = m_device;
+			config.presentMode = WGPUPresentMode_Fifo;
+			config.alphaMode = WGPUCompositeAlphaMode_Auto;
+
+			wgpuSurfaceConfigure(m_surface, &config);
+		}
+
 		void CreateDepthTexture()
 		{
 			WGPUTextureDescriptor depthTextureDesc{};
@@ -728,7 +741,7 @@ namespace tako
 			depthTextureDesc.format = m_depthTextureFormat;
 			depthTextureDesc.mipLevelCount = 1;
 			depthTextureDesc.sampleCount = 1;
-			depthTextureDesc.size = { (U32)m_window->GetWidth(), (U32) m_window->GetHeight(), 1};
+			depthTextureDesc.size = { m_width, m_height, 1};
 			depthTextureDesc.usage = WGPUTextureUsage_RenderAttachment;
 			depthTextureDesc.viewFormatCount = 1;
 			depthTextureDesc.viewFormats = &m_depthTextureFormat;
@@ -744,6 +757,15 @@ namespace tako
 			depthTextureViewDesc.dimension = WGPUTextureViewDimension_2D;
 			depthTextureViewDesc.format = m_depthTextureFormat;
 			m_depthTextureView = wgpuTextureCreateView(m_depthTexture, &depthTextureViewDesc);
+		}
+
+		void TerminateDepthTexture()
+		{
+			wgpuTextureViewRelease(m_depthTextureView);
+			m_depthTextureView = nullptr;
+			wgpuTextureDestroy(m_depthTexture);
+			wgpuTextureRelease(m_depthTexture);
+			m_depthTexture = nullptr;
 		}
 
 		void SetDefault(WGPULimits& limits) const
