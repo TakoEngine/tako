@@ -93,9 +93,8 @@ namespace tako
 				emscripten_webgl_make_context_current(m_contextHandle);
 			}
 
-			double width, height;
-			emscripten_get_element_css_size(HTML_TARGET, &width, &height);
-			Resize(width, height);
+			MatchCanvasToElementSize();
+			ResizeCallback();
 			emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, this, false, WindowResizeCallback);
 
 			emscripten_set_keypress_callback(HTML_TARGET, this, false, KeyPressCallback);
@@ -169,9 +168,17 @@ namespace tako
 
 		void Resize(int width, int height)
 		{
-			m_width = width;
-			m_height = height;
-			emscripten_set_canvas_element_size(HTML_TARGET, width, height);
+			ResizeCanvas(width, height);
+			ResizeCallback();
+		}
+
+		void ResizeCallback()
+		{
+			ResizeCallback(m_width, m_height);
+		}
+
+		void ResizeCallback(int width, int height)
+		{
 			if (m_callback)
 			{
 				WindowResize evt;
@@ -181,12 +188,24 @@ namespace tako
 			}
 		}
 
+		void ResizeCanvas(int width, int height)
+		{
+			emscripten_set_canvas_element_size(HTML_TARGET, width, height);
+			emscripten_get_canvas_element_size(HTML_TARGET, &m_width, &m_height);
+		}
+
+		void MatchCanvasToElementSize()
+		{
+			double width, height;
+			emscripten_get_element_css_size(HTML_TARGET, &width, &height);
+			ResizeCanvas(width, height);
+		}
+
 		static EM_BOOL WindowResizeCallback(int eventType, const EmscriptenUiEvent* uiEvent, void* userData)
 		{
 			Window::WindowImpl* win = static_cast<Window::WindowImpl*>(userData);
-			double width, height;
-			emscripten_get_element_css_size(HTML_TARGET, &width, &height);
-			win->Resize(width, height);
+			win->MatchCanvasToElementSize();
+			win->ResizeCallback();
 			return true;
 		}
 
@@ -261,7 +280,7 @@ namespace tako
 
 	WindowHandle Window::GetHandle() const
 	{
-		return std::nullptr_t();
+		return HTML_TARGET;
 	}
 
 	void Window::SetEventCallback(const std::function<void(Event&)>& callback)

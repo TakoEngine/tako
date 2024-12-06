@@ -31,7 +31,8 @@
 		"DOCKER_BUILDKIT": "0"
 	},
 	"runArgs": [
-		"--volume=/tmp/.X11-unix:/tmp/.X11-unix"
+		"--volume=/tmp/.X11-unix:/tmp/.X11-unix",
+		 "--net=host"
 	]
 
 	// Configure tool-specific properties.

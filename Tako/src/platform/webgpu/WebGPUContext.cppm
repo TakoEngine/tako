@@ -625,12 +625,12 @@ namespace tako
 				// Surface
 				WGPUSurfaceDescriptorFromCanvasHTMLSelector fromCanvasHTMLSelector;
 				fromCanvasHTMLSelector.chain.sType = WGPUSType_SurfaceDescriptorFromCanvasHTMLSelector;
-				fromCanvasHTMLSelector.chain.next = NULL;
+				fromCanvasHTMLSelector.chain.next = nullptr;
 				fromCanvasHTMLSelector.selector = "#canvas"; //TODO: Use HTML_TARGET from Window
 
 				WGPUSurfaceDescriptor surfaceDescriptor;
 				surfaceDescriptor.nextInChain = &fromCanvasHTMLSelector.chain;
-				surfaceDescriptor.label = NULL;
+				surfaceDescriptor.label = nullptr;
 
 				m_surface = wgpuInstanceCreateSurface(m_instance, &surfaceDescriptor);
 				ASSERT(m_surface);

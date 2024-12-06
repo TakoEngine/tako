@@ -15,7 +15,7 @@
 namespace tako
 {
 #ifdef __EMSCRIPTEN__
-	using WindowHandle = GLFWwindow*;
+	using WindowHandle = const char*;
 #endif
 #ifdef _WIN32
 	using WindowHandle = HWND;
@@ -24,5 +24,5 @@ namespace tako
 	using WindowHandle = GLFWwindow*;
 #endif
 
-	
+
 }
