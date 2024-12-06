@@ -101,6 +101,10 @@ namespace tako
 			emscripten_set_keydown_callback(HTML_TARGET, this, false, KeyPressCallback);
 			emscripten_set_keyup_callback(HTML_TARGET, this, false, KeyPressCallback);
 			emscripten_set_mousemove_callback(HTML_TARGET, this, false, MouseMoveCallback);
+			emscripten_set_touchstart_callback(HTML_TARGET, this, false, TouchCallback);
+			emscripten_set_touchend_callback(HTML_TARGET, this, false, TouchCallback);
+			emscripten_set_touchmove_callback(HTML_TARGET, this, false, TouchCallback);
+			emscripten_set_touchcancel_callback(HTML_TARGET, this, false, TouchCallback);
 		}
 
 
@@ -160,6 +164,7 @@ namespace tako
 		EMSCRIPTEN_WEBGL_CONTEXT_HANDLE m_contextHandle;
 		std::function<void(Event&)> m_callback;
 		GLFWwindow* m_window;
+		std::unordered_map<int, EmscriptenTouchPoint> m_touches;
 
 		void SetEventCallback(const std::function<void(Event&)>& callback)
 		{
@@ -248,6 +253,48 @@ namespace tako
 				return true;
 			}
 			return false;
+		}
+
+		EM_BOOL static TouchCallback(int eventType, const EmscriptenTouchEvent* touchEvent, void *userData)
+		{
+			Window::WindowImpl* win = static_cast<Window::WindowImpl*>(userData);
+			bool handled = false;
+
+			switch (eventType)
+			{
+				case EMSCRIPTEN_EVENT_TOUCHSTART:
+					for (int i = 0; i < touchEvent->numTouches; i++)
+					{
+						auto touch = touchEvent->touches[i];
+						win->m_touches[touch.identifier] = touch;
+					}
+					break;
+				case EMSCRIPTEN_EVENT_TOUCHMOVE:
+					for (int i = 0; i < touchEvent->numTouches; i++)
+					{
+						auto touch = touchEvent->touches[i];
+						if (touch.isChanged && win->m_callback)
+						{
+							MouseMove evt;
+							evt.position.x = touch.clientX;
+							evt.position.y = win->m_height - touch.clientY;
+							win->m_callback(evt);
+							handled = true;
+						}
+						win->m_touches[touch.identifier] = touch;
+					}
+					break;
+				case EMSCRIPTEN_EVENT_TOUCHEND:
+				case EMSCRIPTEN_EVENT_TOUCHCANCEL:
+					win->m_touches.clear();
+					for (int i = 0; i < touchEvent->numTouches; i++)
+					{
+						auto touch = touchEvent->touches[i];
+						win->m_touches[touch.identifier] = touch;
+					}
+			}
+
+			return handled;
 		}
 	};
 
