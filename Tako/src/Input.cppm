@@ -26,7 +26,7 @@ namespace tako
 				case tako::EventType::MouseMove:
 				{
 					tako::MouseMove& move = static_cast<tako::MouseMove&>(evt);
-					m_mousePosition = move.position;
+					m_curMousePosition = move.position;
 				} break;
 				case tako::EventType::AxisUpdate:
 				{
@@ -44,8 +44,11 @@ namespace tako
 		bool GetAnyDown();
 		Vector2 GetAxis(Axis axis);
 		Vector2 GetMousePosition();
+		Vector2 GetMouseMovement();
 	private:
 		Vector2 m_mousePosition;
+		Vector2 m_prevMousePosition;
+		Vector2 m_curMousePosition;
 		std::array<KeyStatus, static_cast<size_t>(Key::Unknown)> activeKeys = {KeyStatus::Up};
 		std::array<KeyStatus, static_cast<size_t>(Key::Unknown)> keys = {KeyStatus::Up};
 		std::array<KeyStatus, static_cast<size_t>(Key::Unknown)> prevKeys = {KeyStatus::Up};
@@ -95,10 +98,17 @@ namespace tako
 		return m_mousePosition;
 	}
 
+	Vector2 Input::GetMouseMovement()
+	{
+		return m_mousePosition - m_prevMousePosition;
+	}
+
 	void Input::Update()
 	{
 		prevKeys = keys;
 		keys = activeKeys;
+		m_prevMousePosition = m_mousePosition;
+		m_mousePosition = m_curMousePosition;
 	}
 }
 
