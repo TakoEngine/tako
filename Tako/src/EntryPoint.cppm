@@ -4,7 +4,7 @@ module;
 #include "Resources.hpp"
 #include <thread>
 //#include "OpenGLPixelArtDrawer.hpp"
-#ifdef EMSCRIPTEN
+#ifdef TAKO_EMSCRIPTEN
 #include <emscripten.h>
 #include <emscripten/proxying.h>
 #endif
@@ -46,7 +46,7 @@ namespace tako
 		JobSystem& jobSys;
 		std::atomic<bool>& keepRunning;
 		Allocators::PoolAllocator frameDataPool;
-#ifdef EMSCRIPTEN
+#ifdef TAKO_EMSCRIPTEN
 		pthread_t mainThread;
 		emscripten::ProxyingQueue proxyQueue;
 #endif
@@ -133,7 +133,9 @@ namespace tako
 				}
 				//LOG("Start Draw {}", thisFrame);
 				//data->jobSys.Schedule([=]()
+				#ifdef TAKO_EMSCRIPTEN
 				data->proxyQueue.proxySync(data->mainThread, [=]()
+				#endif
 				{
 					data->context.Begin();
 					if (data->config.Draw)
@@ -159,7 +161,11 @@ namespace tako
 #endif
 					data->context.Present();
 					//LOG("Tick End");
+				#ifdef TAKO_EMSCRIPTEN
 				});
+				#else
+				}
+				#endif
 
 				#ifndef EMSCRIPTEN
 					data->jobSys.ScheduleDetached(std::bind(Tick, p));

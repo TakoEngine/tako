@@ -96,6 +96,7 @@ endif()
 if (TAKO_MAC OR TAKO_LINUX)
 set_feature(TAKO_OPENGL true)
 set_feature(TAKO_VULKAN false)
+set_feature(TAKO_WEBGPU true)
 set_feature(TAKO_GLFW true)
 set_feature(TAKO_GLAD true)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -242,11 +243,15 @@ target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencie
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/yaml-cpp/include")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/json/include")
 target_include_directories(${TAKO_DLL} PUBLIC "${CMAKE_BINARY_DIR}/shader")
-target_link_libraries(${TAKO_DLL} PUBLIC fastgltf_module)
+
+# target_link_libraries(${TAKO_DLL} PUBLIC fastgltf_module)
+# Use non module import for fastgltf since C++ modules have problems with importing std includes in different modules
+target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/fastgltf/include")
+target_link_libraries(${TAKO_DLL} PUBLIC fastgltf)
 
 if (NOT EMSCRIPTEN)
-	target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/assimp/include")
-	target_link_libraries(${TAKO_DLL} PUBLIC assimp)
+	#target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/assimp/include")
+	#target_link_libraries(${TAKO_DLL} PUBLIC assimp)
 endif()
 
 

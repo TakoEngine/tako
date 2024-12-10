@@ -1,20 +1,114 @@
 module;
 #include "Utility.hpp"
 #include <IGraphicsContext.hpp>
-#ifdef EMSCRIPTEN
+#if defined(TAKO_EMSCRIPTEN)
 #include <emscripten.h>
+#elif defined(TAKO_GLFW)
+#include <webgpu/webgpu_glfw.h>
 #endif
-#include <webgpu/webgpu.h>
+#include <webgpu/webgpu_cpp.h>
 export module Tako.WebGPU;
 
 import Tako.JobSystem;
 
+class StringView
+{
+public:
+	StringView() : m_str(nullptr), m_size(0), m_nullTerminated(true) {}
+	StringView(const char* str) : m_str(str), m_size(std::strlen(str)), m_nullTerminated(true) {}
+
+	operator const char*() const
+	{
+		ASSERT(m_nullTerminated);
+		return m_str;
+	}
+
+	#ifndef TAKO_EMSCRIPTEN
+	operator WGPUStringView()
+	{
+		return {m_str, m_size};
+	}
+
+	operator const WGPUStringView() const
+	{
+		return {m_str, m_size};
+	}
+	#endif
+private:
+	const char* m_str;
+	size_t m_size;
+	bool m_nullTerminated;
+};
+
+#ifndef TAKO_EMSCRIPTEN
+using WLabel = WGPUStringView;
+
+template <>
+class fmt::formatter<WGPUStringView> {
+public:
+	constexpr auto parse (format_parse_context& ctx) { return ctx.begin(); }
+	template <typename Context>
+	constexpr auto format (WGPUStringView const& str, Context& ctx) const {
+		std::string_view s(str.data, str.length);
+		return format_to(ctx.out(), "{}", s);
+	}
+};
+#else
+using WLabel = const char*;
+#endif
+
+#ifdef TAKO_EMSCRIPTEN
+#define WGPUBufferBindingType_BindingNotUsed WGPUBufferBindingType_Undefined
+#endif
+
+#ifdef TAKO_EMSCRIPTEN
+#define WGPUSamplerBindingType_BindingNotUsed WGPUSamplerBindingType_Undefined
+#endif
+
+#ifdef TAKO_EMSCRIPTEN
+#define WGPUStorageTextureAccess_BindingNotUsed WGPUStorageTextureAccess_Undefined
+#endif
+
+#ifdef TAKO_EMSCRIPTEN
+#define WGPUTextureSampleType_BindingNotUsed WGPUTextureSampleType_Undefined
+#endif
+
+class WBool
+{
+public:
+	WBool(bool b) : m_bool(b) {}
+
+	operator bool()
+	{
+		return m_bool;
+	}
+
+#ifndef TAKO_EMSCRIPTEN
+	operator WGPUOptionalBool()
+	{
+		if (m_bool)
+		{
+			return WGPUOptionalBool_True;
+		}
+		else
+		{
+			return WGPUOptionalBool_False;
+		}
+	}
+#endif
+private:
+	bool m_bool;
+};
+
+
 namespace tako
 {
+
+
 	export class WebGPUContext final : public IGraphicsContext
 	{
 	public:
-		WebGPUContext(Window* window) : m_width(window->GetWidth()), m_height(window->GetHeight())
+		WebGPUContext(Window* window) : m_window(window), m_width(window->GetWidth()), m_height(window->GetHeight())
 		{
 			WGPUInstanceDescriptor desc = {};
 			desc.nextInChain = nullptr;
@@ -22,6 +116,15 @@ namespace tako
 			#ifdef EMSCRIPTEN
 				WGPUInstance instance = wgpuCreateInstance(nullptr);
 			#else
+				WGPUDawnTogglesDescriptor toggles;
+				toggles.chain.next = nullptr;
+				toggles.chain.sType = WGPUSType_DawnTogglesDescriptor;
+				toggles.disabledToggleCount = 0;
+				toggles.enabledToggleCount = 1;
+				const char* toggleName = "enable_immediate_error_handling";
+				toggles.enabledToggles = &toggleName;
+
+				desc.nextInChain = &toggles.chain;
 				WGPUInstance instance = wgpuCreateInstance(&desc);
 			#endif
 			ASSERT(instance);
@@ -33,7 +136,7 @@ namespace tako
 			wgpuInstanceRequestAdapter(
 				instance,
 				&adapterOpts,
-				[](WGPURequestAdapterStatus status, WGPUAdapter adapter, char const* message, void* pUserData)
+				[](WGPURequestAdapterStatus status, WGPUAdapter adapter, WLabel message, void* pUserData)
 				{
 					reinterpret_cast<WebGPUContext*>(pUserData)->RequestAdapterCallback(status, adapter, message);
 				},
@@ -43,7 +146,9 @@ namespace tako
 
 			while (!m_initComplete)
 			{
+				#ifdef TAKO_EMSCRIPTEN
 				emscripten_sleep(100);
+				#endif
 			}
 		}
 
@@ -61,15 +166,15 @@ namespace tako
 		virtual void Begin() override
 		{
 			{
-				float t = emscripten_run_script_int("performance.now()") / 100;
-				UpdateUniform(&t, sizeof(float), offsetof(Uniforms, time));
+				//float t = emscripten_run_script_int("performance.now()") / 100;
+				//UpdateUniform(&t, sizeof(float), offsetof(Uniforms, time));
 			}
 			m_targetView = GetNextSurfaceTextureView();
 			ASSERT(m_targetView);
 
 			WGPUCommandEncoderDescriptor encoderDesc = {};
 			encoderDesc.nextInChain = nullptr;
-			encoderDesc.label = "DefaultEncoder";
+			encoderDesc.label = StringView("DefaultEncoder");
 			m_encoder = wgpuDeviceCreateCommandEncoder(m_device, &encoderDesc);
 
 			WGPURenderPassDescriptor renderPassDesc = {};
@@ -129,7 +234,7 @@ namespace tako
 
 			WGPUCommandBufferDescriptor cmdBufferDescriptor = {};
 			cmdBufferDescriptor.nextInChain = nullptr;
-			cmdBufferDescriptor.label = "Command buffer";
+			cmdBufferDescriptor.label = StringView("Command buffer");
 			WGPUCommandBuffer command = wgpuCommandEncoderFinish(m_encoder, &cmdBufferDescriptor);
 			wgpuCommandEncoderRelease(m_encoder);
 			m_encoder = nullptr;
@@ -144,7 +249,7 @@ namespace tako
 		virtual void Present() override
 		{
 			#ifndef EMSCRIPTEN
-			wgpuSurfacePresent(surface);
+			wgpuSurfacePresent(m_surface);
 			#endif
 		}
 
@@ -280,11 +385,15 @@ namespace tako
 
 			WGPUShaderModuleWGSLDescriptor shaderCodeDesc{};
 			shaderCodeDesc.chain.next = nullptr;
+			#ifdef TAKO_EMSCRIPTEN
 			shaderCodeDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
-			shaderCodeDesc.code = shaderSource;
+			#else
+			shaderCodeDesc.chain.sType = WGPUSType_ShaderSourceWGSL;
+			#endif
+			shaderCodeDesc.code = StringView(shaderSource);
 
 			shaderDesc.nextInChain = &shaderCodeDesc.chain;
-			shaderCodeDesc.code = shaderSource;
+			shaderCodeDesc.code = StringView(shaderSource);
 			WGPUShaderModule shaderModule = wgpuDeviceCreateShaderModule(m_device, &shaderDesc);
 
 			WGPURenderPipelineDescriptor pipelineDesc{};
@@ -323,7 +432,7 @@ namespace tako
 			pipelineDesc.vertex.buffers = &vertexBufferLayout;
 
 			pipelineDesc.vertex.module = shaderModule;
-			pipelineDesc.vertex.entryPoint = "vs_main";
+			pipelineDesc.vertex.entryPoint = StringView("vs_main");
 			pipelineDesc.vertex.constantCount = 0;
 			pipelineDesc.vertex.constants = nullptr;
 
@@ -334,7 +443,7 @@ namespace tako
 
 			WGPUFragmentState fragmentState{};
 			fragmentState.module = shaderModule;
-			fragmentState.entryPoint = "fs_main";
+			fragmentState.entryPoint = StringView("fs_main");
 			fragmentState.constantCount = 0;
 			fragmentState.constants = nullptr;
 
@@ -348,7 +457,7 @@ namespace tako
 			blendState.alpha.operation = WGPUBlendOperation_Add;
 
 			WGPUColorTargetState colorTarget{};
-			colorTarget.format = m_surfaceFormat;
+			colorTarget.format = (WGPUTextureFormat) m_surfaceFormat;
 			colorTarget.blend = &blendState;
 			colorTarget.writeMask = WGPUColorWriteMask_All;
 
@@ -359,7 +468,7 @@ namespace tako
 			WGPUDepthStencilState depthStencilState;
 			SetDefault(depthStencilState);
 			depthStencilState.depthCompare = WGPUCompareFunction_Less;
-			depthStencilState.depthWriteEnabled = true;
+			depthStencilState.depthWriteEnabled = WBool(true);
 			depthStencilState.format = m_depthTextureFormat;
 			depthStencilState.stencilReadMask = 0;
 			depthStencilState.stencilWriteMask = 0;
@@ -472,7 +581,7 @@ namespace tako
 
 		virtual Texture CreateTexture(const Bitmap& bitmap) override
 		{
-			WGPUTextureDescriptor textureDesc;
+			WGPUTextureDescriptor textureDesc {};
 			textureDesc.nextInChain = nullptr;
 			textureDesc.dimension = WGPUTextureDimension_2D;
 			textureDesc.size = { (U32) bitmap.Width(), (U32) bitmap.Height(), 1 };
@@ -485,7 +594,7 @@ namespace tako
 
 			WGPUTexture texture = wgpuDeviceCreateTexture(m_device, &textureDesc);
 
-			WGPUTextureViewDescriptor textureViewDesc;
+			WGPUTextureViewDescriptor textureViewDesc {};
 			textureViewDesc.nextInChain = nullptr;
 			textureViewDesc.aspect = WGPUTextureAspect_All;
 			textureViewDesc.baseArrayLayer = 0;
@@ -499,7 +608,9 @@ namespace tako
 
 
 			WGPUImageCopyTexture destination;
+			#ifdef TAKO_EMSCRIPTEN
 			destination.nextInChain = nullptr;
+			#endif
 			destination.texture = texture;
 			destination.mipLevel = 0;
 			destination.origin = { 0, 0, 0 };
@@ -560,6 +671,7 @@ namespace tako
 		WGPUPipelineLayout m_layout;
     	WGPUBindGroupLayout m_bindGroupLayout;
 		WGPUBindGroup m_bindGroup;
+		Window* m_window;
 
 		WGPUTextureFormat m_depthTextureFormat = WGPUTextureFormat_Depth24Plus;
 		WGPUTexture m_depthTexture;
@@ -576,29 +688,36 @@ namespace tako
 		WGPUQueue m_queue;
 		WGPUDevice m_device;
 		WGPUAdapter m_adapter;
-		WGPUTextureFormat m_surfaceFormat = WGPUTextureFormat_Undefined;
+		wgpu::TextureFormat m_surfaceFormat;
 		WGPUSurface m_surface;
 		WGPUInstance m_instance;
 
-		void RequestAdapterCallback(WGPURequestAdapterStatus status, WGPUAdapter adapter, char const* message)
+		void RequestAdapterCallback(WGPURequestAdapterStatus status, WGPUAdapter adapter, WLabel message)
 		{
 			if (status == WGPURequestAdapterStatus_Success)
 			{
 				m_adapter = adapter;
-				WGPUDeviceDescriptor deviceDesc = {};
+				wgpu::Adapter tmpAdapter(adapter);
+				wgpu::DeviceDescriptor deviceDesc;
 				deviceDesc.nextInChain = nullptr;
 				deviceDesc.label = "DefaultDevice";
 				deviceDesc.requiredFeatureCount = 0;
-				WGPURequiredLimits requiredLimits = GetRequiredLimits(adapter);
+				wgpu::RequiredLimits requiredLimits = GetRequiredLimits(tmpAdapter);
 				deviceDesc.requiredLimits = &requiredLimits;
 				deviceDesc.defaultQueue.nextInChain = nullptr;
 				deviceDesc.defaultQueue.label = "DefaultQueue";
+				#ifdef TAKO_EMSCRIPTEN
 				deviceDesc.deviceLostCallback = DeviceLostCallback;
+				#else
+				deviceDesc.SetDeviceLostCallback(wgpu::CallbackMode::WaitAnyOnly, DeviceLostCallback);
+				deviceDesc.SetUncapturedErrorCallback(UncapturedErrorCallback);
+				//deviceDesc.deviceLostCallbackInfo2 = DeviceLostCallback;
+				//deviceDesc.uncapturedErrorCallbackInfo2 = UncapturedErrorCallback;
+				#endif
 
-				wgpuAdapterRequestDevice(
-					adapter,
+				tmpAdapter.RequestDevice(
 					&deviceDesc,
-					[](WGPURequestDeviceStatus status, WGPUDevice device, char const* message, void* pUserData)
+					[](WGPURequestDeviceStatus status, WGPUDevice device, WLabel message, void* pUserData)
 					{
 						reinterpret_cast<WebGPUContext*>(pUserData)->RequestDeviceCallback(status, device, message);
 					},
@@ -612,27 +731,34 @@ namespace tako
 			}
 		}
 
-		void RequestDeviceCallback(WGPURequestDeviceStatus status, WGPUDevice device, char const* message)
+		void RequestDeviceCallback(WGPURequestDeviceStatus status, WGPUDevice device, WLabel message)
 		{
 			if (status == WGPURequestDeviceStatus_Success)
 			{
 				m_device = device;
+				#ifdef TAKO_EMSCRIPTEN
 				wgpuDeviceSetUncapturedErrorCallback(m_device, UncapturedErrorCallback, nullptr);
+				#endif
 
 				m_queue = wgpuDeviceGetQueue(m_device);
 				//wgpuQueueOnSubmittedWorkDone(m_queue, OnQueueWorkDone, this);
 
 				// Surface
+				#if defined(TAKO_EMSCRIPTEN)
 				WGPUSurfaceDescriptorFromCanvasHTMLSelector fromCanvasHTMLSelector;
 				fromCanvasHTMLSelector.chain.sType = WGPUSType_SurfaceDescriptorFromCanvasHTMLSelector;
 				fromCanvasHTMLSelector.chain.next = nullptr;
 				fromCanvasHTMLSelector.selector = "#canvas"; //TODO: Use HTML_TARGET from Window
+
 
 				WGPUSurfaceDescriptor surfaceDescriptor;
 				surfaceDescriptor.nextInChain = &fromCanvasHTMLSelector.chain;
 				surfaceDescriptor.label = nullptr;
 
 				m_surface = wgpuInstanceCreateSurface(m_instance, &surfaceDescriptor);
+				#elif defined(TAKO_GLFW)
+				m_surface = wgpu::glfw::CreateSurfaceForWindow(m_instance, m_window->GetHandle()).MoveToCHandle();
+				#endif
 				ASSERT(m_surface);
 
 				ConfigureSurface();
@@ -660,12 +786,19 @@ namespace tako
 			LOG("Work done ({})", status);
 		}
 
+#ifdef TAKO_EMSCRIPTEN
 		static void DeviceLostCallback(WGPUDeviceLostReason reason, char const* message, void* pUserData)
+#else
+		static void DeviceLostCallback(const wgpu::Device& device, wgpu::DeviceLostReason reason, const char* message)
+#endif
 		{
 			LOG_ERR("Device lost({}): {}", reason, message);
 		}
-
+#ifdef TAKO_EMSCRIPTEN
 		static void UncapturedErrorCallback(WGPUErrorType type, char const* message, void* pUserData)
+#else
+		static void UncapturedErrorCallback(const wgpu::Device& device, wgpu::ErrorType type, const char* message)
+#endif
 		{
 			LOG_ERR("Uncaptured device error({}): {}", type, message);
 		}
@@ -681,7 +814,10 @@ namespace tako
 
 			WGPUTextureViewDescriptor viewDescriptor;
 			viewDescriptor.nextInChain = nullptr;
-			viewDescriptor.label = "Surface texture view";
+			viewDescriptor.label = StringView("Surface texture view");
+			#ifndef TAKO_EMSCRIPTEN
+			viewDescriptor.usage = WGPUTextureUsage_RenderAttachment;
+			#endif
 			viewDescriptor.format = wgpuTextureGetFormat(surfaceTexture.texture);
 			viewDescriptor.dimension = WGPUTextureViewDimension_2D;
 			viewDescriptor.baseMipLevel = 0;
@@ -717,21 +853,31 @@ namespace tako
 
 		void ConfigureSurface()
 		{
-			WGPUSurfaceConfiguration config = {};
+			wgpu::SurfaceConfiguration config;
 			config.nextInChain = nullptr;
 			config.width = m_width;
 			config.height = m_height;
 
-			m_surfaceFormat = wgpuSurfaceGetPreferredFormat(m_surface, m_adapter);
+			wgpu::Surface surface(m_surface);
+			wgpu::Adapter adapter(m_adapter);
+			#ifdef TAKO_EMSCRIPTEN
+			m_surfaceFormat = surface.GetPreferredFormat(adapter);
+			#else
+			wgpu::SurfaceCapabilities capabilities;
+
+
+			surface.GetCapabilities(adapter, &capabilities);
+			m_surfaceFormat = capabilities.formats[0]; //WGPUTextureFormat_RGBA8Unorm; //Dawn workaround
+			#endif
 			config.format = m_surfaceFormat;
 			config.viewFormatCount = 0;
 			config.viewFormats = nullptr;
-			config.usage = WGPUTextureUsage_RenderAttachment;
-			config.device = m_device;
-			config.presentMode = WGPUPresentMode_Fifo;
-			config.alphaMode = WGPUCompositeAlphaMode_Auto;
+			config.usage = wgpu::TextureUsage::RenderAttachment;
+			config.device = wgpu::Device(m_device);
+			config.presentMode = wgpu::PresentMode::Fifo;
+			config.alphaMode = wgpu::CompositeAlphaMode::Auto;
 
-			wgpuSurfaceConfigure(m_surface, &config);
+			surface.Configure(&config);
 		}
 
 		void CreateDepthTexture()
@@ -807,21 +953,23 @@ namespace tako
 
 		void SetDefault(WGPUBindGroupLayoutEntry &bindingLayout) const
 		{
+			bindingLayout.nextInChain = nullptr;
 			bindingLayout.buffer.nextInChain = nullptr;
-			bindingLayout.buffer.type = WGPUBufferBindingType_Undefined;
+			bindingLayout.buffer.type = WGPUBufferBindingType_BindingNotUsed;
 			bindingLayout.buffer.hasDynamicOffset = false;
 
 			bindingLayout.sampler.nextInChain = nullptr;
-			bindingLayout.sampler.type = WGPUSamplerBindingType_Undefined;
+			bindingLayout.sampler.type = WGPUSamplerBindingType_BindingNotUsed;
+
 
 			bindingLayout.storageTexture.nextInChain = nullptr;
-			bindingLayout.storageTexture.access = WGPUStorageTextureAccess_Undefined;
+			bindingLayout.storageTexture.access = WGPUStorageTextureAccess_BindingNotUsed;
 			bindingLayout.storageTexture.format = WGPUTextureFormat_Undefined;
 			bindingLayout.storageTexture.viewDimension = WGPUTextureViewDimension_Undefined;
 
 			bindingLayout.texture.nextInChain = nullptr;
 			bindingLayout.texture.multisampled = false;
-			bindingLayout.texture.sampleType = WGPUTextureSampleType_Undefined;
+			bindingLayout.texture.sampleType = WGPUTextureSampleType_BindingNotUsed;
 			bindingLayout.texture.viewDimension = WGPUTextureViewDimension_Undefined;
 		}
 
@@ -836,7 +984,7 @@ namespace tako
 		void SetDefault(WGPUDepthStencilState &depthStencilState) const
 		{
 			depthStencilState.format = WGPUTextureFormat_Undefined;
-			depthStencilState.depthWriteEnabled = false;
+			depthStencilState.depthWriteEnabled = WBool(false);
 			depthStencilState.depthCompare = WGPUCompareFunction_Always;
 			depthStencilState.stencilReadMask = 0xFFFFFFFF;
 			depthStencilState.stencilWriteMask = 0xFFFFFFFF;
@@ -847,14 +995,14 @@ namespace tako
 			SetDefault(depthStencilState.stencilBack);
 		}
 
-		WGPURequiredLimits GetRequiredLimits(WGPUAdapter adapter) const
+		wgpu::RequiredLimits GetRequiredLimits(wgpu::Adapter& adapter) const
 		{
-			WGPUSupportedLimits supportedLimits;
+			wgpu::SupportedLimits supportedLimits;
 			supportedLimits.nextInChain = nullptr;
-			wgpuAdapterGetLimits(adapter, &supportedLimits);
+			adapter.GetLimits(&supportedLimits);
 
-			WGPURequiredLimits requiredLimits{};
-			SetDefault(requiredLimits.limits);
+			wgpu::RequiredLimits requiredLimits{};
+			//SetDefault(requiredLimits.limits);
 
 			requiredLimits.limits.maxVertexAttributes = 2;
 			requiredLimits.limits.maxVertexBuffers = 1;

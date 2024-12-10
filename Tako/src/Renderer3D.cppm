@@ -3,6 +3,9 @@ module;
 #include "VertexBuffer.hpp"
 #include "Pipeline.hpp"
 #include "Utility.hpp"
+#include <fastgltf/core.hpp>
+#include <fastgltf/types.hpp>
+#include <fastgltf/tools.hpp>
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "../tinyobjloader/tiny_obj_loader.h" //TODO: why
 /*
@@ -14,7 +17,7 @@ module;
 #include <array>
 export module Tako.Renderer3D;
 
-import fastgltf;
+//import fastgltf;
 import Tako.FileSystem;
 import Tako.GraphicsContext;
 

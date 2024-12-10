@@ -36,7 +36,11 @@ public:
 	void Setup(const tako::SetupData& setup)
 	{
 		renderer = new tako::Renderer3D(setup.context);
+		#ifdef TAKO_EMSCRIPTEN
 		auto path = "/CrossGolf.glb";
+		#else
+		auto path = "./Assets/CrossGolf.glb";
+		#endif
 		model = renderer->LoadModel(path);
 	}
 
@@ -152,11 +156,7 @@ void tako::InitTakoConfig(GameConfig& config)
 	config.Setup = Setup;
 	config.Update = Update;
 	config.Draw = Draw;
-#ifdef EMSCRIPTEN
 	config.graphicsAPI = tako::GraphicsAPI::WebGPU;
-#else
-	config.graphicsAPI = tako::GraphicsAPI::Vulkan;
-#endif
 	config.initAudioDelayed = true;
 	config.gameDataSize = sizeof(SandBoxGame);
 	config.frameDataSize = sizeof(FrameData);

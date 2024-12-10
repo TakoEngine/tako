@@ -31,3 +31,6 @@
 [submodule "dependencies/fastgltf"]
 	path = dependencies/fastgltf
 	url = https://github.com/spnda/fastgltf.git
+[submodule "dependencies/dawn"]
+	path = dependencies/dawn
+	url = https://dawn.googlesource.com/dawn
