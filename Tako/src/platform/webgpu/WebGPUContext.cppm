@@ -104,7 +104,6 @@ private:
 namespace tako
 {
 
-
 	export class WebGPUContext final : public IGraphicsContext
 	{
 	public:
@@ -295,9 +294,9 @@ namespace tako
 
 		virtual void BindMaterial(const Material* material) override
 		{
-
+			WGPUBindGroup bindGroup = reinterpret_cast<WGPUBindGroup>(material->value);
+			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 0, bindGroup, 0, nullptr);
 		}
-
 
 		virtual void UpdateCamera(const CameraUniformData& cameraData) override
 		{
@@ -313,7 +312,6 @@ namespace tako
 		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) override
 		{
 			UpdateUniform(&renderMatrix, sizeof(Matrix4), offsetof(Uniforms, modelMatrix));
-			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 0, m_bindGroup, 0, nullptr);
 			wgpuRenderPassEncoderDrawIndexed(m_renderPass, indexCount, 1, 0, 0, 0);
 		}
 
@@ -523,6 +521,28 @@ namespace tako
 			uniforms.color = { 1.0f, 1.0f, 0.4f, 1.0f };
 			m_uniformBuffer = CreateWGPUBuffer(WGPUBufferUsage_Uniform, &uniforms, sizeof(Uniforms));
 
+			CreateDepthTexture();
+
+			//TODO: manage pipeline lifetime
+			return {reinterpret_cast<U64>(pipeline)};
+		}
+
+		virtual Material CreateMaterial(const Texture* texture) override
+		{
+			wgpu::Texture tex = wgpu::Texture(reinterpret_cast<WGPUTexture>(texture->handle.value));
+
+			wgpu::TextureViewDescriptor textureViewDesc {};
+			textureViewDesc.nextInChain = nullptr;
+			textureViewDesc.aspect = wgpu::TextureAspect::All;
+			textureViewDesc.baseArrayLayer = 0;
+			textureViewDesc.arrayLayerCount = 1;
+			textureViewDesc.baseMipLevel = 0;
+			textureViewDesc.mipLevelCount = 1;
+			textureViewDesc.dimension = wgpu::TextureViewDimension::e2D;
+			textureViewDesc.format = m_textureFormat; //TODO: Get from texture?
+			wgpu::TextureView textureView = tex.CreateView(&textureViewDesc);
+			ASSERT(textureView);
+
 			std::vector<wgpu::BindGroupEntry> bindings(3);
 
 			bindings[0].nextInChain = nullptr;
@@ -530,8 +550,6 @@ namespace tako
 			bindings[0].buffer = wgpu::Buffer(m_uniformBuffer);
 			bindings[0].offset = 0;
 			bindings[0].size = sizeof(Uniforms);
-
-			WGPUTextureView textureView = reinterpret_cast<WGPUTextureView>(CreateTexture(Bitmap::FromFile("/CrossGolf.png")).ptr);
 
 			bindings[1].nextInChain = nullptr;
 			bindings[1].binding = 1;
@@ -560,17 +578,8 @@ namespace tako
 
 			bindGroupDesc.entryCount = bindings.size();
 			bindGroupDesc.entries = bindings.data();
-			m_bindGroup = m_device.CreateBindGroup(&bindGroupDesc).MoveToCHandle();
-
-			CreateDepthTexture();
-
-			//TODO: manage pipeline lifetime
-			return {reinterpret_cast<U64>(pipeline)};
-		}
-
-		virtual Material CreateMaterial(const Texture* texture) override
-		{
-			return {};
+			wgpu::BindGroup bindGroup = m_device.CreateBindGroup(&bindGroupDesc);
+			return { reinterpret_cast<U64>(bindGroup.MoveToCHandle()) };
 		}
 
 		virtual Texture CreateTexture(const Bitmap& bitmap) override
@@ -587,18 +596,6 @@ namespace tako
 			textureDesc.viewFormats = nullptr;
 
 			wgpu::Texture texture = m_device.CreateTexture(&textureDesc);
-
-			wgpu::TextureViewDescriptor textureViewDesc {};
-			textureViewDesc.nextInChain = nullptr;
-			textureViewDesc.aspect = wgpu::TextureAspect::All;
-			textureViewDesc.baseArrayLayer = 0;
-			textureViewDesc.arrayLayerCount = 1;
-			textureViewDesc.baseMipLevel = 0;
-			textureViewDesc.mipLevelCount = 1;
-			textureViewDesc.dimension = wgpu::TextureViewDimension::e2D;
-			textureViewDesc.format = m_textureFormat;
-			wgpu::TextureView textureView = texture.CreateView(&textureViewDesc);
-			ASSERT(textureView);
 
 			wgpu::ImageCopyTexture destination;
 			#ifdef TAKO_EMSCRIPTEN
@@ -620,7 +617,8 @@ namespace tako
 
 			Texture tex;
 			tex.handle.value = reinterpret_cast<U64>(texture.MoveToCHandle());
-			tex.ptr = textureView.MoveToCHandle();
+			tex.width = bitmap.Width();
+			tex.height = bitmap.Height();
 			return tex;
 		}
 
@@ -643,8 +641,6 @@ namespace tako
 		}
 
 	private:
-
-
 		//TEMP
 		struct Uniforms
 		{
@@ -658,12 +654,9 @@ namespace tako
 		static_assert(sizeof(Uniforms) % 16 == 0);
 		WGPURenderPipeline m_pipeline;
 		U32 m_indexCount;
-		WGPUBuffer m_pointBuffer;
-		WGPUBuffer m_indexBuffer;
 		WGPUBuffer m_uniformBuffer;
 		WGPUPipelineLayout m_layout;
-    	WGPUBindGroupLayout m_bindGroupLayout;
-		WGPUBindGroup m_bindGroup;
+		WGPUBindGroupLayout m_bindGroupLayout;
 		Window* m_window;
 
 		WGPUTextureFormat m_depthTextureFormat = WGPUTextureFormat_Depth24Plus;

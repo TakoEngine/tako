@@ -283,6 +283,10 @@ namespace tako
 			LOG("mat: ", material.name);
 		}
 
+		//TODO: properly load from gltf
+		Texture defaultTex = CreateTexture(Bitmap::FromFile("/CrossGolf.png"));
+		Material defaultMat = m_context->CreateMaterial(&defaultTex);
+
 		fastgltf::iterateSceneNodes(asset, 0, fastgltf::math::fmat4x4(), [&](fastgltf::Node& node, fastgltf::math::fmat4x4 matrix)
 		{
 			if (node.meshIndex.has_value())
@@ -351,6 +355,7 @@ namespace tako
 
 					Node node;
 					node.mesh = CreateMesh(vertices, indices);
+					node.mat = defaultMat; //TODO: load proper material
 					model.nodes.push_back(node);
 				}
 			}
