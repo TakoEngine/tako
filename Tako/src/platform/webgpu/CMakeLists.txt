@@ -8,6 +8,6 @@ if (NOT EMSCRIPTEN)
 	target_link_libraries(${TAKO_DLL} PRIVATE webgpu_dawn)
 endif()
 
-if (TAKO_GLFW AND NOT EMSCRIPTEN)
+if (TAKO_GLFW)
 target_link_libraries(${TAKO_DLL} PRIVATE dawn_glfw)
 endif()
