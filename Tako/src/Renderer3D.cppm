@@ -15,6 +15,7 @@ module;
 */
 #include <vector>
 #include <array>
+#include <algorithm>
 export module Tako.Renderer3D;
 
 //import fastgltf;

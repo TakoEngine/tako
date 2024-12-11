@@ -653,7 +653,6 @@ namespace tako
 		};
 		static_assert(sizeof(Uniforms) % 16 == 0);
 		WGPURenderPipeline m_pipeline;
-		U32 m_indexCount;
 		WGPUBuffer m_uniformBuffer;
 		WGPUPipelineLayout m_layout;
 		WGPUBindGroupLayout m_bindGroupLayout;
@@ -762,7 +761,7 @@ namespace tako
 
 		static void OnQueueWorkDone(WGPUQueueWorkDoneStatus status, void* pUserData)
 		{
-			LOG("Work done ({})", status);
+			LOG("Work done ({})", fmt::underlying(status));
 		}
 
 #ifdef TAKO_EMSCRIPTEN
@@ -771,7 +770,7 @@ namespace tako
 		static void DeviceLostCallback(const wgpu::Device& device, wgpu::DeviceLostReason reason, const char* message)
 #endif
 		{
-			LOG_ERR("Device lost({}): {}", reason, message);
+			LOG_ERR("Device lost({}): {}", fmt::underlying(reason), message);
 		}
 #ifdef TAKO_EMSCRIPTEN
 		static void UncapturedErrorCallback(WGPUErrorType type, char const* message, void* pUserData)
@@ -779,7 +778,7 @@ namespace tako
 		static void UncapturedErrorCallback(const wgpu::Device& device, wgpu::ErrorType type, const char* message)
 #endif
 		{
-			LOG_ERR("Uncaptured device error({}): {}", type, message);
+			LOG_ERR("Uncaptured device error({}): {}", fmt::underlying(type), message);
 		}
 
 		WGPUTextureView GetNextSurfaceTextureView()

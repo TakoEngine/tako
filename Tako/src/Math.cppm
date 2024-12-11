@@ -1,6 +1,7 @@
 module;
-#include <string_view>
 #include "Utility.hpp"
+//#include "fmt/format.h"
+#include <string_view>
 export module Tako.Math;
 
 import Tako.NumberTypes;
@@ -141,6 +142,8 @@ export namespace tako
 			return v.normalize();
 		}
 	};
+
+
 
 	struct Vector3
 	{
@@ -817,12 +820,6 @@ export namespace tako
 			return a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a;
 		}
 
-		friend std::ostream& operator<<(std::ostream& os, const Color& col)
-		{
-			os << "(" << (int)col.r << ", " << (int)col.g << ", " << (int)col.b << ", " << (int)col.a << ")";
-			return os;
-		}
-
 	private:
 		constexpr static U8 ParseHex(std::string_view str)
 		{
@@ -943,3 +940,81 @@ namespace tako
 
 
 }
+
+
+export template <>
+class fmt::formatter<tako::Vector2>
+{
+public:
+	constexpr auto parse (format_parse_context& ctx) { return ctx.begin(); }
+	template <typename Context>
+	constexpr auto format (const tako::Vector2& vec, Context& ctx) const
+	{
+		return format_to(ctx.out(), "({}, {})", vec.x, vec.y);
+	}
+};
+
+template <>
+class fmt::formatter<tako::Vector3>
+{
+public:
+	constexpr auto parse (format_parse_context& ctx) { return ctx.begin(); }
+	template <typename Context>
+	constexpr auto format (const tako::Vector3& vec, Context& ctx) const
+	{
+		return format_to(ctx.out(), "({}, {}, {})", vec.x, vec.y, vec.z);
+	}
+};
+
+template <>
+class fmt::formatter<tako::Vector4>
+{
+public:
+	constexpr auto parse (format_parse_context& ctx) { return ctx.begin(); }
+	template <typename Context>
+	constexpr auto format (const tako::Vector4& vec, Context& ctx) const
+	{
+		return format_to(ctx.out(), "({}, {}, {})", vec.x, vec.y, vec.z, vec.w);
+	}
+};
+
+template <>
+class fmt::formatter<tako::Matrix4>
+{
+public:
+	constexpr auto parse (format_parse_context& ctx) { return ctx.begin(); }
+	template <typename Context>
+	constexpr auto format (const tako::Matrix4& mat, Context& ctx) const
+	{
+		return format_to(ctx.out(), "[({}, {}, {}, {})\n ({}, {}, {}, {})\n ({}, {}, {}, {})\n ({}, {}, {}, {})]\n",
+			mat[0], mat[1], mat[2], mat[3],
+			mat[4], mat[5], mat[6], mat[7],
+			mat[8], mat[9], mat[10], mat[11],
+			mat[12], mat[13], mat[14], mat[15]
+		);
+	}
+};
+
+template <>
+class fmt::formatter<tako::Quaternion>
+{
+public:
+	constexpr auto parse (format_parse_context& ctx) { return ctx.begin(); }
+	template <typename Context>
+	constexpr auto format (const tako::Quaternion& q, Context& ctx) const
+	{
+		return format_to(ctx.out(), "({}, {}, {})", q.x, q.y, q.z, q.w);
+	}
+};
+
+template <>
+class fmt::formatter<tako::Color>
+{
+public:
+	constexpr auto parse (format_parse_context& ctx) { return ctx.begin(); }
+	template <typename Context>
+	constexpr auto format (const tako::Color& col, Context& ctx) const
+	{
+		return format_to(ctx.out(), "({}, {}, {}, {})", col.r, col.g, col.b, col.a);
+	}
+};
