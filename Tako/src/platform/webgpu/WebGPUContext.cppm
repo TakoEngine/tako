@@ -10,34 +10,22 @@ module;
 export module Tako.WebGPU;
 
 import Tako.JobSystem;
+import Tako.StringView;
 
-class StringView
+class WStringView : public tako::CStringView
 {
 public:
-	StringView() : m_str(nullptr), m_size(0), m_nullTerminated(true) {}
-	StringView(const char* str) : m_str(str), m_size(std::strlen(str)), m_nullTerminated(true) {}
-
-	operator const char*() const
-	{
-		ASSERT(m_nullTerminated);
-		return m_str;
-	}
-
 	#ifndef TAKO_EMSCRIPTEN
 	operator WGPUStringView()
 	{
-		return {m_str, m_size};
+		return {m_str, m_len};
 	}
 
 	operator const WGPUStringView() const
 	{
-		return {m_str, m_size};
+		return {m_str, m_len};
 	}
 	#endif
-private:
-	const char* m_str;
-	size_t m_size;
-	bool m_nullTerminated;
 };
 
 #ifndef TAKO_EMSCRIPTEN
@@ -228,7 +216,7 @@ namespace tako
 
 			WGPUCommandBufferDescriptor cmdBufferDescriptor = {};
 			cmdBufferDescriptor.nextInChain = nullptr;
-			cmdBufferDescriptor.label = StringView("Command buffer");
+			cmdBufferDescriptor.label = WStringView("Command buffer");
 			wgpu::CommandBuffer command = wgpu::CommandBuffer::Acquire(wgpuCommandEncoderFinish(m_encoder, &cmdBufferDescriptor));
 			wgpuCommandEncoderRelease(m_encoder);
 			m_encoder = nullptr;
@@ -382,10 +370,10 @@ namespace tako
 			#else
 			shaderCodeDesc.chain.sType = WGPUSType_ShaderSourceWGSL;
 			#endif
-			shaderCodeDesc.code = StringView(shaderSource);
+			shaderCodeDesc.code = WStringView(shaderSource);
 
 			shaderDesc.nextInChain = &shaderCodeDesc.chain;
-			shaderCodeDesc.code = StringView(shaderSource);
+			shaderCodeDesc.code = WStringView(shaderSource);
 			WGPUShaderModule shaderModule = wgpuDeviceCreateShaderModule(m_device.Get(), &shaderDesc);
 
 			WGPURenderPipelineDescriptor pipelineDesc{};
@@ -424,7 +412,7 @@ namespace tako
 			pipelineDesc.vertex.buffers = &vertexBufferLayout;
 
 			pipelineDesc.vertex.module = shaderModule;
-			pipelineDesc.vertex.entryPoint = StringView("vs_main");
+			pipelineDesc.vertex.entryPoint = WStringView("vs_main");
 			pipelineDesc.vertex.constantCount = 0;
 			pipelineDesc.vertex.constants = nullptr;
 
@@ -435,7 +423,7 @@ namespace tako
 
 			WGPUFragmentState fragmentState{};
 			fragmentState.module = shaderModule;
-			fragmentState.entryPoint = StringView("fs_main");
+			fragmentState.entryPoint = WStringView("fs_main");
 			fragmentState.constantCount = 0;
 			fragmentState.constants = nullptr;
 
