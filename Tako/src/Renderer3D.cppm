@@ -269,24 +269,58 @@ namespace tako
 
 		auto& asset = assetRes.get();
 
-		for (auto& image : asset.images)
+		size_t imageCount = asset.images.size();
+		model.textures.resize(imageCount);
+		for (size_t i = 0; i < imageCount; i++)
 		{
-			LOG("img: {}", image.name);
+			auto& rawImage = asset.images[i];
+			std::visit(fastgltf::visitor
+			{
+				[&](fastgltf::sources::URI& filePath)
+				{
+					LOG("{}", filePath.uri.string());
+				},
+				[&](fastgltf::sources::Vector& vector)
+				{
+					LOG("vector");
+				},
+				[&](fastgltf::sources::BufferView& view)
+				{
+					auto& bufferView = asset.bufferViews[view.bufferViewIndex];
+					auto& buffer = asset.buffers[bufferView.bufferIndex];
+					std::visit(fastgltf::visitor
+					{
+						[&](fastgltf::sources::URI& uri)
+						{
+							LOG("BufferView uri: {}", uri.uri.string());
+						},
+						[&](fastgltf::sources::Array& arr)
+						{
+							Bitmap img = Bitmap::FromFileData(reinterpret_cast<U8*>(arr.bytes.data()) + bufferView.byteOffset, bufferView.byteLength);
+							model.textures[i] = CreateTexture(img);
+						},
+						[&](fastgltf::sources::Vector& vec)
+						{
+							LOG("BufferView vec: {}", vec.bytes.size());
+						},
+						[](auto& arg) {}
+					}, buffer.data);
+				},
+				[](auto& arg) { LOG("default"); }
+			}, rawImage.data);
 		}
 
-		for (auto& texture : asset.textures)
+		size_t materialCount = asset.materials.size();
+		model.materials.resize(materialCount);
+		for (size_t i = 0; i < materialCount; i++)
 		{
-			LOG("tex: {}", texture.name);
+			auto& mat = asset.materials[i];
+			// Only support materials with texture for now
+			ASSERT(mat.pbrData.baseColorTexture.has_value());
+			size_t texIndex = mat.pbrData.baseColorTexture.value().textureIndex;
+			size_t imageIndex = asset.textures[texIndex].imageIndex.value();
+			model.materials[i] = m_context->CreateMaterial(&model.textures[imageIndex]);
 		}
-
-		for (auto& material : asset.materials)
-		{
-			LOG("mat: ", material.name);
-		}
-
-		//TODO: properly load from gltf
-		Texture defaultTex = CreateTexture(Bitmap::FromFile("/CrossGolf.png"));
-		Material defaultMat = m_context->CreateMaterial(&defaultTex);
 
 		fastgltf::iterateSceneNodes(asset, 0, fastgltf::math::fmat4x4(), [&](fastgltf::Node& node, fastgltf::math::fmat4x4 matrix)
 		{
@@ -348,15 +382,13 @@ namespace tako
 						});
 					}
 
+					Node node;
+					node.mesh = CreateMesh(vertices, indices);
 					if (primitive.materialIndex.has_value())
 					{
 						auto materialIndex = primitive.materialIndex.value();
-						LOG("mat: {}", materialIndex);
+						node.mat = model.materials[materialIndex];
 					}
-
-					Node node;
-					node.mesh = CreateMesh(vertices, indices);
-					node.mat = defaultMat; //TODO: load proper material
 					model.nodes.push_back(node);
 				}
 			}
