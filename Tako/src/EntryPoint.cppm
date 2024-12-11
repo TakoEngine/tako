@@ -20,7 +20,12 @@ module;
 #ifdef TAKO_GLFW
 #include "imgui_impl_glfw.h"
 #endif
+#ifdef TAKO_OPENGL
 #include "imgui_impl_opengl3.h"
+#endif
+#ifdef TAKO_WEBGPU
+#include "imgui_impl_wgpu.h"
+#endif
 #endif
 
 export module EntryPoint;
@@ -91,7 +96,19 @@ namespace tako
 		{
 			data->window.Poll();
 #ifdef TAKO_IMGUI
-			ImGui_ImplOpenGL3_NewFrame();
+			switch (data->context.GetAPI())
+			{
+				#ifdef TAKO_OPENGL
+				case GraphicsAPI::OpenGL:
+					ImGui_ImplOpenGL3_Init();
+					break;
+				#endif
+				#ifdef TAKO_WEBGPU
+				case GraphicsAPI::WebGPU:
+					ImGui_ImplWGPU_NewFrame();
+					break;
+				#endif
+			}
 #ifdef TAKO_WIN32
 			ImGui_ImplWin32_NewFrame();
 #endif
@@ -147,18 +164,33 @@ namespace tako
 						};
 						data->config.Draw(stageData);
 					}
-					data->context.End();
-#ifdef TAKO_IMGUI
+					#ifdef TAKO_IMGUI
 					ImGui::EndFrame();
 					ImGui::Render();
-					ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+					switch (data->context.GetAPI())
+					{
+						#ifdef TAKO_OPENGL
+						case GraphicsAPI::OpenGL:
+							ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+							break;
+						#endif
+						#ifdef TAKO_WEBGPU
+						case GraphicsAPI::WebGPU:
+							WebGPUContext* wcontext = reinterpret_cast<WebGPUContext*>(&data->context);
+							ImGui_ImplWGPU_RenderDrawData(ImGui::GetDrawData(), wcontext->GetRenderPass());
+							break;
+						#endif
+					}
+					#endif
+					data->context.End();
 
+					#ifdef TAKO_IMGUI
 					if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 					{
 						ImGui::UpdatePlatformWindows();
 						ImGui::RenderPlatformWindowsDefault();
 					}
-#endif
+					#endif
 					data->context.Present();
 					//LOG("Tick End");
 				#ifdef TAKO_EMSCRIPTEN
@@ -231,21 +263,46 @@ namespace tako
 		//auto drawer = new OpenGLPixelArtDrawer(context.get());
 		//drawer->Resize(window.GetWidth(), window.GetHeight());
 
-#ifdef TAKO_IMGUI
-		IMGUI_CHECKVERSION();
-		ImGui::CreateContext();
-		auto& io = ImGui::GetIO();
-		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-#ifdef TAKO_WIN32
-		ImGui_ImplWin32_Init(window.GetHandle());
-#endif
-#ifdef TAKO_GLFW
-		ImGui_ImplGlfw_InitForOpenGL(window.GetHandle(), true);
-#endif
-		ImGui_ImplOpenGL3_Init();
-#endif
+		#ifdef TAKO_IMGUI
+			IMGUI_CHECKVERSION();
+			ImGui::CreateContext();
+			auto& io = ImGui::GetIO();
+			io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+			io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+			io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+			#if defined(TAKO_WIN32)
+				ImGui_ImplWin32_Init(window.GetHandle());
+			#elif defined(TAKO_GLFW)
+				#ifdef TAKO_OPENGL
+					ImGui_ImplGlfw_InitForOpenGL(window.GetHandle(), true);
+				#else
+					ImGui_ImplGlfw_InitForOther(window.GetHandle(), true);
+				#endif
+				#ifdef TAKO_EMSCRIPTEN
+					ImGui_ImplGlfw_InstallEmscriptenCallbacks(window.GetHandle(), "#canvas");
+				#endif
+			#endif
+			switch (api)
+			{
+				#ifdef TAKO_OPENGL
+				case GraphicsAPI::OpenGL:
+					ImGui_ImplOpenGL3_Init();
+					break;
+				#endif
+				#ifdef TAKO_WEBGPU
+				case GraphicsAPI::WebGPU:
+					WebGPUContext* wcontext = reinterpret_cast<WebGPUContext*>(context.get());
+					ImGui_ImplWGPU_InitInfo init_info;
+					init_info.Device = wcontext->GetDevice();
+					init_info.NumFramesInFlight = 3;
+					init_info.RenderTargetFormat = wcontext->GetSurfaceFormat();
+					init_info.DepthStencilFormat = wcontext->GetDepthTextureFormat();
+					ImGui_ImplWGPU_Init(&init_info);
+					break;
+				#endif
+			}
+
+		#endif
 
 		Resources resources(context.get());
 		void* gameData = malloc(config.gameDataSize);

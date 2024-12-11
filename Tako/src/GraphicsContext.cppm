@@ -12,7 +12,7 @@ module;
 export module Tako.GraphicsContext;
 
 #ifdef TAKO_WEBGPU
-import Tako.WebGPU;
+export import Tako.WebGPU;
 #endif
 
 export namespace tako

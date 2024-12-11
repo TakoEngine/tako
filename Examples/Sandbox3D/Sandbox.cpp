@@ -1,4 +1,7 @@
 #include "Tako.hpp"
+#ifdef TAKO_IMGUI
+#include "imgui.h"
+#endif
 
 import Tako.Renderer3D;
 import Tako.FileSystem;
@@ -102,6 +105,13 @@ public:
 		static float passed = 0;
 		passed += dt;
 		data.lightPos.x = PingPong(passed, 20) - 10;
+
+		#ifdef TAKO_IMGUI
+		ImGui::Begin("Camera");
+		ImGui::InputFloat3("pos", &data.trans.x);
+		ImGui::InputFloat4("rot", &data.rot.x);
+		ImGui::End();
+		#endif
 
 		//Sync for renderphase
 		*frameData = data;

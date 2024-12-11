@@ -8,6 +8,7 @@ namespace tako
 	public:
 		OpenGLContext(Window* window);
 		~OpenGLContext() override = default;
+		virtual GraphicsAPI GetAPI() override;
 		virtual void Begin() override;
 		virtual void End() override;
 		virtual void Present() override;

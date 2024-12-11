@@ -145,6 +145,11 @@ namespace tako
 			m_instance = nullptr;
 		}
 
+		virtual GraphicsAPI GetAPI() override
+		{
+			return GraphicsAPI::WebGPU;
+		}
+
 
 		virtual void Begin() override
 		{
@@ -628,6 +633,27 @@ namespace tako
 			return {reinterpret_cast<U64>(buffer)};
 		}
 
+		//Hacks to get IMGUI working
+		WGPUDevice GetDevice()
+		{
+			return m_device.Get();
+		}
+
+		WGPUTextureFormat GetSurfaceFormat()
+		{
+			return (WGPUTextureFormat) m_surfaceFormat;
+		}
+
+		WGPUTextureFormat GetDepthTextureFormat()
+		{
+			return m_depthTextureFormat;
+		}
+
+		WGPURenderPassEncoder GetRenderPass()
+		{
+			return m_renderPass;
+		}
+
 	private:
 		//TEMP
 		struct Uniforms
@@ -935,7 +961,7 @@ namespace tako
 			requiredLimits.limits.maxBufferSize = 10000 * 11 * sizeof(float);
 			requiredLimits.limits.maxVertexBufferArrayStride = 11 * sizeof(float);
 			requiredLimits.limits.maxInterStageShaderComponents = 8;
-			requiredLimits.limits.maxBindGroups = 1;
+			requiredLimits.limits.maxBindGroups = 2;
 			requiredLimits.limits.maxUniformBuffersPerShaderStage = 1;
 			requiredLimits.limits.maxUniformBufferBindingSize = 16 * 4 * sizeof(float);
 			requiredLimits.limits.maxTextureDimension1D = 2160;

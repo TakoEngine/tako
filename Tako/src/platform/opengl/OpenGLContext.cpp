@@ -63,6 +63,11 @@ namespace tako
 		Resize(window->GetWidth(), window->GetHeight());
 	}
 
+	GraphicsAPI OpenGLContext::GetAPI()
+	{
+		return GraphicsAPI::OpenGL;
+	}
+
 	void OpenGLContext::Resize(int w, int h)
 	{
 		m_width = w;

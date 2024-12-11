@@ -47,6 +47,7 @@ namespace tako
 	{
 	public:
 		virtual ~IGraphicsContext() {};
+		virtual GraphicsAPI GetAPI() = 0;
 		virtual void Begin() = 0;
 		virtual void End() = 0;
 		virtual void Present() = 0;
