@@ -40,7 +40,7 @@ namespace tako
 	{
 		Matrix4 view;
 		Matrix4 proj;
-		Matrix4 viewProj;
+		//Matrix4 viewProj;
 	};
 
 	class IGraphicsContext : public IEventHandler

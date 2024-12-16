@@ -288,23 +288,26 @@ namespace tako
 		virtual void BindMaterial(const Material* material) override
 		{
 			WGPUBindGroup bindGroup = reinterpret_cast<WGPUBindGroup>(material->value);
-			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 0, bindGroup, 0, nullptr);
+			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 1, bindGroup, 0, nullptr);
 		}
 
 		virtual void UpdateCamera(const CameraUniformData& cameraData) override
 		{
-			UpdateUniform(&cameraData.view, 2 * sizeof(Matrix4), offsetof(Uniforms, viewMatrix));
+			m_queue.WriteBuffer(m_cameraUniformBuffer, 0, &cameraData, sizeof(CameraUniformData));
+			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 0, m_cameraBindGroup.Get(), 0, nullptr);
 		}
 
 		virtual void UpdateUniform(const void* uniformData, size_t uniformSize, size_t offset = 0) override
 		{
-			m_queue.WriteBuffer(m_uniformBuffer, offset, uniformData, uniformSize);
+			//m_queue.WriteBuffer(m_uniformBuffer, offset, uniformData, uniformSize);
 		}
 
 
 		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) override
 		{
-			UpdateUniform(&renderMatrix, sizeof(Matrix4), offsetof(Uniforms, modelMatrix));
+			//UpdateUniform(&renderMatrix, sizeof(Matrix4), offsetof(Uniforms, modelMatrix));
+			m_queue.WriteBuffer(m_modelBuffer, 0, &renderMatrix, sizeof(Matrix4));
+			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 2, m_modelBindGroup.Get(), 0, nullptr);
 			wgpuRenderPassEncoderDrawIndexed(m_renderPass, indexCount, 1, 0, 0, 0);
 		}
 
@@ -317,17 +320,18 @@ namespace tako
 		virtual Pipeline CreatePipeline(const PipelineDescriptor& pipelineDescriptor) override
 		{
 			const char* shaderSource = R"(
-				struct Uniforms {
-					viewMatrix: mat4x4f,
-					projectionMatrix: mat4x4f,
-					modelMatrix: mat4x4f,
-					color: vec4f,
-					time: f32,
+				struct Camera
+				{
+					view: mat4x4f,
+					projection: mat4x4f,
 				};
 
-				@group(0) @binding(0) var<uniform> uniforms: Uniforms;
-				@group(0) @binding(1) var gradientTexture: texture_2d<f32>;
-				@group(0) @binding(2) var textureSampler: sampler;
+				@group(0) @binding(0) var<uniform> camera: Camera;
+
+				@group(1) @binding(0) var baseColorTexture: texture_2d<f32>;
+				@group(1) @binding(1) var baseColorSampler: sampler;
+
+				@group(2) @binding(0) var<uniform> model : mat4x4f;
 
 				struct VertexInput {
 					@location(0) position: vec3f,
@@ -346,9 +350,9 @@ namespace tako
 				@vertex
 				fn vs_main(in: VertexInput) -> VertexOutput {
 					var out: VertexOutput;
-					out.position = uniforms.projectionMatrix * uniforms.viewMatrix * uniforms.modelMatrix * vec4f(in.position, 1.0);
+					out.position = camera.projection * camera.view * model * vec4f(in.position, 1.0);
 					out.color = in.color;
-					out.normal = (uniforms.modelMatrix * vec4f(in.normal, 0.0)).xyz;
+					out.normal = (model * vec4f(in.normal, 0.0)).xyz;
 					out.uv = in.uv;
 					return out;
 				}
@@ -359,7 +363,7 @@ namespace tako
 					let lightDirection = vec3f(0.5, 0.9, 0.1);
 					let shading = dot(lightDirection, normal);
 
-					let baseColor = textureSample(gradientTexture, textureSampler, in.uv).rgb;
+					let baseColor = textureSample(baseColorTexture, baseColorSampler, in.uv).rgb;
 					let color = baseColor * shading;
 
 					return vec4f(color, 1.0);
@@ -464,55 +468,23 @@ namespace tako
 			pipelineDesc.multisample.mask = ~0u;
 			pipelineDesc.multisample.alphaToCoverageEnabled = false;
 
-			std::array<WGPUBindGroupLayoutEntry, 3> bindingLayoutEntries;
+			std::array<wgpu::BindGroupLayout, 3> layouts;
+			layouts[0] = m_cameraLayout;
+			layouts[1] = m_materialLayout;
+			layouts[2] = m_modelLayout;
 
-			WGPUBindGroupLayoutEntry& bindingLayout = bindingLayoutEntries[0];
-			SetDefault(bindingLayout);
-			bindingLayout.binding = 0;
-			bindingLayout.visibility = WGPUShaderStage_Vertex | WGPUShaderStage_Fragment;
-			bindingLayout.buffer.type = WGPUBufferBindingType_Uniform;
-			bindingLayout.buffer.minBindingSize = sizeof(Uniforms);
-
-			WGPUBindGroupLayoutEntry& textureBindingLayout = bindingLayoutEntries[1];
-			SetDefault(textureBindingLayout);
-			textureBindingLayout.binding = 1;
-			textureBindingLayout.visibility = WGPUShaderStage_Fragment;
-			textureBindingLayout.texture.sampleType = WGPUTextureSampleType_Float;
-			textureBindingLayout.texture.viewDimension = WGPUTextureViewDimension_2D;
-
-			WGPUBindGroupLayoutEntry& samplerBindingLayout = bindingLayoutEntries[2];
-			SetDefault(samplerBindingLayout);
-			samplerBindingLayout.binding = 2;
-			samplerBindingLayout.visibility = WGPUShaderStage_Fragment;
-			samplerBindingLayout.sampler.type = WGPUSamplerBindingType_Filtering;
-
-			WGPUBindGroupLayoutDescriptor bindGroupLayoutDesc{};
-			bindGroupLayoutDesc.nextInChain = nullptr;
-			bindGroupLayoutDesc.entryCount = bindingLayoutEntries.size();
-			bindGroupLayoutDesc.entries = bindingLayoutEntries.data();
-			m_bindGroupLayout = wgpuDeviceCreateBindGroupLayout(m_device.Get(), &bindGroupLayoutDesc);
-
-			WGPUPipelineLayoutDescriptor layoutDesc{};
+			wgpu::PipelineLayoutDescriptor layoutDesc;
 			layoutDesc.nextInChain = nullptr;
-			layoutDesc.bindGroupLayoutCount = 1;
-			layoutDesc.bindGroupLayouts = &m_bindGroupLayout;
-			m_layout = wgpuDeviceCreatePipelineLayout(m_device.Get(), &layoutDesc);
+			layoutDesc.bindGroupLayoutCount = layouts.size();
+			layoutDesc.bindGroupLayouts = layouts.data();
+			wgpu::PipelineLayout pipelineLayout = m_device.CreatePipelineLayout(&layoutDesc);
 
-			pipelineDesc.layout = m_layout;
+			pipelineDesc.layout = pipelineLayout.Get();
 
 			WGPURenderPipeline pipeline = wgpuDeviceCreateRenderPipeline(m_device.Get(), &pipelineDesc);
 			m_pipeline = pipeline;
 
 			wgpuShaderModuleRelease(shaderModule);
-
-			// Create uniforms
-			Uniforms uniforms;
-			uniforms.projectionMatrix = Matrix4::perspective(45, GetWidth() / (float) GetHeight(), 1, 1000);
-			uniforms.viewMatrix = Matrix4::cameraViewMatrix(Vector3(0, 0, 0), {});
-			uniforms.modelMatrix = Matrix4::identity;
-			uniforms.time = 1.0f;
-			uniforms.color = { 1.0f, 1.0f, 0.4f, 1.0f };
-			m_uniformBuffer = CreateWGPUBuffer(WGPUBufferUsage_Uniform, &uniforms, sizeof(Uniforms));
 
 			CreateDepthTexture();
 
@@ -536,17 +508,12 @@ namespace tako
 			wgpu::TextureView textureView = tex.CreateView(&textureViewDesc);
 			ASSERT(textureView);
 
-			std::vector<wgpu::BindGroupEntry> bindings(3);
+			std::array<wgpu::BindGroupEntry, 2> bindings;
 
-			bindings[0].nextInChain = nullptr;
-			bindings[0].binding = 0;
-			bindings[0].buffer = wgpu::Buffer(m_uniformBuffer);
-			bindings[0].offset = 0;
-			bindings[0].size = sizeof(Uniforms);
-
-			bindings[1].nextInChain = nullptr;
-			bindings[1].binding = 1;
-			bindings[1].textureView = wgpu::TextureView(textureView);
+			auto& textureBinding = bindings[0];
+			textureBinding.nextInChain = nullptr;
+			textureBinding.binding = 0;
+			textureBinding.textureView = textureView;
 
 			wgpu::SamplerDescriptor samplerDesc;
 			samplerDesc.nextInChain = nullptr;
@@ -562,13 +529,13 @@ namespace tako
 			samplerDesc.maxAnisotropy = 1;
 			wgpu::Sampler sampler = m_device.CreateSampler(&samplerDesc);
 
-			bindings[2].binding = 2;
-			bindings[2].sampler = sampler;
+			auto& samplerBinding = bindings[1];
+			samplerBinding.binding = 1;
+			samplerBinding.sampler = sampler;
 
 			wgpu::BindGroupDescriptor bindGroupDesc{};
 			bindGroupDesc.nextInChain = nullptr;
-			bindGroupDesc.layout = wgpu::BindGroupLayout(m_bindGroupLayout);
-
+			bindGroupDesc.layout = m_materialLayout;
 			bindGroupDesc.entryCount = bindings.size();
 			bindGroupDesc.entries = bindings.data();
 			wgpu::BindGroup bindGroup = m_device.CreateBindGroup(&bindGroupDesc);
@@ -667,15 +634,26 @@ namespace tako
 		};
 		static_assert(sizeof(Uniforms) % 16 == 0);
 		WGPURenderPipeline m_pipeline;
-		WGPUBuffer m_uniformBuffer;
-		WGPUPipelineLayout m_layout;
-		WGPUBindGroupLayout m_bindGroupLayout;
+		//WGPUBuffer m_uniformBuffer;
+		//WGPUPipelineLayout m_layout;
+		//WGPUBindGroupLayout m_bindGroupLayout;
 		Window* m_window;
 
 		WGPUTextureFormat m_depthTextureFormat = WGPUTextureFormat_Depth24Plus;
 		WGPUTexture m_depthTexture;
 		WGPUTextureView m_depthTextureView;
 		wgpu::TextureFormat m_textureFormat = wgpu::TextureFormat::RGBA8Unorm;
+
+		wgpu::Buffer m_cameraUniformBuffer;
+		wgpu::BindGroupLayout m_cameraLayout;
+		wgpu::BindGroup m_cameraBindGroup;
+
+		wgpu::BindGroupLayout m_materialLayout;
+		wgpu::BindGroupLayout m_modelLayout;
+
+		//TODO: manage model bind groups dynamically
+		wgpu::Buffer m_modelBuffer;
+		wgpu::BindGroup m_modelBindGroup;
 
 		WGPURenderPassEncoder m_renderPass;
 		WGPUTextureView m_targetView;
@@ -755,6 +733,9 @@ namespace tako
 				ASSERT(m_surface);
 
 				ConfigureSurface();
+				CreateCameraUniformLayout();
+				CreateMaterialLayout();
+				CreateModelLayout();
 
 				LOG("Renderer Setup Complete!")
 				m_initComplete = true;
@@ -854,10 +835,8 @@ namespace tako
 			m_surfaceFormat = surface.GetPreferredFormat(adapter);
 			#else
 			wgpu::SurfaceCapabilities capabilities;
-
-
 			surface.GetCapabilities(adapter, &capabilities);
-			m_surfaceFormat = capabilities.formats[0]; //WGPUTextureFormat_RGBA8Unorm; //Dawn workaround
+			m_surfaceFormat = capabilities.formats[0]; //Dawn workaround
 			#endif
 			config.format = m_surfaceFormat;
 			config.viewFormatCount = 0;
@@ -903,6 +882,95 @@ namespace tako
 			wgpuTextureDestroy(m_depthTexture);
 			wgpuTextureRelease(m_depthTexture);
 			m_depthTexture = nullptr;
+		}
+
+		void CreateCameraUniformLayout()
+		{
+			wgpu::BindGroupLayoutEntry bindingLayout;
+			bindingLayout.binding = 0;
+			bindingLayout.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
+			bindingLayout.buffer.type = wgpu::BufferBindingType::Uniform;
+			bindingLayout.buffer.minBindingSize = sizeof(CameraUniformData);
+
+			wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc;
+			bindGroupLayoutDesc.nextInChain = nullptr;
+			bindGroupLayoutDesc.entryCount = 1;
+			bindGroupLayoutDesc.entries = &bindingLayout;
+			m_cameraLayout = m_device.CreateBindGroupLayout(&bindGroupLayoutDesc);
+
+			CameraUniformData uniform;
+			uniform.view = Matrix4::cameraViewMatrix(Vector3(0, 0, 0), {});
+			uniform.proj = Matrix4::perspective(45, GetWidth() / (float) GetHeight(), 1, 1000);
+			m_cameraUniformBuffer = wgpu::Buffer::Acquire(CreateWGPUBuffer(WGPUBufferUsage_Uniform, &uniform, sizeof(CameraUniformData)));
+
+			wgpu::BindGroupEntry binding;
+			binding.nextInChain = nullptr;
+			binding.binding = 0;
+			binding.buffer = m_cameraUniformBuffer;
+			binding.offset = 0;
+			binding.size = sizeof(CameraUniformData);
+
+			wgpu::BindGroupDescriptor bindGroupDesc{};
+			bindGroupDesc.nextInChain = nullptr;
+			bindGroupDesc.layout = m_cameraLayout;
+
+			bindGroupDesc.entryCount = 1;
+			bindGroupDesc.entries = &binding;
+			m_cameraBindGroup = m_device.CreateBindGroup(&bindGroupDesc);
+		}
+
+		void CreateMaterialLayout()
+		{
+			std::array<wgpu::BindGroupLayoutEntry, 2> bindingLayoutEntries;
+			auto& textureBindingLayout = bindingLayoutEntries[0];
+			textureBindingLayout.binding = 0;
+			textureBindingLayout.visibility = wgpu::ShaderStage::Fragment;
+			textureBindingLayout.texture.sampleType = wgpu::TextureSampleType::Float;
+			textureBindingLayout.texture.viewDimension = wgpu::TextureViewDimension::e2D;
+
+			auto& samplerBindingLayout = bindingLayoutEntries[1];
+			samplerBindingLayout.binding = 1;
+			samplerBindingLayout.visibility = wgpu::ShaderStage::Fragment;
+			samplerBindingLayout.sampler.type = wgpu::SamplerBindingType::Filtering;
+
+			wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc;
+			bindGroupLayoutDesc.nextInChain = nullptr;
+			bindGroupLayoutDesc.entryCount = bindingLayoutEntries.size();
+			bindGroupLayoutDesc.entries = bindingLayoutEntries.data();
+			m_materialLayout = m_device.CreateBindGroupLayout(&bindGroupLayoutDesc);
+		}
+
+		void CreateModelLayout()
+		{
+			wgpu::BindGroupLayoutEntry bindingLayout;
+			bindingLayout.binding = 0;
+			bindingLayout.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
+			bindingLayout.buffer.type = wgpu::BufferBindingType::Uniform;
+			bindingLayout.buffer.minBindingSize = sizeof(Matrix4);
+
+			wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc;
+			bindGroupLayoutDesc.nextInChain = nullptr;
+			bindGroupLayoutDesc.entryCount = 1;
+			bindGroupLayoutDesc.entries = &bindingLayout;
+			m_modelLayout = m_device.CreateBindGroupLayout(&bindGroupLayoutDesc);
+
+			Matrix4 mat;
+			m_modelBuffer = wgpu::Buffer::Acquire(CreateWGPUBuffer(WGPUBufferUsage_Uniform, &mat, sizeof(Matrix4)));
+
+			wgpu::BindGroupEntry binding;
+			binding.nextInChain = nullptr;
+			binding.binding = 0;
+			binding.buffer = m_modelBuffer;
+			binding.offset = 0;
+			binding.size = sizeof(Matrix4);
+
+			wgpu::BindGroupDescriptor bindGroupDesc{};
+			bindGroupDesc.nextInChain = nullptr;
+			bindGroupDesc.layout = m_modelLayout;
+
+			bindGroupDesc.entryCount = 1;
+			bindGroupDesc.entries = &binding;
+			m_modelBindGroup = m_device.CreateBindGroup(&bindGroupDesc);
 		}
 
 		void SetDefault(WGPUBindGroupLayoutEntry &bindingLayout) const
@@ -961,7 +1029,7 @@ namespace tako
 			requiredLimits.limits.maxBufferSize = 10000 * 11 * sizeof(float);
 			requiredLimits.limits.maxVertexBufferArrayStride = 11 * sizeof(float);
 			requiredLimits.limits.maxInterStageShaderComponents = 8;
-			requiredLimits.limits.maxBindGroups = 2;
+			requiredLimits.limits.maxBindGroups = 4;
 			requiredLimits.limits.maxUniformBuffersPerShaderStage = 1;
 			requiredLimits.limits.maxUniformBufferBindingSize = 16 * 4 * sizeof(float);
 			requiredLimits.limits.maxTextureDimension1D = 2160;
