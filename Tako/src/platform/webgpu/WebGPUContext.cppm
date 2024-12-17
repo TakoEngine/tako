@@ -91,6 +91,13 @@ private:
 
 namespace tako
 {
+	struct InstanceBuffer
+	{
+		wgpu::Buffer buffer;
+		wgpu::BindGroup group;
+		size_t currentIndex = 0;
+		size_t size;
+	};
 
 	export class WebGPUContext final : public IGraphicsContext
 	{
@@ -194,6 +201,7 @@ namespace tako
 
 
 			m_renderPass = wgpuCommandEncoderBeginRenderPass(m_encoder, &renderPassDesc);
+			m_instanceBuffer.currentIndex = 0;
 
 			//Render
 			/*
@@ -305,15 +313,20 @@ namespace tako
 
 		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) override
 		{
-			//UpdateUniform(&renderMatrix, sizeof(Matrix4), offsetof(Uniforms, modelMatrix));
-			m_queue.WriteBuffer(m_modelBuffer, 0, &renderMatrix, sizeof(Matrix4));
-			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 2, m_modelBindGroup.Get(), 0, nullptr);
-			wgpuRenderPassEncoderDrawIndexed(m_renderPass, indexCount, 1, 0, 0, 0);
+			DrawIndexed(indexCount, 1, &renderMatrix);
 		}
 
 		virtual void DrawIndexed(uint32_t indexCount, uint32_t matrixCount, const Matrix4* renderMatrix) override
 		{
-
+			if (m_instanceBuffer.currentIndex + matrixCount > m_instanceBuffer.size)
+			{
+				CreateInstanceBuffer(std::max<size_t>(m_instanceBuffer.size * 2, matrixCount));
+			}
+			u_int64_t bufferOffset = m_instanceBuffer.currentIndex * sizeof(Matrix4);
+			m_queue.WriteBuffer(m_instanceBuffer.buffer, bufferOffset, renderMatrix, matrixCount * sizeof(Matrix4));
+			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 2, m_instanceBuffer.group.Get(), 0, nullptr);
+			wgpuRenderPassEncoderDrawIndexed(m_renderPass, indexCount, matrixCount, 0, 0, m_instanceBuffer.currentIndex);
+			m_instanceBuffer.currentIndex += matrixCount;
 		}
 
 
@@ -331,7 +344,7 @@ namespace tako
 				@group(1) @binding(0) var baseColorTexture: texture_2d<f32>;
 				@group(1) @binding(1) var baseColorSampler: sampler;
 
-				@group(2) @binding(0) var<uniform> model : mat4x4f;
+				@group(2) @binding(0) var<storage, read> models : array<mat4x4f>;
 
 				struct VertexInput {
 					@location(0) position: vec3f,
@@ -348,7 +361,8 @@ namespace tako
 				}
 
 				@vertex
-				fn vs_main(in: VertexInput) -> VertexOutput {
+				fn vs_main(in: VertexInput, @builtin(instance_index) instanceIndex: u32) -> VertexOutput {
+					let model = models[instanceIndex];
 					var out: VertexOutput;
 					out.position = camera.projection * camera.view * model * vec4f(in.position, 1.0);
 					out.color = in.color;
@@ -634,9 +648,6 @@ namespace tako
 		};
 		static_assert(sizeof(Uniforms) % 16 == 0);
 		WGPURenderPipeline m_pipeline;
-		//WGPUBuffer m_uniformBuffer;
-		//WGPUPipelineLayout m_layout;
-		//WGPUBindGroupLayout m_bindGroupLayout;
 		Window* m_window;
 
 		WGPUTextureFormat m_depthTextureFormat = WGPUTextureFormat_Depth24Plus;
@@ -651,9 +662,7 @@ namespace tako
 		wgpu::BindGroupLayout m_materialLayout;
 		wgpu::BindGroupLayout m_modelLayout;
 
-		//TODO: manage model bind groups dynamically
-		wgpu::Buffer m_modelBuffer;
-		wgpu::BindGroup m_modelBindGroup;
+		InstanceBuffer m_instanceBuffer;
 
 		WGPURenderPassEncoder m_renderPass;
 		WGPUTextureView m_targetView;
@@ -736,6 +745,7 @@ namespace tako
 				CreateCameraUniformLayout();
 				CreateMaterialLayout();
 				CreateModelLayout();
+				CreateInstanceBuffer(1024);
 
 				LOG("Renderer Setup Complete!")
 				m_initComplete = true;
@@ -810,16 +820,20 @@ namespace tako
 
 		WGPUBuffer CreateWGPUBuffer(WGPUBufferUsage bufferType, const void* bufferData, size_t dataSize, size_t size)
 		{
+			WGPUBuffer buffer = CreateWGPUBuffer(bufferType, size);
+			m_queue.WriteBuffer(buffer, 0, bufferData, dataSize);
+
+			return buffer;
+		}
+
+		WGPUBuffer CreateWGPUBuffer(WGPUBufferUsage bufferType, size_t size)
+		{
 			WGPUBufferDescriptor bufferDesc{};
 			bufferDesc.nextInChain = nullptr;
 			bufferDesc.size = size;
 			bufferDesc.usage = WGPUBufferUsage_CopyDst | bufferType;
 			bufferDesc.mappedAtCreation = false;
-			WGPUBuffer buffer = wgpuDeviceCreateBuffer(m_device.Get(), &bufferDesc);
-
-			m_queue.WriteBuffer(buffer, 0, bufferData, dataSize);
-
-			return buffer;
+			return wgpuDeviceCreateBuffer(m_device.Get(), &bufferDesc);
 		}
 
 		void ConfigureSurface()
@@ -945,7 +959,7 @@ namespace tako
 			wgpu::BindGroupLayoutEntry bindingLayout;
 			bindingLayout.binding = 0;
 			bindingLayout.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
-			bindingLayout.buffer.type = wgpu::BufferBindingType::Uniform;
+			bindingLayout.buffer.type = wgpu::BufferBindingType::ReadOnlyStorage;
 			bindingLayout.buffer.minBindingSize = sizeof(Matrix4);
 
 			wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc;
@@ -953,16 +967,20 @@ namespace tako
 			bindGroupLayoutDesc.entryCount = 1;
 			bindGroupLayoutDesc.entries = &bindingLayout;
 			m_modelLayout = m_device.CreateBindGroupLayout(&bindGroupLayoutDesc);
+		}
 
-			Matrix4 mat;
-			m_modelBuffer = wgpu::Buffer::Acquire(CreateWGPUBuffer(WGPUBufferUsage_Uniform, &mat, sizeof(Matrix4)));
+		void CreateInstanceBuffer(size_t size)
+		{
+			InstanceBuffer ib;
+			size_t s = size * sizeof(Matrix4);
+			ib.buffer = wgpu::Buffer::Acquire(CreateWGPUBuffer(WGPUBufferUsage_Storage, s));
 
 			wgpu::BindGroupEntry binding;
 			binding.nextInChain = nullptr;
 			binding.binding = 0;
-			binding.buffer = m_modelBuffer;
+			binding.buffer = ib.buffer;
 			binding.offset = 0;
-			binding.size = sizeof(Matrix4);
+			binding.size = s;
 
 			wgpu::BindGroupDescriptor bindGroupDesc{};
 			bindGroupDesc.nextInChain = nullptr;
@@ -970,29 +988,9 @@ namespace tako
 
 			bindGroupDesc.entryCount = 1;
 			bindGroupDesc.entries = &binding;
-			m_modelBindGroup = m_device.CreateBindGroup(&bindGroupDesc);
-		}
-
-		void SetDefault(WGPUBindGroupLayoutEntry &bindingLayout) const
-		{
-			bindingLayout.nextInChain = nullptr;
-			bindingLayout.buffer.nextInChain = nullptr;
-			bindingLayout.buffer.type = WGPUBufferBindingType_BindingNotUsed;
-			bindingLayout.buffer.hasDynamicOffset = false;
-
-			bindingLayout.sampler.nextInChain = nullptr;
-			bindingLayout.sampler.type = WGPUSamplerBindingType_BindingNotUsed;
-
-
-			bindingLayout.storageTexture.nextInChain = nullptr;
-			bindingLayout.storageTexture.access = WGPUStorageTextureAccess_BindingNotUsed;
-			bindingLayout.storageTexture.format = WGPUTextureFormat_Undefined;
-			bindingLayout.storageTexture.viewDimension = WGPUTextureViewDimension_Undefined;
-
-			bindingLayout.texture.nextInChain = nullptr;
-			bindingLayout.texture.multisampled = false;
-			bindingLayout.texture.sampleType = WGPUTextureSampleType_BindingNotUsed;
-			bindingLayout.texture.viewDimension = WGPUTextureViewDimension_Undefined;
+			ib.group = m_device.CreateBindGroup(&bindGroupDesc);
+			ib.size = size;
+			m_instanceBuffer = ib;
 		}
 
 		void SetDefault(WGPUStencilFaceState &stencilFaceState) const
