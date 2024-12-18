@@ -34,3 +34,4 @@
 [submodule "dependencies/dawn"]
 	path = dependencies/dawn
 	url = https://dawn.googlesource.com/dawn
+	ignore = dirty
