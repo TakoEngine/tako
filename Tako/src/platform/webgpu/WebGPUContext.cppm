@@ -102,7 +102,7 @@ namespace tako
 	export class WebGPUContext final : public IGraphicsContext
 	{
 	public:
-		WebGPUContext(Window* window) : m_window(window), m_width(window->GetWidth()), m_height(window->GetHeight())
+		WebGPUContext(Window* window) : m_width(window->GetWidth()), m_height(window->GetHeight())
 		{
 			wgpu::InstanceDescriptor desc;
 
@@ -123,7 +123,24 @@ namespace tako
 			ASSERT(instance);
 			m_instance = instance;
 
+			// Surface
+			#if defined(TAKO_EMSCRIPTEN)
+			wgpu::SurfaceDescriptorFromCanvasHTMLSelector fromCanvasHTMLSelector;
+			fromCanvasHTMLSelector.sType = wgpu::SType::SurfaceDescriptorFromCanvasHTMLSelector;
+			fromCanvasHTMLSelector.selector = window->GetHandle();
+
+			wgpu::SurfaceDescriptor surfaceDescriptor;
+			surfaceDescriptor.nextInChain = &fromCanvasHTMLSelector;
+			surfaceDescriptor.label = nullptr;
+
+			m_surface = m_instance.CreateSurface(&surfaceDescriptor);
+			#elif defined(TAKO_GLFW)
+			m_surface = wgpu::glfw::CreateSurfaceForWindow(m_instance, window->GetHandle());
+			#endif
+			ASSERT(m_surface);
+
 			wgpu::RequestAdapterOptions adapterOpts;
+			adapterOpts.compatibleSurface = m_surface;
 
 			m_instance.RequestAdapter(
 				&adapterOpts,
@@ -146,7 +163,6 @@ namespace tako
 		{
 			m_queue = nullptr;
 			m_device = nullptr;
-			m_adapter = nullptr;
 			m_surface.Unconfigure();
 			m_surface = nullptr;
 			m_instance = nullptr;
@@ -500,8 +516,6 @@ namespace tako
 
 			wgpuShaderModuleRelease(shaderModule);
 
-			CreateDepthTexture();
-
 			//TODO: manage pipeline lifetime
 			return {reinterpret_cast<U64>(pipeline)};
 		}
@@ -637,18 +651,7 @@ namespace tako
 
 	private:
 		//TEMP
-		struct Uniforms
-		{
-			Matrix4 viewMatrix;
-			Matrix4 projectionMatrix;
-			Matrix4 modelMatrix;
-			std::array<float, 4> color;
-			float time;
-			float _pad[3];
-		};
-		static_assert(sizeof(Uniforms) % 16 == 0);
 		WGPURenderPipeline m_pipeline;
-		Window* m_window;
 
 		WGPUTextureFormat m_depthTextureFormat = WGPUTextureFormat_Depth24Plus;
 		WGPUTexture m_depthTexture;
@@ -672,22 +675,29 @@ namespace tako
 		U32 m_width, m_height;
 		wgpu::Queue m_queue;
 		wgpu::Device m_device;
-		wgpu::Adapter m_adapter;
 		wgpu::TextureFormat m_surfaceFormat;
 		wgpu::Surface m_surface;
 		wgpu::Instance m_instance;
 
-		void RequestAdapterCallback(WGPURequestAdapterStatus status, WGPUAdapter adapter, WLabel message)
+		void RequestAdapterCallback(WGPURequestAdapterStatus status, WGPUAdapter adapterHandle, WLabel message)
 		{
 			if (status == WGPURequestAdapterStatus_Success)
 			{
-				m_adapter = wgpu::Adapter::Acquire(adapter);
-				wgpu::Adapter tmpAdapter(adapter);
+				auto adapter = wgpu::Adapter::Acquire(adapterHandle);
+
+				#ifdef TAKO_EMSCRIPTEN
+				m_surfaceFormat = surface.GetPreferredFormat(adapter);
+				#else
+				wgpu::SurfaceCapabilities capabilities;
+				m_surface.GetCapabilities(adapter, &capabilities);
+				m_surfaceFormat = capabilities.formats[0]; //Dawn workaround
+				#endif
+
 				wgpu::DeviceDescriptor deviceDesc;
 				deviceDesc.nextInChain = nullptr;
 				deviceDesc.label = "DefaultDevice";
 				deviceDesc.requiredFeatureCount = 0;
-				wgpu::RequiredLimits requiredLimits = GetRequiredLimits(tmpAdapter);
+				wgpu::RequiredLimits requiredLimits = GetRequiredLimits(adapter);
 				deviceDesc.requiredLimits = &requiredLimits;
 				deviceDesc.defaultQueue.nextInChain = nullptr;
 				deviceDesc.defaultQueue.label = "DefaultQueue";
@@ -698,7 +708,7 @@ namespace tako
 				deviceDesc.SetUncapturedErrorCallback(UncapturedErrorCallback);
 				#endif
 
-				m_adapter.RequestDevice(
+				adapter.RequestDevice(
 					&deviceDesc,
 					[](WGPURequestDeviceStatus status, WGPUDevice device, WLabel message, void* pUserData)
 					{
@@ -725,23 +735,9 @@ namespace tako
 				m_queue = m_device.GetQueue();
 				//wgpuQueueOnSubmittedWorkDone(m_queue, OnQueueWorkDone, this);
 
-				// Surface
-				#if defined(TAKO_EMSCRIPTEN)
-				wgpu::SurfaceDescriptorFromCanvasHTMLSelector fromCanvasHTMLSelector;
-				fromCanvasHTMLSelector.sType = wgpu::SType::SurfaceDescriptorFromCanvasHTMLSelector;
-				fromCanvasHTMLSelector.selector = m_window->GetHandle();
-
-				wgpu::SurfaceDescriptor surfaceDescriptor;
-				surfaceDescriptor.nextInChain = &fromCanvasHTMLSelector;
-				surfaceDescriptor.label = nullptr;
-
-				m_surface = m_instance.CreateSurface(&surfaceDescriptor);
-				#elif defined(TAKO_GLFW)
-				m_surface = wgpu::glfw::CreateSurfaceForWindow(m_instance, m_window->GetHandle());
-				#endif
-				ASSERT(m_surface);
 
 				ConfigureSurface();
+				CreateDepthTexture();
 				CreateCameraUniformLayout();
 				CreateMaterialLayout();
 				CreateModelLayout();
@@ -749,14 +745,15 @@ namespace tako
 
 				LOG("Renderer Setup Complete!")
 				m_initComplete = true;
-
+				/*
 				wgpu::SupportedLimits supportedLimits;
 
-				m_adapter.GetLimits(&supportedLimits);
+				adapter.GetLimits(&supportedLimits);
 				LOG("adapter.maxVertexAttributes: {}", supportedLimits.limits.maxVertexAttributes);
 
 				m_device.GetLimits(&supportedLimits);
 				LOG("device.maxVertexAttributes: {}", supportedLimits.limits.maxVertexAttributes);
+				*/
 			}
 			else
 			{
@@ -842,25 +839,15 @@ namespace tako
 			config.nextInChain = nullptr;
 			config.width = m_width;
 			config.height = m_height;
-
-			wgpu::Surface surface(m_surface);
-			wgpu::Adapter adapter(m_adapter);
-			#ifdef TAKO_EMSCRIPTEN
-			m_surfaceFormat = surface.GetPreferredFormat(adapter);
-			#else
-			wgpu::SurfaceCapabilities capabilities;
-			surface.GetCapabilities(adapter, &capabilities);
-			m_surfaceFormat = capabilities.formats[0]; //Dawn workaround
-			#endif
 			config.format = m_surfaceFormat;
 			config.viewFormatCount = 0;
 			config.viewFormats = nullptr;
 			config.usage = wgpu::TextureUsage::RenderAttachment;
-			config.device = wgpu::Device(m_device);
+			config.device = m_device;
 			config.presentMode = wgpu::PresentMode::Fifo;
 			config.alphaMode = wgpu::CompositeAlphaMode::Auto;
 
-			surface.Configure(&config);
+			m_surface.Configure(&config);
 		}
 
 		void CreateDepthTexture()
