@@ -80,6 +80,7 @@ namespace tako
 		void DrawMesh(const Mesh& mesh, const Material& material, const Matrix4& model);
 		void DrawMeshInstanced(const Mesh& mesh, const Material& material, size_t instanceCount, const Matrix4* transforms);
 		void DrawCube(const Matrix4& model, const Material& material);
+		void DrawCubeInstanced(const Material& material, size_t instanceCount, const Matrix4* transforms);
 		void DrawModel(const Model& model, const Matrix4& transform);
 		void DrawModelInstanced(const Model& model, size_t instanceCount, const Matrix4* transforms);
 		Mesh CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices);
@@ -207,6 +208,11 @@ namespace tako
 	void Renderer3D::DrawCube(const Matrix4& model, const Material& material)
 	{
 		DrawMesh(m_cubeMesh, material, model);
+	}
+
+	void Renderer3D::DrawCubeInstanced(const Material& material, size_t instanceCount, const Matrix4* transforms)
+	{
+		DrawMeshInstanced(m_cubeMesh, material, instanceCount, transforms);
 	}
 
 	void Renderer3D::DrawModel(const Model& model, const Matrix4& transform)

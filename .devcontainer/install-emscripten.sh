@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-EM_VERSION='3.1.71'
+EM_VERSION='3.1.67'
 
 EMSDK_PATH=$HOME
 

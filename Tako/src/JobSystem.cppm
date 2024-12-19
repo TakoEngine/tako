@@ -120,7 +120,7 @@ namespace tako
 	class JobSystem
 	{
 	public:
-		JobSystem(): m_allocator(malloc(3024 * 128), 3024 * 128, 128)
+		JobSystem(): m_allocator(malloc(16384 * 128), 16384 * 128, 128)
 		{
 			g_allocator = &m_allocator;
 		}
@@ -260,6 +260,7 @@ namespace tako
 					//ptr = malloc(sizeof(Job) + functorSize);
 					ptr = g_allocator->Allocate();
 				}
+				ASSERT(ptr);
 				//job = new (ptr) Job(functorSize);
 				job = new (ptr) Job(128 - sizeof(Job));
 			}

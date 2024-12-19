@@ -40,6 +40,11 @@ namespace tako
 			return m_length;
 		}
 
+		size_t size() const
+		{
+			return GetLength();
+		}
+
 		size_t GetCapacity() const
 		{
 			return m_capacity;
@@ -62,6 +67,11 @@ namespace tako
 			ReserveSizeForPush();
 			m_data[m_length] = std::move(element);
 			m_length++;
+		}
+
+		void push_back(const T& element)
+		{
+			Push(element);
 		}
 
 		template<typename... Args>
@@ -111,6 +121,12 @@ namespace tako
 				m_data[i].~T();
 			}
 			m_length = 0;
+		}
+
+		T& operator[](size_t index)
+		{
+			ASSERT(index < m_length);
+			return m_data[index];
 		}
 
 		const T& operator[](size_t index) const

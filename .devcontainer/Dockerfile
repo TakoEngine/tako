@@ -15,4 +15,4 @@ RUN sudo dnf install -y vulkan-headers vulkan-loader vulkan-loader-devel mesa-vu
 RUN sudo dnf install -y vim
 
 COPY ./install-emscripten.sh /tmp/
-RUN /tmp/install-emscripten.sh && sudo rm /tmp/install-emscripten.sh
+RUN  /tmp/install-emscripten.sh && sudo rm /tmp/install-emscripten.sh
