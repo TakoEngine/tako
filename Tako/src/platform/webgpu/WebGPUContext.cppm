@@ -338,7 +338,7 @@ namespace tako
 			{
 				CreateInstanceBuffer(std::max<size_t>(m_instanceBuffer.size * 2, matrixCount));
 			}
-			u_int64_t bufferOffset = m_instanceBuffer.currentIndex * sizeof(Matrix4);
+			uint64_t bufferOffset = m_instanceBuffer.currentIndex * sizeof(Matrix4);
 			m_queue.WriteBuffer(m_instanceBuffer.buffer, bufferOffset, renderMatrix, matrixCount * sizeof(Matrix4));
 			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 2, m_instanceBuffer.group.Get(), 0, nullptr);
 			wgpuRenderPassEncoderDrawIndexed(m_renderPass, indexCount, matrixCount, 0, 0, m_instanceBuffer.currentIndex);
@@ -686,7 +686,7 @@ namespace tako
 				auto adapter = wgpu::Adapter::Acquire(adapterHandle);
 
 				#ifdef TAKO_EMSCRIPTEN
-				m_surfaceFormat = surface.GetPreferredFormat(adapter);
+				m_surfaceFormat = m_surface.GetPreferredFormat(adapter);
 				#else
 				wgpu::SurfaceCapabilities capabilities;
 				m_surface.GetCapabilities(adapter, &capabilities);
