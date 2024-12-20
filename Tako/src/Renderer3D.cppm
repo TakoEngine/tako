@@ -123,16 +123,9 @@ namespace tako
 		4, 5, 0, 0, 5, 1
 	};
 
-	struct UniformBufferObject
-	{
-		Matrix4 model;
-		Matrix4 view;
-		Matrix4 proj;
-	};
-
 	struct LightSettings
 	{
-		Vector3 lightPos;
+		Vector4 lightPos;
 	};
 
 	std::vector<U8> LoadShaderCode(const char* codePath)
@@ -251,7 +244,9 @@ namespace tako
 
 	void Renderer3D::SetLightPosition(Vector3 lightPos)
 	{
-		m_context->UpdateUniform(&lightPos, sizeof(LightSettings));
+		LightSettings lights;
+		lights.lightPos = Vector4(lightPos);
+		m_context->UpdateUniform(&lights, sizeof(LightSettings));
 	}
 
 	Model Renderer3D::LoadModel(const char* file)

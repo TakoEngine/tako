@@ -312,7 +312,7 @@ namespace tako
 		virtual void BindMaterial(const Material* material) override
 		{
 			WGPUBindGroup bindGroup = reinterpret_cast<WGPUBindGroup>(material->value);
-			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 1, bindGroup, 0, nullptr);
+			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 2, bindGroup, 0, nullptr);
 		}
 
 		virtual void UpdateCamera(const CameraUniformData& cameraData) override
@@ -323,7 +323,8 @@ namespace tako
 
 		virtual void UpdateUniform(const void* uniformData, size_t uniformSize, size_t offset = 0) override
 		{
-			//m_queue.WriteBuffer(m_uniformBuffer, offset, uniformData, uniformSize);
+			m_queue.WriteBuffer(m_pipelineUniformBuffer, offset, uniformData, uniformSize);
+			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 1, m_pipelineBindGroup.Get(), 0, nullptr);
 		}
 
 
@@ -340,7 +341,7 @@ namespace tako
 			}
 			uint64_t bufferOffset = m_instanceBuffer.currentIndex * sizeof(Matrix4);
 			m_queue.WriteBuffer(m_instanceBuffer.buffer, bufferOffset, renderMatrix, matrixCount * sizeof(Matrix4));
-			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 2, m_instanceBuffer.group.Get(), 0, nullptr);
+			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 3, m_instanceBuffer.group.Get(), 0, nullptr);
 			wgpuRenderPassEncoderDrawIndexed(m_renderPass, indexCount, matrixCount, 0, 0, m_instanceBuffer.currentIndex);
 			m_instanceBuffer.currentIndex += matrixCount;
 		}
@@ -355,12 +356,19 @@ namespace tako
 					projection: mat4x4f,
 				};
 
+				struct Lighting
+				{
+					lightPos: vec4f,
+				};
+
 				@group(0) @binding(0) var<uniform> camera: Camera;
 
-				@group(1) @binding(0) var baseColorTexture: texture_2d<f32>;
-				@group(1) @binding(1) var baseColorSampler: sampler;
+				@group(1) @binding(0) var<uniform> lighting: Lighting;
 
-				@group(2) @binding(0) var<storage, read> models : array<mat4x4f>;
+				@group(2) @binding(0) var baseColorTexture: texture_2d<f32>;
+				@group(2) @binding(1) var baseColorSampler: sampler;
+
+				@group(3) @binding(0) var<storage, read> models : array<mat4x4f>;
 
 				struct VertexInput {
 					@location(0) position: vec3f,
@@ -374,6 +382,10 @@ namespace tako
 					@location(0) color: vec3f,
 					@location(1) normal: vec3f,
 					@location(2) uv: vec2f,
+					@location(3) positionWorld: vec3f,
+					@location(4) normalCamera: vec3f,
+					@location(5) eyeDirection: vec3f,
+					@location(6) lightDirection: vec3f,
 				}
 
 				@vertex
@@ -384,17 +396,39 @@ namespace tako
 					out.color = in.color;
 					out.normal = (model * vec4f(in.normal, 0.0)).xyz;
 					out.uv = in.uv;
+
+					out.positionWorld = (model * vec4f(in.position, 1)).xyz;
+
+					let vertexPosCamera = (camera.view * model * vec4f(in.position,1)).xyz;
+					out.eyeDirection = vec3f(0,0,0) - vertexPosCamera;
+
+					let lightPosCamera = (camera.view * lighting.lightPos).xyz;
+					out.lightDirection = lightPosCamera + out.eyeDirection;
+
+					out.normalCamera = ( camera.view * model * vec4f(in.normal, 0)).xyz;
+
 					return out;
 				}
 
 				@fragment
 				fn fs_main(in: VertexOutput) -> @location(0) vec4f {
 					let normal = normalize(in.normal);
-					let lightDirection = vec3f(0.5, 0.9, 0.1);
-					let shading = dot(lightDirection, normal);
+					let dist = length(lighting.lightPos.xyz - in.positionWorld);
+					let n = normalize(in.normalCamera);
+					let l = normalize(in.lightDirection);
+					let cosTheta = clamp(dot(n,l), 0, 1);
+
+					let E = normalize(in.eyeDirection);
+					let R = reflect(-l, n);
+					let cosAlpha = clamp( dot(E,R), 0, 1);
 
 					let baseColor = textureSample(baseColorTexture, baseColorSampler, in.uv).rgb;
-					let color = baseColor * shading;
+					let color =
+						baseColor * vec3f(0.1,0.1,0.1) +
+						baseColor * vec3f(1,1,1) * 200 * cosTheta / (dist*dist) +
+						vec3f(0.3,0.3,0.3) * vec3f(1,1,1) * 200 * pow(cosAlpha, 5) / (dist*dist);
+
+					//let color = baseColor * shading;
 
 					return vec4f(color, 1.0);
 				}
@@ -498,10 +532,16 @@ namespace tako
 			pipelineDesc.multisample.mask = ~0u;
 			pipelineDesc.multisample.alphaToCoverageEnabled = false;
 
-			std::array<wgpu::BindGroupLayout, 3> layouts;
-			layouts[0] = m_cameraLayout;
-			layouts[1] = m_materialLayout;
-			layouts[2] = m_modelLayout;
+			CreatePipelineUniformLayout(pipelineDescriptor.pipelineUniformSize);
+
+			std::array layouts
+			{
+				m_cameraLayout,
+				m_pipelineBindLayout,
+				m_materialLayout,
+				m_modelLayout,
+			};
+
 
 			wgpu::PipelineLayoutDescriptor layoutDesc;
 			layoutDesc.nextInChain = nullptr;
@@ -661,6 +701,10 @@ namespace tako
 		wgpu::Buffer m_cameraUniformBuffer;
 		wgpu::BindGroupLayout m_cameraLayout;
 		wgpu::BindGroup m_cameraBindGroup;
+
+		wgpu::Buffer m_pipelineUniformBuffer;
+		wgpu::BindGroupLayout m_pipelineBindLayout;
+		wgpu::BindGroup m_pipelineBindGroup;
 
 		wgpu::BindGroupLayout m_materialLayout;
 		wgpu::BindGroupLayout m_modelLayout;
@@ -918,6 +962,38 @@ namespace tako
 			bindGroupDesc.entryCount = 1;
 			bindGroupDesc.entries = &binding;
 			m_cameraBindGroup = m_device.CreateBindGroup(&bindGroupDesc);
+		}
+
+		void CreatePipelineUniformLayout(size_t size)
+		{
+			wgpu::BindGroupLayoutEntry bindingLayout;
+			bindingLayout.binding = 0;
+			bindingLayout.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
+			bindingLayout.buffer.type = wgpu::BufferBindingType::Uniform;
+			bindingLayout.buffer.minBindingSize = size;
+
+			wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc;
+			bindGroupLayoutDesc.nextInChain = nullptr;
+			bindGroupLayoutDesc.entryCount = 1;
+			bindGroupLayoutDesc.entries = &bindingLayout;
+			m_pipelineBindLayout = m_device.CreateBindGroupLayout(&bindGroupLayoutDesc);
+
+			m_pipelineUniformBuffer = wgpu::Buffer::Acquire(CreateWGPUBuffer(WGPUBufferUsage_Uniform, size));
+
+			wgpu::BindGroupEntry binding;
+			binding.nextInChain = nullptr;
+			binding.binding = 0;
+			binding.buffer = m_pipelineUniformBuffer;
+			binding.offset = 0;
+			binding.size = size;
+
+			wgpu::BindGroupDescriptor bindGroupDesc{};
+			bindGroupDesc.nextInChain = nullptr;
+			bindGroupDesc.layout = m_pipelineBindLayout;
+
+			bindGroupDesc.entryCount = 1;
+			bindGroupDesc.entries = &binding;
+			m_pipelineBindGroup = m_device.CreateBindGroup(&bindGroupDesc);
 		}
 
 		void CreateMaterialLayout()
