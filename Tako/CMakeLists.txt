@@ -57,6 +57,7 @@ target_sources(
 	"src/Allocators/FreeListAllocator.cppm"
 	"src/Allocators/LinearAllocator.cppm"
 	"src/Allocators/PoolAllocator.cppm"
+	"src/Allocators/CachePoolAllocator.cppm"
 )
 
 function(set_feature define val)
@@ -180,10 +181,10 @@ function(add_shader filename)
 	target_sources(${TAKO_DLL} PRIVATE ${SHADER_OUT})
 endfunction()
 
-add_shader("quad.vert.glsl")
-add_shader("quad.frag.glsl")
-add_shader("image.vert.glsl")
-add_shader("image.frag.glsl")
+#add_shader("quad.vert.glsl")
+#add_shader("quad.frag.glsl")
+#add_shader("image.vert.glsl")
+#add_shader("image.frag.glsl")
 
 	if (EMSCRIPTEN)
 		target_link_libraries(${TAKO_DLL} PRIVATE GLESv2)

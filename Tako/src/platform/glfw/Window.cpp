@@ -94,6 +94,23 @@ namespace tako
 			//glClear(GL_COLOR_BUFFER_BIT);
 			//glfwSwapBuffers(m_window);
 			glfwPollEvents();
+			if (glfwJoystickIsGamepad(GLFW_JOYSTICK_1))
+			{
+				LOG("Detected!")
+				GLFWgamepadstate state;
+				if (glfwGetGamepadState(GLFW_JOYSTICK_1, &state))
+				{
+					AxisUpdate left;
+					left.axis = Axis::Left;
+					left.value = Vector2(state.axes[GLFW_GAMEPAD_AXIS_LEFT_X], state.axes[GLFW_GAMEPAD_AXIS_LEFT_Y]);
+					m_callback(left);
+
+					AxisUpdate right;
+					right.axis = Axis::Right;
+					right.value = Vector2(state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X], state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y]);
+					m_callback(right);
+				}
+			}
 		}
 
 		void SetEventCallback(const std::function<void(Event&)>& callback)

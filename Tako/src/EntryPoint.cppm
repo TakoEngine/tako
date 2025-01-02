@@ -35,7 +35,7 @@ import Tako.Audio;
 import Tako.Application;
 import Tako.Serialization;
 import Tako.JobSystem;
-import Tako.Allocators.PoolAllocator;
+import Tako.Allocators.CachePoolAllocator;
 
 namespace tako
 {
@@ -50,7 +50,8 @@ namespace tako
 		GameConfig& config;
 		JobSystem& jobSys;
 		std::atomic<bool>& keepRunning;
-		Allocators::PoolAllocator frameDataPool;
+		//Allocators::PoolAllocator frameDataPool;
+		Allocators::CachePoolAllocator frameDataAllocator;
 #ifdef TAKO_EMSCRIPTEN
 		pthread_t mainThread;
 		emscripten::ProxyingQueue proxyQueue;
@@ -120,12 +121,18 @@ namespace tako
 			data->input.Update();
 		});
 
+
+		if (data->config.CheckFrameDataSizeChange)
+		{
+			data->config.CheckFrameDataSizeChange(data->gameData, data->config.frameDataSize);
+		}
+		auto frameDataSize = data->config.frameDataSize;
 		/*
 		while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
-		void* frameData = data->frameDataPool.Allocate();
+		void* frameData = data->frameDataAllocator.Allocate(frameDataSize);
 		data->frameDataPoolLock.clear(std::memory_order_release);
 		*/
-		void* frameData = malloc(data->config.frameDataSize);
+		void* frameData = malloc(frameDataSize);
 
 		data->jobSys.Continuation([=]()
 		{
@@ -136,9 +143,13 @@ namespace tako
 					GameStageData stageData
 					{
 						data->gameData,
-						frameData
+						frameData,
+						frameDataSize
 					};
-					data->config.Update(stageData, &data->input, dt);
+					if (data->config.Update)
+					{
+						data->config.Update(stageData, &data->input, dt);
+					}
 				});
 			}
 			data->jobSys.Continuation([=]()
@@ -160,7 +171,8 @@ namespace tako
 						GameStageData stageData
 						{
 							data->gameData,
-							frameData
+							frameData,
+							frameDataSize
 						};
 						data->config.Draw(stageData);
 					}
@@ -207,7 +219,7 @@ namespace tako
 				{
 					/*
 					while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
-					data->frameDataPool.Deallocate(frameData);
+					data->frameDataAllocator.Deallocate(frameData, frameDataSize);
 					data->frameDataPoolLock.clear(std::memory_order_release);
 					*/
 					free(frameData);
@@ -355,8 +367,8 @@ namespace tako
 			broadcaster.Broadcast(evt);
 		});
 
-		size_t framePoolSize = config.frameDataSize * 10;
-		void* framePoolData = malloc(framePoolSize);
+		//size_t framePoolSize = config.frameDataSize * 10;
+		//void* framePoolData = malloc(framePoolSize);
 
 		TickStruct data
 		{
@@ -369,7 +381,8 @@ namespace tako
 			config,
 			jobSys,
 			keepRunning,
-			{ framePoolData, framePoolSize, config.frameDataSize },
+			//{ framePoolData, framePoolSize, config.frameDataSize },
+			{},
 #ifdef EMSCRIPTEN
 			pthread_self(),
 #endif
@@ -388,7 +401,7 @@ namespace tako
 		emscripten_set_main_loop_arg(ScheduleTick, &data, 0, 1);
 #endif
 
-		free(framePoolData);
+		//free(framePoolData);
 		free(gameData);
 
 		LOG("terminating");

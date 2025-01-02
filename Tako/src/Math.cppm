@@ -246,7 +246,7 @@ export namespace tako
 			return operator/=(mag);
 		}
 
-		Vector3 normalized()
+		Vector3 normalized() const
 		{
 			float mag = magnitude();
 			if (mag < 0.0001f)
