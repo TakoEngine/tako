@@ -17,11 +17,13 @@ namespace tako
 	{
 		void* gameData;
 		void* frameData;
+		size_t frameDataSize;
 	};
 
 	struct GameConfig
 	{
 		void (*Setup)(void* gameData, const SetupData& setup);
+		void (*CheckFrameDataSizeChange)(void* gameData, size_t& frameDataSize);
 		void (*Update)(const GameStageData stageData, Input* input, float dt);
 		void (*Draw)(const GameStageData stageData);
 		size_t gameDataSize;
