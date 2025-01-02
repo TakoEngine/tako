@@ -3,17 +3,31 @@ module;
 #include "VertexBuffer.hpp"
 #include "Pipeline.hpp"
 #include "Utility.hpp"
+#include <fastgltf/core.hpp>
+#include <fastgltf/types.hpp>
+#include <fastgltf/tools.hpp>
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "../tinyobjloader/tiny_obj_loader.h" //TODO: why
+/*
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+*/
 #include <vector>
 #include <array>
+#include <algorithm>
 export module Tako.Renderer3D;
 
+//import fastgltf;
 import Tako.FileSystem;
 import Tako.GraphicsContext;
+
+
+template <>
+struct fastgltf::ElementTraits<tako::Vector2> : fastgltf::ElementTraitsBase<tako::Vector2, AccessorType::Vec2, float> {};
+
+template <>
+struct fastgltf::ElementTraits<tako::Vector3> : fastgltf::ElementTraitsBase<tako::Vector3, AccessorType::Vec3, float> {};
 
 namespace tako
 {
@@ -66,6 +80,7 @@ namespace tako
 		void DrawMesh(const Mesh& mesh, const Material& material, const Matrix4& model);
 		void DrawMeshInstanced(const Mesh& mesh, const Material& material, size_t instanceCount, const Matrix4* transforms);
 		void DrawCube(const Matrix4& model, const Material& material);
+		void DrawCubeInstanced(const Material& material, size_t instanceCount, const Matrix4* transforms);
 		void DrawModel(const Model& model, const Matrix4& transform);
 		void DrawModelInstanced(const Model& model, size_t instanceCount, const Matrix4* transforms);
 		Mesh CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices);
@@ -108,16 +123,9 @@ namespace tako
 		4, 5, 0, 0, 5, 1
 	};
 
-	struct UniformBufferObject
-	{
-		Matrix4 model;
-		Matrix4 view;
-		Matrix4 proj;
-	};
-
 	struct LightSettings
 	{
-		Vector3 lightPos;
+		Vector4 lightPos;
 	};
 
 	std::vector<U8> LoadShaderCode(const char* codePath)
@@ -134,11 +142,15 @@ namespace tako
 
 	Renderer3D::Renderer3D(GraphicsContext* context) : m_context(context)
 	{
+		/*
 		const char* vertPath = "/../shader/shader.vert.spv";
 		const char* fragPath = "/../shader/shader.frag.spv";
 
 		auto vertCode = LoadShaderCode(vertPath);
 		auto fragCode = LoadShaderCode(fragPath);
+		*/
+		std::vector<U8> vertCode;
+		std::vector<U8> fragCode;
 
 		std::array<PipelineVectorAttribute, 4> vertexAttributes = { PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec2 };
 		size_t pushConstant = sizeof(Matrix4);
@@ -191,6 +203,11 @@ namespace tako
 		DrawMesh(m_cubeMesh, material, model);
 	}
 
+	void Renderer3D::DrawCubeInstanced(const Material& material, size_t instanceCount, const Matrix4* transforms)
+	{
+		DrawMeshInstanced(m_cubeMesh, material, instanceCount, transforms);
+	}
+
 	void Renderer3D::DrawModel(const Model& model, const Matrix4& transform)
 	{
 		for (const Node& node : model.nodes)
@@ -221,152 +238,164 @@ namespace tako
 		CameraUniformData cam;
 		cam.view = view;
 		cam.proj = Matrix4::perspective(45, m_context->GetWidth() / (float) m_context->GetHeight(), 1, 1000);
-		cam.viewProj = cam.proj * cam.view;
+		//cam.viewProj = cam.proj * cam.view;
 		m_context->UpdateCamera(cam);
 	}
 
 	void Renderer3D::SetLightPosition(Vector3 lightPos)
 	{
-		m_context->UpdateUniform(&lightPos, sizeof(LightSettings));
+		LightSettings lights;
+		lights.lightPos = Vector4(lightPos);
+		m_context->UpdateUniform(&lights, sizeof(LightSettings));
 	}
 
 	Model Renderer3D::LoadModel(const char* file)
 	{
-		Assimp::Importer importer;
-		const aiScene* scene = importer.ReadFile(file,
-			aiProcess_CalcTangentSpace |
-			aiProcess_Triangulate |
-			aiProcess_JoinIdenticalVertices |
-			aiProcess_SortByPType |
-			aiProcess_FlipUVs);
-
-		std::vector<Texture> textures;
-		textures.resize(scene->mNumTextures);
-		for (int t = 0; t < scene->mNumTextures; t++)
+		Model model;
+		fastgltf::Parser parser;
+		std::filesystem::path path(file);
+		auto data = fastgltf::GltfDataBuffer::FromPath(path);;
+		if( data.error() != fastgltf::Error::None)
 		{
-			auto tex = scene->mTextures[t];
-			if (tex->mHeight > 0)
-			{
-				Bitmap bmp(tex->mWidth, tex->mHeight);
-				for (int i = 0; i < tex->mWidth * tex->mHeight; i++)
-				{
-					auto& tx = tex->pcData[i];
-					bmp.GetData()[i] = { tx.r, tx.g, tx.b, tx.a };
-				}
-				textures[t] = m_context->CreateTexture(bmp);
-			}
-			else
-			{
-				textures[t] = m_context->CreateTexture(Bitmap::FromFileData(reinterpret_cast<const U8*>(tex->pcData), tex->mWidth));
-			}
+			LOG_ERR("gltf data error: {}", fastgltf::getErrorName(data.error()));
+			return {};
 		}
 
-		std::vector<Material> materials;
-		materials.resize(scene->mNumMeshes);
-
-		for (int matIndex = 0; matIndex < scene->mNumMaterials; matIndex++)
+		auto assetRes = parser.loadGltf(data.get(), path.parent_path(), fastgltf::Options::None);
+		if (assetRes.error() != fastgltf::Error::None)
 		{
-			auto mat = scene->mMaterials[matIndex];
-			auto diffuseTexCount = mat->GetTextureCount(aiTextureType_DIFFUSE);
-			if (diffuseTexCount > 0)
-			{
-				aiString texPath;
-				mat->GetTexture(aiTextureType_DIFFUSE, 0, &texPath);
-				materials[matIndex] = { m_context->CreateMaterial(&textures[(size_t)atoi(&texPath.C_Str()[1])]) };
-			}
-			//TODO: handle more cases
+			LOG_ERR("gltf asset error: {}", fastgltf::getErrorName(assetRes.error()));
+			return {};
 		}
 
-		std::vector<Mesh> meshes;
-		meshes.resize(scene->mNumMeshes);
+		auto& asset = assetRes.get();
 
-		std::vector<Node> nodes;
-		nodes.resize(scene->mNumMeshes);
-
-		for (int mIndex = 0; mIndex < scene->mNumMeshes; mIndex++)
+		size_t imageCount = asset.images.size();
+		model.textures.resize(imageCount);
+		for (size_t i = 0; i < imageCount; i++)
 		{
-			auto mesh = scene->mMeshes[mIndex];
-			std::vector<Vertex> vertices;
-			vertices.resize(mesh->mNumVertices);
-			for (int v = 0; v < mesh->mNumVertices; v++)
+			auto& rawImage = asset.images[i];
+			std::visit(fastgltf::visitor
 			{
-				Vertex vert;
-
-				vert.pos = { mesh->mVertices[v].x, mesh->mVertices[v].y, mesh->mVertices[v].z };
-				vert.normal = { mesh->mNormals[v].x, mesh->mNormals[v].y, mesh->mNormals[v].z };
-				if (mesh->HasVertexColors(0))
+				[&](fastgltf::sources::URI& filePath)
 				{
-					vert.color = { mesh->mColors[0][v].r, mesh->mColors[0][v].g, mesh->mColors[0][v].b };
-					LOG("{} {} {}", vert.color.x, vert.color.y, vert.color.z);
-				}
-				else
+					LOG("{}", filePath.uri.string());
+				},
+				[&](fastgltf::sources::Vector& vector)
 				{
-					vert.color = { 1, 1, 1 };
-				}
-				if (mesh->GetNumUVChannels() >= 1)
+					LOG("vector");
+				},
+				[&](fastgltf::sources::BufferView& view)
 				{
-					vert.uv = { mesh->mTextureCoords[0][v].x, mesh->mTextureCoords[0][v].y };
-				}
-				else
-				{
-					vert.uv = { 0, 0 };
-				}
-				vertices[v] = vert;
-			}
-
-			std::vector<U16> indices;
-			indices.resize(mesh->mNumFaces * 3);
-			for (int f = 0; f < mesh->mNumFaces; f++)
-			{
-				indices[f * 3 + 0] = mesh->mFaces[f].mIndices[0];
-				indices[f * 3 + 1] = mesh->mFaces[f].mIndices[1];
-				indices[f * 3 + 2] = mesh->mFaces[f].mIndices[2];
-			}
-
-			auto finalMesh = CreateMesh(vertices, indices);
-			meshes[mIndex] = finalMesh;
-
-			nodes[mIndex] = { finalMesh, materials[mesh->mMaterialIndex]};
+					auto& bufferView = asset.bufferViews[view.bufferViewIndex];
+					auto& buffer = asset.buffers[bufferView.bufferIndex];
+					std::visit(fastgltf::visitor
+					{
+						[&](fastgltf::sources::URI& uri)
+						{
+							LOG("BufferView uri: {}", uri.uri.string());
+						},
+						[&](fastgltf::sources::Array& arr)
+						{
+							Bitmap img = Bitmap::FromFileData(reinterpret_cast<U8*>(arr.bytes.data()) + bufferView.byteOffset, bufferView.byteLength);
+							model.textures[i] = CreateTexture(img);
+						},
+						[&](fastgltf::sources::Vector& vec)
+						{
+							LOG("BufferView vec: {}", vec.bytes.size());
+						},
+						[](auto& arg) {}
+					}, buffer.data);
+				},
+				[](auto& arg) { LOG("default"); }
+			}, rawImage.data);
 		}
 
-		/*
-		for (int m = 0; m < scene->mNumMaterials; m++)
+		size_t materialCount = asset.materials.size();
+		model.materials.resize(materialCount);
+		for (size_t i = 0; i < materialCount; i++)
 		{
-			auto mat = scene->mMaterials[m];
-			LOG("{}", scene->mMaterials[m]->GetName().C_Str());
-			LOG("{}", scene->mMaterials[m]->mNumProperties);
-			auto diffuseTexCount = scene->mMaterials[m]->GetTextureCount(aiTextureType_DIFFUSE);
-			for (int t = 0; t < diffuseTexCount; t++)
-			{
-				aiString texPath;
-				scene->mMaterials[m]->GetTexture(aiTextureType_DIFFUSE, t, &texPath);
-				LOG("{}", texPath.C_Str());
-			}
-			auto baseTexCount = scene->mMaterials[m]->GetTextureCount(aiTextureType_BASE_COLOR);
-			for (int t = 0; t < baseTexCount; t++)
-			{
-				aiString texPath;
-				scene->mMaterials[m]->GetTexture(aiTextureType_BASE_COLOR, t, &texPath);
-				LOG("{}", texPath.C_Str());
-			}
-			for (int p = 0; p < scene->mMaterials[m]->mNumProperties; p++)
-			{
-				auto prop = scene->mMaterials[m]->mProperties[p];
-				switch (prop->mType)
-				{
+			auto& mat = asset.materials[i];
+			// Only support materials with texture for now
+			ASSERT(mat.pbrData.baseColorTexture.has_value());
+			size_t texIndex = mat.pbrData.baseColorTexture.value().textureIndex;
+			size_t imageIndex = asset.textures[texIndex].imageIndex.value();
+			model.materials[i] = m_context->CreateMaterial(&model.textures[imageIndex]);
+		}
 
-				case aiPTI_String:
-					LOG("{} {}", prop->mKey.C_Str(), ((aiString*)prop->mData)->C_Str());
-					break;
-				case aiPTI_Float:
-					LOG("{} {} {}", prop->mKey.C_Str(), prop->mDataLength, *((float*)prop->mData));
+		fastgltf::iterateSceneNodes(asset, 0, fastgltf::math::fmat4x4(), [&](fastgltf::Node& node, fastgltf::math::fmat4x4 matrix)
+		{
+			if (node.meshIndex.has_value())
+			{
+				std::vector<Vertex> vertices;
+				std::vector<U16> indices;
+				LOG("{}", node.name);
+				auto& rawMesh = asset.meshes[node.meshIndex.value()];
+				for (auto& primitive : rawMesh.primitives)
+				{
+					//TODO: merge primitives if same material?
+					auto& indexAccessor = asset.accessors[primitive.indicesAccessor.value()];
+					indices.reserve(indexAccessor.count);
+					fastgltf::iterateAccessor<U32>(asset, indexAccessor, [&](U32 index)
+					{
+						indices.push_back(index);
+					});
+
+
+					auto& posAccessor = asset.accessors[primitive.findAttribute("POSITION")->accessorIndex];
+					vertices.resize(posAccessor.count);
+					fastgltf::iterateAccessorWithIndex<Vector3>(asset, posAccessor, [&](Vector3 pos, size_t index)
+					{
+						Vertex v;
+						v.pos = pos;
+						v.pos.y *= -1;
+						v.color = Vector3(1, 1, 1);
+						vertices[index] = v;
+					});
+
+					auto normals = primitive.findAttribute("NORMAL");
+					if (normals != primitive.attributes.end())
+					{
+						auto& normalAccessor = asset.accessors[normals->accessorIndex];
+						fastgltf::iterateAccessorWithIndex<Vector3>(asset, normalAccessor, [&](Vector3 normal, size_t index)
+						{
+							vertices[index].normal = normal;
+						});
+					}
+
+					auto colors = primitive.findAttribute("COLOR_0");
+					if (normals != primitive.attributes.end())
+					{
+						auto& colorAccessor = asset.accessors[colors->accessorIndex];
+						fastgltf::iterateAccessorWithIndex<Vector3>(asset, colorAccessor, [&](Vector3 color, size_t index)
+						{
+							vertices[index].color = color;
+						});
+					}
+
+					auto uvs = primitive.findAttribute("TEXCOORD_0");
+					if (uvs != primitive.attributes.end())
+					{
+						auto& uvAccessor = asset.accessors[uvs->accessorIndex];
+						fastgltf::iterateAccessorWithIndex<Vector2>(asset, uvAccessor, [&](Vector2 uv, size_t index)
+						{
+							vertices[index].uv = uv;
+						});
+					}
+
+					Node node;
+					node.mesh = CreateMesh(vertices, indices);
+					if (primitive.materialIndex.has_value())
+					{
+						auto materialIndex = primitive.materialIndex.value();
+						node.mat = model.materials[materialIndex];
+					}
+					model.nodes.push_back(node);
 				}
 			}
-		}
-		*/
+		});
 
-
-		return { meshes, materials, textures, nodes };
+		return model;
 	}
 
 	Mesh Renderer3D::LoadMesh(const char* file)

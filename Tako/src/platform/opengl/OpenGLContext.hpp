@@ -8,6 +8,7 @@ namespace tako
 	public:
 		OpenGLContext(Window* window);
 		~OpenGLContext() override = default;
+		virtual GraphicsAPI GetAPI() override;
 		virtual void Begin() override;
 		virtual void End() override;
 		virtual void Present() override;
@@ -16,14 +17,14 @@ namespace tako
 
 		virtual U32 GetWidth() override;
 		virtual U32 GetHeight() override;
-		
+
 		virtual void BindPipeline(const Pipeline* pipeline) override;
 		virtual void BindVertexBuffer(const Buffer* buffer) override;
 		virtual void BindIndexBuffer(const Buffer* buffer) override;
 		virtual void BindMaterial(const Material* material) override;
 
 		virtual void UpdateCamera(const CameraUniformData& cameraData) override;
-		virtual void UpdateUniform(const void* uniformData, size_t uniformSize) override;
+		virtual void UpdateUniform(const void* uniformData, size_t uniformSize, size_t offset = 0) override;
 
 		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) override;
 		virtual void DrawIndexed(uint32_t indexCount, uint32_t matrixCount, const Matrix4* renderMatrix) override;

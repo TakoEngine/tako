@@ -11,12 +11,19 @@ module;
 #include <type_traits>
 export module Tako.GraphicsContext;
 
+#ifdef TAKO_WEBGPU
+export import Tako.WebGPU;
+#endif
+
 export namespace tako
 {
 	constexpr GraphicsAPI SupportedAPIs[] =
 	{
 #ifdef TAKO_OPENGL
 		GraphicsAPI::OpenGL,
+#endif
+#ifdef TAKO_WEBGPU
+		GraphicsAPI::WebGPU,
 #endif
 #ifdef TAKO_VULKAN
 		GraphicsAPI::Vulkan,
@@ -31,6 +38,11 @@ export namespace tako
 #ifdef TAKO_OPENGL
 	template<> struct APITypeMap<GraphicsAPI::OpenGL> {
 		using type = OpenGLContext;
+	};
+#endif
+#ifdef TAKO_WEBGPU
+	template<> struct APITypeMap<GraphicsAPI::WebGPU> {
+		using type = WebGPUContext;
 	};
 #endif
 #ifdef TAKO_VULKAN
@@ -61,6 +73,10 @@ namespace tako
 #ifdef TAKO_OPENGL
 			case GraphicsAPI::OpenGL:
 				return std::make_unique<OpenGLContext>(window);
+#endif
+#ifdef TAKO_WEBGPU
+			case GraphicsAPI::WebGPU:
+				return std::make_unique<WebGPUContext>(window);
 #endif
 #ifdef TAKO_VULKAN
 			case GraphicsAPI::Vulkan:

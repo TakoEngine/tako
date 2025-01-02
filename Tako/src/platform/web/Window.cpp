@@ -81,23 +81,30 @@ namespace tako
 	class Window::WindowImpl
 	{
 	public:
-		WindowImpl()
+		WindowImpl(GraphicsAPI api)
 		{
-			EmscriptenWebGLContextAttributes attributes;
-			emscripten_webgl_init_context_attributes(&attributes);
-			attributes.alpha = false;
-			attributes.antialias = false;
-			m_contextHandle = emscripten_webgl_create_context(HTML_TARGET, &attributes);
-			emscripten_webgl_make_context_current(m_contextHandle);
-			double width, height;
-			emscripten_get_element_css_size(HTML_TARGET, &width, &height);
-			Resize(width, height);
+			if (api == GraphicsAPI::OpenGL)
+			{
+				EmscriptenWebGLContextAttributes attributes;
+				emscripten_webgl_init_context_attributes(&attributes);
+				attributes.alpha = false;
+				attributes.antialias = false;
+				m_contextHandle = emscripten_webgl_create_context(HTML_TARGET, &attributes);
+				emscripten_webgl_make_context_current(m_contextHandle);
+			}
+
+			MatchCanvasToElementSize();
+			ResizeCallback();
 			emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, this, false, WindowResizeCallback);
 
 			emscripten_set_keypress_callback(HTML_TARGET, this, false, KeyPressCallback);
 			emscripten_set_keydown_callback(HTML_TARGET, this, false, KeyPressCallback);
 			emscripten_set_keyup_callback(HTML_TARGET, this, false, KeyPressCallback);
 			emscripten_set_mousemove_callback(HTML_TARGET, this, false, MouseMoveCallback);
+			emscripten_set_touchstart_callback(HTML_TARGET, this, false, TouchCallback);
+			emscripten_set_touchend_callback(HTML_TARGET, this, false, TouchCallback);
+			emscripten_set_touchmove_callback(HTML_TARGET, this, false, TouchCallback);
+			emscripten_set_touchcancel_callback(HTML_TARGET, this, false, TouchCallback);
 		}
 
 
@@ -157,6 +164,7 @@ namespace tako
 		EMSCRIPTEN_WEBGL_CONTEXT_HANDLE m_contextHandle;
 		std::function<void(Event&)> m_callback;
 		GLFWwindow* m_window;
+		std::unordered_map<int, EmscriptenTouchPoint> m_touches;
 
 		void SetEventCallback(const std::function<void(Event&)>& callback)
 		{
@@ -165,9 +173,17 @@ namespace tako
 
 		void Resize(int width, int height)
 		{
-			m_width = width;
-			m_height = height;
-			emscripten_set_canvas_element_size(HTML_TARGET, width, height);
+			ResizeCanvas(width, height);
+			ResizeCallback();
+		}
+
+		void ResizeCallback()
+		{
+			ResizeCallback(m_width, m_height);
+		}
+
+		void ResizeCallback(int width, int height)
+		{
 			if (m_callback)
 			{
 				WindowResize evt;
@@ -177,12 +193,24 @@ namespace tako
 			}
 		}
 
+		void ResizeCanvas(int width, int height)
+		{
+			emscripten_set_canvas_element_size(HTML_TARGET, width, height);
+			emscripten_get_canvas_element_size(HTML_TARGET, &m_width, &m_height);
+		}
+
+		void MatchCanvasToElementSize()
+		{
+			double width, height;
+			emscripten_get_element_css_size(HTML_TARGET, &width, &height);
+			ResizeCanvas(width, height);
+		}
+
 		static EM_BOOL WindowResizeCallback(int eventType, const EmscriptenUiEvent* uiEvent, void* userData)
 		{
 			Window::WindowImpl* win = static_cast<Window::WindowImpl*>(userData);
-			double width, height;
-			emscripten_get_element_css_size(HTML_TARGET, &width, &height);
-			win->Resize(width, height);
+			win->MatchCanvasToElementSize();
+			win->ResizeCallback();
 			return true;
 		}
 
@@ -226,10 +254,52 @@ namespace tako
 			}
 			return false;
 		}
+
+		EM_BOOL static TouchCallback(int eventType, const EmscriptenTouchEvent* touchEvent, void *userData)
+		{
+			Window::WindowImpl* win = static_cast<Window::WindowImpl*>(userData);
+			bool handled = false;
+
+			switch (eventType)
+			{
+				case EMSCRIPTEN_EVENT_TOUCHSTART:
+					for (int i = 0; i < touchEvent->numTouches; i++)
+					{
+						auto touch = touchEvent->touches[i];
+						win->m_touches[touch.identifier] = touch;
+					}
+					break;
+				case EMSCRIPTEN_EVENT_TOUCHMOVE:
+					for (int i = 0; i < touchEvent->numTouches; i++)
+					{
+						auto touch = touchEvent->touches[i];
+						if (touch.isChanged && win->m_callback)
+						{
+							MouseMove evt;
+							evt.position.x = touch.clientX;
+							evt.position.y = win->m_height - touch.clientY;
+							win->m_callback(evt);
+							handled = true;
+						}
+						win->m_touches[touch.identifier] = touch;
+					}
+					break;
+				case EMSCRIPTEN_EVENT_TOUCHEND:
+				case EMSCRIPTEN_EVENT_TOUCHCANCEL:
+					win->m_touches.clear();
+					for (int i = 0; i < touchEvent->numTouches; i++)
+					{
+						auto touch = touchEvent->touches[i];
+						win->m_touches[touch.identifier] = touch;
+					}
+			}
+
+			return handled;
+		}
 	};
 
 
-	Window::Window(GraphicsAPI api) : m_impl(new WindowImpl())
+	Window::Window(GraphicsAPI api) : m_impl(new WindowImpl(api))
 	{
 	}
 
@@ -257,7 +327,7 @@ namespace tako
 
 	WindowHandle Window::GetHandle() const
 	{
-		return std::nullptr_t();
+		return HTML_TARGET;
 	}
 
 	void Window::SetEventCallback(const std::function<void(Event&)>& callback)

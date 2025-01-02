@@ -254,7 +254,7 @@ namespace tako
 		{
 			m_context->BindMaterial(&matSearch->second);
 		}
-		
+
 		m_context->DrawIndexed(6, model);
 	}
 

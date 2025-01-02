@@ -63,6 +63,11 @@ namespace tako
 		Resize(window->GetWidth(), window->GetHeight());
 	}
 
+	GraphicsAPI OpenGLContext::GetAPI()
+	{
+		return GraphicsAPI::OpenGL;
+	}
+
 	void OpenGLContext::Resize(int w, int h)
 	{
 		m_width = w;
@@ -161,7 +166,7 @@ namespace tako
 
 	}
 
-	void OpenGLContext::UpdateUniform(const void *uniformData, size_t uniformSize)
+	void OpenGLContext::UpdateUniform(const void *uniformData, size_t uniformSize, size_t offset)
 	{
 
 	}

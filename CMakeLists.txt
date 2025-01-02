@@ -7,7 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Magic to enable C++20 modules
 set(CMAKE_CXX_EXTENSIONS OFF)
 #set(CXX_SCAN_FOR_MODULES OFF)
-set(CMAKE_BUILD_TYPE Debug)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
@@ -24,17 +23,28 @@ add_subdirectory("Utils")
 add_subdirectory("dependencies/fmt" EXCLUDE_FROM_ALL)
 add_subdirectory("dependencies/yaml-cpp" EXCLUDE_FROM_ALL)
 add_subdirectory("dependencies/json" EXCLUDE_FROM_ALL)
+
+set(FASTGLTF_COMPILE_AS_CPP20 ON CACHE BOOL "" FORCE)
+#set(FASTGLTF_ENABLE_CPP_MODULES ON CACHE BOOL "" FORCE)
+add_subdirectory("dependencies/fastgltf" EXCLUDE_FROM_ALL)
+
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 if (NOT EMSCRIPTEN)
-    add_subdirectory("dependencies/glfw" EXCLUDE_FROM_ALL)
-    add_subdirectory("dependencies/assimp" EXCLUDE_FROM_ALL)
+	add_subdirectory("dependencies/glfw" EXCLUDE_FROM_ALL)
+
+	set(DAWN_FETCH_DEPENDENCIES ON CACHE BOOL "" FORCE)
+	set(DAWN_ENABLE_INSTALL ON CACHE BOOL "" FORCE)
+	set(DAWN_USE_WAYLAND ON CACHE BOOL "" FORCE)
+	add_subdirectory("dependencies/dawn" EXCLUDE_FROM_ALL)
+
+	#add_subdirectory("dependencies/assimp" EXCLUDE_FROM_ALL)
 endif()
 add_subdirectory("Tako")
 
 # Examples
 add_subdirectory("Examples/Sandbox")
-#add_subdirectory("Examples/SandboxVulkan")
+add_subdirectory("Examples/Sandbox3D")
 add_subdirectory("Examples/JamPhysics2D")
 add_subdirectory("Examples/LDtkImport")

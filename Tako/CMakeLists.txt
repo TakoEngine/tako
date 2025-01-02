@@ -50,7 +50,9 @@ target_sources(
 	"src/Audio.cppm"
 	"src/Assets.cppm"
 	"src/GraphicsContext.cppm"
+	"src/Renderer3D.cppm"
 	"src/JobSystem.cppm"
+	"src/StringView.cppm"
 	"src/Allocators/Allocator.cppm"
 	"src/Allocators/FreeListAllocator.cppm"
 	"src/Allocators/LinearAllocator.cppm"
@@ -82,6 +84,7 @@ endif(WIN32)
 if (EMSCRIPTEN)
 set_feature(TAKO_EMSCRIPTEN true)
 set_feature(TAKO_OPENGL true)
+set_feature(TAKO_WEBGPU true)
 set_feature(TAKO_VULKAN false)
 set_feature(TAKO_EDITOR false)
 set_feature(TAKO_IMGUI false)
@@ -94,11 +97,12 @@ endif()
 if (TAKO_MAC OR TAKO_LINUX)
 set_feature(TAKO_OPENGL true)
 set_feature(TAKO_VULKAN false)
+set_feature(TAKO_WEBGPU true)
 set_feature(TAKO_GLFW true)
 set_feature(TAKO_GLAD true)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set_feature(TAKO_EDITOR false)
-	set_feature(TAKO_IMGUI false)
+	set_feature(TAKO_IMGUI true)
 else()
 	set_feature(TAKO_EDITOR false)
 endif()
@@ -119,7 +123,8 @@ elseif (EMSCRIPTEN)
 target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/web/Window.cpp"
 	"src/platform/web/Log.cpp"
-	"src/platform/web/Timer.cpp"
+	#"src/platform/web/Timer.cpp"
+	"src/platform/default/Timer.cpp" # Temporary, as emscripten_get_now() seems to be broken
 	"src/platform/default/Main.cpp"
 	PUBLIC FILE_SET CXX_MODULES FILES
 	"src/platform/web/FileSystem.cppm"
@@ -217,6 +222,10 @@ compile_shader("shader.frag.glsl")
 
 endif(TAKO_VULKAN)
 
+if (TAKO_WEBGPU)
+	add_subdirectory("src/platform/webgpu")
+endif()
+
 if (TAKO_GLFW)
 target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/glfw/Window.cpp"
@@ -236,14 +245,14 @@ target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencie
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/json/include")
 target_include_directories(${TAKO_DLL} PUBLIC "${CMAKE_BINARY_DIR}/shader")
 
-if (NOT EMSCRIPTEN)
-	target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/assimp/include")
-	target_link_libraries(${TAKO_DLL} PUBLIC assimp)
+# target_link_libraries(${TAKO_DLL} PUBLIC fastgltf_module)
+# Use non module import for fastgltf since C++ modules have problems with importing std includes in different modules
+target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/fastgltf/include")
+target_link_libraries(${TAKO_DLL} PUBLIC fastgltf)
 
-	target_sources(${TAKO_DLL} PUBLIC
-		FILE_SET CXX_MODULES FILES
-		"src/Renderer3D.cppm"
-	)
+if (NOT EMSCRIPTEN)
+	#target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/assimp/include")
+	#target_link_libraries(${TAKO_DLL} PUBLIC assimp)
 endif()
 
 
@@ -255,39 +264,52 @@ target_link_libraries(${TAKO_DLL} PRIVATE nlohmann_json::nlohmann_json)
 
 #imgui
 if (TAKO_IMGUI)
-target_sources(${TAKO_DLL} PUBLIC
-	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui.h"
-	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui.cpp"
-	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_draw.cpp"
-	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_tables.cpp"
-	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_widgets.cpp"
-	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_internal.h"
-	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imstb_rectpack.h"
-	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imstb_textedit.h"
-	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imstb_truetype.h"
-	"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_demo.cpp"
-
-	"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_opengl3.h"
-	"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_opengl3.cpp"
-)
-
-if (TAKO_WIN32)
-	target_sources(${TAKO_DLL} PUBLIC
-		"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_win32.h"
-		"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_win32.cpp"
+	add_library(imgui STATIC
+		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui.h"
+		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui.cpp"
+		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_draw.cpp"
+		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_tables.cpp"
+		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_widgets.cpp"
+		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_internal.h"
+		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imstb_rectpack.h"
+		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imstb_textedit.h"
+		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imstb_truetype.h"
+		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_demo.cpp"
 	)
-elseif (TAKO_GLFW)
-	target_sources(${TAKO_DLL} PUBLIC
-		"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_glfw.h"
-		"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_glfw.cpp"
-	)
-endif()
-target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/imgui")
-target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/imgui/backends")
+	target_compile_definitions(imgui PUBLIC IMGUI_IMPL_WEBGPU_BACKEND_DAWN)
+
+	if (TAKO_WIN32)
+		target_sources(imgui PUBLIC
+			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_win32.h"
+			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_win32.cpp"
+		)
+	elseif (TAKO_GLFW)
+		target_sources(imgui PUBLIC
+			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_glfw.h"
+			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_glfw.cpp"
+		)
+	endif()
+
+	if (TAKO_OPENGL)
+		target_sources(imgui PUBLIC
+			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_opengl3.h"
+			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_opengl3.cpp"
+		)
+	endif()
+	if (TAKO_WEBGPU)
+		target_sources(imgui PUBLIC
+			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_wgpu.h"
+			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_wgpu.cpp"
+		)
+	endif()
+	target_include_directories(imgui PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/imgui")
+	target_include_directories(imgui PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/imgui/backends")
+	target_link_libraries(imgui PUBLIC glfw webgpu_dawn)
+	target_link_libraries(${TAKO_DLL} PUBLIC imgui)
 endif()
 
 if (TAKO_GLFW)
-target_link_libraries(${TAKO_DLL} PUBLIC glfw)
+	target_link_libraries(${TAKO_DLL} PUBLIC glfw)
 endif()
 
 if (TAKO_VULKAN)
