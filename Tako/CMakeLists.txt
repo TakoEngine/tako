@@ -309,6 +309,8 @@ if (TAKO_IMGUI)
 	target_link_libraries(${TAKO_DLL} PUBLIC imgui)
 endif()
 
+target_link_libraries(${TAKO_DLL} PRIVATE RmlUi::RmlUi)
+
 if (TAKO_GLFW)
 	target_link_libraries(${TAKO_DLL} PUBLIC glfw)
 endif()

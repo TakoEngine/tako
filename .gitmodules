@@ -35,3 +35,6 @@
 	path = dependencies/dawn
 	url = https://dawn.googlesource.com/dawn
 	ignore = dirty
+[submodule "dependencies/RmlUi"]
+	path = dependencies/RmlUi
+	url = https://github.com/mikke89/RmlUi.git
