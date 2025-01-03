@@ -19,6 +19,7 @@ module;
 export module Tako.Renderer3D;
 
 //import fastgltf;
+import Tako.StringView;
 import Tako.FileSystem;
 import Tako.GraphicsContext;
 
@@ -142,24 +143,98 @@ namespace tako
 
 	Renderer3D::Renderer3D(GraphicsContext* context) : m_context(context)
 	{
-		/*
-		const char* vertPath = "/../shader/shader.vert.spv";
-		const char* fragPath = "/../shader/shader.frag.spv";
+		const char* shaderSource = R"(
+			struct Camera
+			{
+				view: mat4x4f,
+				projection: mat4x4f,
+			};
 
-		auto vertCode = LoadShaderCode(vertPath);
-		auto fragCode = LoadShaderCode(fragPath);
-		*/
-		std::vector<U8> vertCode;
-		std::vector<U8> fragCode;
+			struct Lighting
+			{
+				lightPos: vec4f,
+			};
+
+			@group(0) @binding(0) var<uniform> camera: Camera;
+
+			@group(1) @binding(0) var<uniform> lighting: Lighting;
+
+			@group(2) @binding(0) var baseColorTexture: texture_2d<f32>;
+			@group(2) @binding(1) var baseColorSampler: sampler;
+
+			@group(3) @binding(0) var<storage, read> models : array<mat4x4f>;
+
+			struct VertexInput {
+				@location(0) position: vec3f,
+				@location(1) normal: vec3f,
+				@location(2) color: vec3f,
+				@location(3) uv: vec2f,
+			};
+
+			struct VertexOutput {
+				@builtin(position) position: vec4f,
+				@location(0) color: vec3f,
+				@location(1) normal: vec3f,
+				@location(2) uv: vec2f,
+				@location(3) positionWorld: vec3f,
+				@location(4) normalCamera: vec3f,
+				@location(5) eyeDirection: vec3f,
+				@location(6) lightDirection: vec3f,
+			}
+
+			@vertex
+			fn vs_main(in: VertexInput, @builtin(instance_index) instanceIndex: u32) -> VertexOutput {
+				let model = models[instanceIndex];
+				var out: VertexOutput;
+				out.position = camera.projection * camera.view * model * vec4f(in.position, 1.0);
+				out.color = in.color;
+				out.normal = (model * vec4f(in.normal, 0.0)).xyz;
+				out.uv = in.uv;
+
+				out.positionWorld = (model * vec4f(in.position, 1)).xyz;
+
+				let vertexPosCamera = (camera.view * model * vec4f(in.position,1)).xyz;
+				out.eyeDirection = vec3f(0,0,0) - vertexPosCamera;
+
+				let lightPosCamera = (camera.view * lighting.lightPos).xyz;
+				out.lightDirection = lightPosCamera + out.eyeDirection;
+
+				out.normalCamera = ( camera.view * model * vec4f(in.normal, 0)).xyz;
+
+				return out;
+			}
+
+			@fragment
+			fn fs_main(in: VertexOutput) -> @location(0) vec4f {
+				let normal = normalize(in.normal);
+				let dist = length(lighting.lightPos.xyz - in.positionWorld);
+				let n = normalize(in.normalCamera);
+				let l = normalize(in.lightDirection);
+				let cosTheta = clamp(dot(n,l), 0, 1);
+
+				let E = normalize(in.eyeDirection);
+				let R = reflect(-l, n);
+				let cosAlpha = clamp( dot(E,R), 0, 1);
+
+				let baseColor = textureSample(baseColorTexture, baseColorSampler, in.uv).rgb;
+				let color =
+					baseColor * vec3f(0.1,0.1,0.1) +
+					baseColor * vec3f(1,1,1) * 200 * cosTheta / (dist*dist) +
+					vec3f(0.3,0.3,0.3) * vec3f(1,1,1) * 200 * pow(cosAlpha, 5) / (dist*dist);
+
+				//let color = baseColor * shading;
+
+				return vec4f(color, 1.0);
+			}
+		)";
 
 		std::array<PipelineVectorAttribute, 4> vertexAttributes = { PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec2 };
 		size_t pushConstant = sizeof(Matrix4);
 
 		PipelineDescriptor pipelineDescriptor;
-		pipelineDescriptor.vertCode = vertCode.data();
-		pipelineDescriptor.vertSize = vertCode.size();
-		pipelineDescriptor.fragCode = fragCode.data();
-		pipelineDescriptor.fragSize = fragCode.size();
+		pipelineDescriptor.shaderCode = shaderSource;
+		pipelineDescriptor.vertEntry = "vs_main";
+		pipelineDescriptor.fragEntry = "fs_main";
 		pipelineDescriptor.vertexAttributes = vertexAttributes.data();
 		pipelineDescriptor.vertexAttributeSize = vertexAttributes.size();
 

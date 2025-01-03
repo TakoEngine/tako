@@ -219,6 +219,8 @@ namespace tako
 			m_renderPass = wgpuCommandEncoderBeginRenderPass(m_encoder, &renderPassDesc);
 			m_instanceBuffer.currentIndex = 0;
 
+			//wgpuRenderPassEncoderSetViewport(m_renderPass, 0, 0, m_width, m_height, 0, 1);
+
 			//Render
 			/*
 			wgpuRenderPassEncoderSetPipeline(renderPass, m_pipeline);
@@ -349,91 +351,6 @@ namespace tako
 
 		virtual Pipeline CreatePipeline(const PipelineDescriptor& pipelineDescriptor) override
 		{
-			const char* shaderSource = R"(
-				struct Camera
-				{
-					view: mat4x4f,
-					projection: mat4x4f,
-				};
-
-				struct Lighting
-				{
-					lightPos: vec4f,
-				};
-
-				@group(0) @binding(0) var<uniform> camera: Camera;
-
-				@group(1) @binding(0) var<uniform> lighting: Lighting;
-
-				@group(2) @binding(0) var baseColorTexture: texture_2d<f32>;
-				@group(2) @binding(1) var baseColorSampler: sampler;
-
-				@group(3) @binding(0) var<storage, read> models : array<mat4x4f>;
-
-				struct VertexInput {
-					@location(0) position: vec3f,
-					@location(1) normal: vec3f,
-					@location(2) color: vec3f,
-					@location(3) uv: vec2f,
-				};
-
-				struct VertexOutput {
-					@builtin(position) position: vec4f,
-					@location(0) color: vec3f,
-					@location(1) normal: vec3f,
-					@location(2) uv: vec2f,
-					@location(3) positionWorld: vec3f,
-					@location(4) normalCamera: vec3f,
-					@location(5) eyeDirection: vec3f,
-					@location(6) lightDirection: vec3f,
-				}
-
-				@vertex
-				fn vs_main(in: VertexInput, @builtin(instance_index) instanceIndex: u32) -> VertexOutput {
-					let model = models[instanceIndex];
-					var out: VertexOutput;
-					out.position = camera.projection * camera.view * model * vec4f(in.position, 1.0);
-					out.color = in.color;
-					out.normal = (model * vec4f(in.normal, 0.0)).xyz;
-					out.uv = in.uv;
-
-					out.positionWorld = (model * vec4f(in.position, 1)).xyz;
-
-					let vertexPosCamera = (camera.view * model * vec4f(in.position,1)).xyz;
-					out.eyeDirection = vec3f(0,0,0) - vertexPosCamera;
-
-					let lightPosCamera = (camera.view * lighting.lightPos).xyz;
-					out.lightDirection = lightPosCamera + out.eyeDirection;
-
-					out.normalCamera = ( camera.view * model * vec4f(in.normal, 0)).xyz;
-
-					return out;
-				}
-
-				@fragment
-				fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-					let normal = normalize(in.normal);
-					let dist = length(lighting.lightPos.xyz - in.positionWorld);
-					let n = normalize(in.normalCamera);
-					let l = normalize(in.lightDirection);
-					let cosTheta = clamp(dot(n,l), 0, 1);
-
-					let E = normalize(in.eyeDirection);
-					let R = reflect(-l, n);
-					let cosAlpha = clamp( dot(E,R), 0, 1);
-
-					let baseColor = textureSample(baseColorTexture, baseColorSampler, in.uv).rgb;
-					let color =
-						baseColor * vec3f(0.1,0.1,0.1) +
-						baseColor * vec3f(1,1,1) * 200 * cosTheta / (dist*dist) +
-						vec3f(0.3,0.3,0.3) * vec3f(1,1,1) * 200 * pow(cosAlpha, 5) / (dist*dist);
-
-					//let color = baseColor * shading;
-
-					return vec4f(color, 1.0);
-				}
-			)";
-
 			WGPUShaderModuleDescriptor shaderDesc{};
 
 			WGPUShaderModuleWGSLDescriptor shaderCodeDesc{};
@@ -443,10 +360,10 @@ namespace tako
 			#else
 			shaderCodeDesc.chain.sType = WGPUSType_ShaderSourceWGSL;
 			#endif
-			shaderCodeDesc.code = WStringView(shaderSource);
+			shaderCodeDesc.code = WStringView(pipelineDescriptor.shaderCode);
 
 			shaderDesc.nextInChain = &shaderCodeDesc.chain;
-			shaderCodeDesc.code = WStringView(shaderSource);
+			shaderCodeDesc.code = WStringView(pipelineDescriptor.shaderCode);
 			WGPUShaderModule shaderModule = wgpuDeviceCreateShaderModule(m_device.Get(), &shaderDesc);
 
 			WGPURenderPipelineDescriptor pipelineDesc{};
@@ -469,6 +386,14 @@ namespace tako
 						format = WGPUVertexFormat_Float32x3;
 						attribSize = 3;
 						break;
+					case PipelineVectorAttribute::Vec4:
+						format = WGPUVertexFormat_Float32x4;
+						attribSize = 4;
+						break;
+					case PipelineVectorAttribute::RGBA:
+						format = WGPUVertexFormat_Unorm8x4;
+						attribSize = 1;
+						break;
 				}
 				vertexAttribs[i].shaderLocation = i;
 				vertexAttribs[i].format = format;
@@ -485,7 +410,7 @@ namespace tako
 			pipelineDesc.vertex.buffers = &vertexBufferLayout;
 
 			pipelineDesc.vertex.module = shaderModule;
-			pipelineDesc.vertex.entryPoint = WStringView("vs_main");
+			pipelineDesc.vertex.entryPoint = WStringView(pipelineDescriptor.vertEntry);
 			pipelineDesc.vertex.constantCount = 0;
 			pipelineDesc.vertex.constants = nullptr;
 
@@ -496,7 +421,7 @@ namespace tako
 
 			WGPUFragmentState fragmentState{};
 			fragmentState.module = shaderModule;
-			fragmentState.entryPoint = WStringView("fs_main");
+			fragmentState.entryPoint = WStringView(pipelineDescriptor.fragEntry);
 			fragmentState.constantCount = 0;
 			fragmentState.constants = nullptr;
 

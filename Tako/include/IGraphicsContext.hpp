@@ -10,21 +10,29 @@ import Tako.Math;
 import Tako.Bitmap;
 import Tako.NumberTypes;
 import Tako.Event;
+import Tako.StringView;
 
 namespace tako
 {
 	enum class PipelineVectorAttribute
 	{
 		Vec2,
-		Vec3
+		Vec3,
+		Vec4,
+		RGBA
 	};
 
 	struct PipelineDescriptor
 	{
+		const char* shaderCode;
+		const char* vertEntry;
+		const char* fragEntry;
+		/*
 		U8* vertCode;
 		size_t vertSize;
 		U8* fragCode;
 		size_t fragSize;
+		*/
 
 		PipelineVectorAttribute* vertexAttributes;
 		size_t vertexAttributeSize;

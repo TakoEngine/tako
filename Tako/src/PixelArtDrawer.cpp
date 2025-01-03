@@ -83,10 +83,12 @@ namespace tako
 			size_t pushConstant = sizeof(Matrix4);
 
 			PipelineDescriptor pipelineDescriptor;
+			/*
 			pipelineDescriptor.vertCode = vertCode.data();
 			pipelineDescriptor.vertSize = vertCode.size();
 			pipelineDescriptor.fragCode = fragCode.data();
 			pipelineDescriptor.fragSize = fragCode.size();
+			*/
 			pipelineDescriptor.vertexAttributes = vertexAttributes.data();
 			pipelineDescriptor.vertexAttributeSize = vertexAttributes.size();
 			pipelineDescriptor.pushConstants = &pushConstant;
@@ -111,10 +113,12 @@ namespace tako
 			size_t pushConstant = sizeof(Matrix4);
 
 			PipelineDescriptor pipelineDescriptor;
+			/*
 			pipelineDescriptor.vertCode = vertCode.data();
 			pipelineDescriptor.vertSize = vertCode.size();
 			pipelineDescriptor.fragCode = fragCode.data();
 			pipelineDescriptor.fragSize = fragCode.size();
+			*/
 			pipelineDescriptor.vertexAttributes = vertexAttributes.data();
 			pipelineDescriptor.vertexAttributeSize = vertexAttributes.size();
 			pipelineDescriptor.pushConstants = &pushConstant;

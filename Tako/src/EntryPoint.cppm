@@ -35,6 +35,7 @@ import Tako.Audio;
 import Tako.Application;
 //import Tako.Serialization;
 import Tako.JobSystem;
+import Tako.RmlUi;
 import Tako.Allocators.CachePoolAllocator;
 
 namespace tako
@@ -46,6 +47,7 @@ namespace tako
 		tako::Input& input;
 		tako::Audio& audio;
 		tako::Resources& resources;
+		tako::RmlUi& ui;
 		void* gameData;
 		GameConfig& config;
 		JobSystem& jobSys;
@@ -150,6 +152,7 @@ namespace tako
 					{
 						data->config.Update(stageData, &data->input, dt);
 					}
+					data->ui.Update();
 				});
 			}
 			data->jobSys.Continuation([=]()
@@ -194,6 +197,7 @@ namespace tako
 						#endif
 					}
 					#endif
+					data->ui.Draw();
 					data->context.End();
 
 					#ifdef TAKO_IMGUI
@@ -237,7 +241,7 @@ namespace tako
 		{
 			data->jobSys.RunJob([=]()
 			{
-				data->config.Setup(data->gameData, { &data->context, &data->resources, &data->audio });
+				data->config.Setup(data->gameData, { &data->context, &data->resources, &data->audio, &data->ui });
 			});
 		}
 	}
@@ -317,11 +321,14 @@ namespace tako
 		#endif
 
 		Resources resources(context.get());
+		RmlUi ui;
+		ui.Init(&window, context.get());
+
 		void* gameData = malloc(config.gameDataSize);
 #ifndef EMSCRIPTEN
 		if (config.Setup)
 		{
-			config.Setup(gameData, { context.get(), &resources, &audio });
+			config.Setup(gameData, { context.get(), &resources, &audio, &ui });
 		}
 #endif
 		tako::Broadcaster broadcaster;
@@ -377,6 +384,7 @@ namespace tako
 			input,
 			audio,
 			resources,
+			ui,
 			gameData,
 			config,
 			jobSys,
