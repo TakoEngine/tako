@@ -3,6 +3,7 @@ module;
 #include "Timer.hpp"
 #include "Resources.hpp"
 #include <thread>
+#include <functional>
 //#include "OpenGLPixelArtDrawer.hpp"
 #ifdef TAKO_EMSCRIPTEN
 #include <emscripten.h>
@@ -165,7 +166,7 @@ namespace tako
 				//LOG("Start Draw {}", thisFrame);
 				//data->jobSys.Schedule([=]()
 				#ifdef TAKO_EMSCRIPTEN
-				data->proxyQueue.proxySync(data->mainThread, [=]()
+				//data->proxyQueue.proxySync(data->mainThread, [=]()
 				#endif
 				{
 					data->context.Begin();
@@ -210,7 +211,7 @@ namespace tako
 					data->context.Present();
 					//LOG("Tick End");
 				#ifdef TAKO_EMSCRIPTEN
-				});
+				}
 				#else
 				}
 				#endif
@@ -227,6 +228,7 @@ namespace tako
 					data->frameDataPoolLock.clear(std::memory_order_release);
 					*/
 					free(frameData);
+					//LOG("Tick End");
 				});
 			});
 		});
@@ -248,6 +250,7 @@ namespace tako
 
 	void ScheduleTick(void* p)
 	{
+		//LOG("Schedule Tick")
 		TickStruct* data = reinterpret_cast<TickStruct*>(p);
 		data->jobSys.RunJob(std::bind(Tick, p));
 	}

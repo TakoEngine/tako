@@ -2,7 +2,6 @@
 
 #include <iostream>
 //
-#include "Window.hpp"
 #include "Utility.hpp"
 #include "Resources.hpp"
 //#include <emscripten.h>
@@ -12,6 +11,7 @@
 import Tako.Input;
 import Tako.JobSystem;
 import Tako.GraphicsContext;
+import Tako.Window;
 
 namespace tako
 {

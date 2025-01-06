@@ -1,5 +1,6 @@
 #pragma once
 #include "Resources.hpp"
+#include "GraphicsAPI.hpp"
 
 import Tako.Input;
 import Tako.Audio;

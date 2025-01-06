@@ -3,9 +3,6 @@
 #define NOMINMAX
 #include <Windows.h>
 #endif
-#ifdef __EMSCRIPTEN__
-#include <GLFW/glfw3.h>
-#endif
 #ifdef TAKO_GLFW
 #include <GLFW/glfw3.h>
 #endif

@@ -1,5 +1,6 @@
 #pragma once
 #include "IGraphicsContext.hpp"
+#include "WindowHandle.hpp"
 
 namespace tako
 {

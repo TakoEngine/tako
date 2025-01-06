@@ -1,16 +1,16 @@
 #pragma once
 #include "GraphicsAPI.hpp"
-#include "Window.hpp"
 #include "Texture.hpp"
 #include "VertexBuffer.hpp"
 #include "Material.hpp"
 #include "Pipeline.hpp"
+#include <cstddef>
 
 import Tako.Math;
 import Tako.Bitmap;
-import Tako.NumberTypes;
 import Tako.Event;
 import Tako.StringView;
+import Tako.Window;
 
 namespace tako
 {

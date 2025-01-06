@@ -4,7 +4,7 @@ module;
 #include <string_view>
 export module Tako.Math;
 
-import Tako.NumberTypes;
+export import Tako.NumberTypes;
 
 export namespace tako
 {

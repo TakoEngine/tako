@@ -9,6 +9,7 @@ module;
 #include <chrono>
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
+#include <emscripten/proxying.h>
 #endif
 export module Tako.JobSystem;
 
@@ -51,7 +52,7 @@ namespace tako
 		{
 			if (m_functorActive)
 			{
-				reinterpret_cast<JobFunctorBase*>(&m_functorData[0])->~JobFunctorBase();
+				std::destroy_at(reinterpret_cast<JobFunctorBase*>(&m_functorData[0]));
 			}
 			new (&m_functorData) JobFunctor(std::move(func));
 			m_functorActive = true;
@@ -64,10 +65,9 @@ namespace tako
 
 		void Reset()
 		{
-
 			if (m_functorActive)
 			{
-				reinterpret_cast<JobFunctorBase*>(&m_functorData[0])->~JobFunctorBase();
+				std::destroy_at(reinterpret_cast<JobFunctorBase*>(&m_functorData[0]));
 				m_functorActive = false;
 			}
 
@@ -78,7 +78,6 @@ namespace tako
 	private:
 		friend class JobSystem;
 		Job* m_parent = nullptr;
-		//std::function<void()> m_func;
 		Job* m_continuation = nullptr;
 		bool m_functorActive = false;
 		std::atomic<int> m_jobsLeft = 1;
@@ -202,11 +201,31 @@ namespace tako
 		}
 
 		template<typename Functor>
-		static void RunJob(Functor&& job)
+		static void RunJob(Functor&& func)
 		{
 			ASSERT(m_runningJob == nullptr);
-			m_runningJob = AllocateJob(std::move(job));
-			ExecuteJob(m_runningJob);
+
+			Job* job = AllocateJob(std::move(func));
+			while (job)
+			{
+				m_runningJob = job;
+				(*job)();
+				m_runningJob = nullptr;
+				Job* cont = job->m_continuation;
+				while (job->m_jobsLeft > 1) // Work to "wait" for dependencies to be done
+				{
+					Work();
+					#ifdef TAKO_EMSCRIPTEN
+						emscripten_proxy_execute_queue(emscripten_proxy_get_system_queue());
+					#else
+						WaitFor();
+					#endif
+				}
+				job->m_continuation = nullptr;
+				OnJobDone(job);
+				job = cont;
+			}
+
 		}
 
 	private:
@@ -225,7 +244,7 @@ namespace tako
 		Allocators::PoolAllocator m_allocator;
 		static inline Allocators::PoolAllocator* g_allocator;
 		static inline std::mutex m_allocMutex;
-		unsigned int m_threadCount;
+		static inline unsigned int m_threadCount;
 
 		template<typename Functor>
 		static Job* AllocateJob(Functor&& func)
@@ -308,27 +327,41 @@ namespace tako
 			m_threadIndex = threadIndex;
 			while (!m_stop)
 			{
-				auto job = m_localQueues[m_threadIndex].Pop();
-				for (unsigned int i = 0; job == nullptr && i < m_threadCount; i++)
+				if (Work())
 				{
-					job = m_globalQueues[(i + m_threadIndex) % m_threadCount].Pop();
-				}
-				m_runningJob = job;
-				if (job != nullptr)
-				{
-					ExecuteJob(job);
-				}
-				else
-				{
-					if (m_deleteJobList)
-					{
-						DeleteOldJobs();
-						continue;
-					}
-					std::unique_lock lk(m_cvMutex);
-					m_cv.wait_for(lk, std::chrono::microseconds(1000));
+					WaitFor();
 				}
 			}
+		}
+
+		static bool Work()
+		{
+			auto job = m_localQueues[m_threadIndex].Pop();
+			for (unsigned int i = 0; job == nullptr && i < m_threadCount; i++)
+			{
+				job = m_globalQueues[(i + m_threadIndex) % m_threadCount].Pop();
+			}
+			m_runningJob = job;
+			if (job != nullptr)
+			{
+				ExecuteJob(job);
+			}
+			else
+			{
+				if (m_deleteJobList)
+				{
+					DeleteOldJobs();
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		static void WaitFor()
+		{
+			std::unique_lock lk(m_cvMutex);
+			m_cv.wait_for(lk, std::chrono::microseconds(1000));
 		}
 
 		static void OnJobDone(Job* job)
@@ -354,7 +387,7 @@ namespace tako
 			}
 		}
 
-		void DeleteOldJobs()
+		static void DeleteOldJobs()
 		{
 			std::lock_guard lk(m_allocMutex);
 			while (m_deleteJobList)

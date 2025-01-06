@@ -10,7 +10,6 @@ add_library(${TAKO_DLL}
 target_sources(
 	${TAKO_DLL} PUBLIC
 	FILE_SET HEADERS FILES
-	"include/Window.hpp"
 	"include/Log.hpp"
 	"include/Utility.hpp"
 	"include/NumberTypes.hpp"
@@ -32,6 +31,7 @@ target_sources(
 target_sources(
 	${TAKO_DLL} PUBLIC
 	FILE_SET CXX_MODULES FILES
+	"src/Window.cppm"
 	"src/ECS/World.cppm"
 	"src/NumberTypes.cppm"
 	"src/Math.cppm"

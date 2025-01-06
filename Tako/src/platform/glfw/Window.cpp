@@ -1,11 +1,14 @@
-#include "Window.hpp"
+module;
 #include "Utility.hpp"
+#include "GraphicsAPI.hpp"
+#include "WindowHandle.hpp"
 //#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <map>
+#include <functional>
+module Tako.Window;
 
 import Tako.Math;
-import Tako.Event;
 
 namespace tako
 {

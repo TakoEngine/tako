@@ -1,9 +1,13 @@
-#include "Window.hpp"
+module;
+#include "GraphicsAPI.hpp"
+#include "WindowHandle.hpp"
+#include <emscripten/html5.h>
 #include "string.h"
 #include <algorithm>
 #include <limits>
 #include <map>
-#include <emscripten/html5.h>
+#include <unordered_map>
+module Tako.Window;
 
 import Tako.Math;
 import Tako.Bitmap;
@@ -163,7 +167,6 @@ namespace tako
 		int m_width, m_height;
 		EMSCRIPTEN_WEBGL_CONTEXT_HANDLE m_contextHandle;
 		std::function<void(Event&)> m_callback;
-		GLFWwindow* m_window;
 		std::unordered_map<int, EmscriptenTouchPoint> m_touches;
 
 		void SetEventCallback(const std::function<void(Event&)>& callback)

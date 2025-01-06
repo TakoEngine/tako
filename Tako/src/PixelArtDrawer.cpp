@@ -2,8 +2,10 @@
 #include "IGraphicsContext.hpp"
 #include "Utility.hpp"
 #include <array>
+#include <vector>
 
 import Tako.Assets;
+//import Tako.Math;
 
 namespace tako
 {

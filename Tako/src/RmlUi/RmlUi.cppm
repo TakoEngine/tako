@@ -1,13 +1,13 @@
 module;
 #include "Utility.hpp"
-#include "Window.hpp"
-#include "RmlUi_Platform_GLFW.h"
+//#include "RmlUi_Platform_GLFW.h"
 #include <RmlUi/Core.h>
 export module Tako.RmlUi;
 
 import Tako.StringView;
 import Tako.GraphicsContext;
 import Tako.RmlUi.Renderer;
+import Tako.Window;
 
 namespace tako
 {
@@ -22,10 +22,10 @@ public:
 	{
 		m_graphicsContext = graphicsContext;
 		m_renderer.Init(graphicsContext);
-		m_system.SetWindow(window->GetHandle());
+		//m_system.SetWindow(window->GetHandle());
 
 		Rml::SetRenderInterface(&m_renderer);
-		Rml::SetSystemInterface(&m_system);
+		//Rml::SetSystemInterface(&m_system);
 
 		Rml::Initialise();
 		m_context = Rml::CreateContext("main", Rml::Vector2i(graphicsContext->GetWidth(), graphicsContext->GetHeight()));
@@ -39,9 +39,11 @@ public:
 
 	void Draw()
 	{
-		m_context->SetDimensions({(int)m_graphicsContext->GetWidth(), (int)m_graphicsContext->GetHeight()});
 		m_renderer.Begin();
-		m_context->Render();
+		{
+			m_context->SetDimensions({(int)m_graphicsContext->GetWidth(), (int)m_graphicsContext->GetHeight()});
+			m_context->Render();
+		}
 		m_renderer.End();
 	}
 
@@ -65,10 +67,11 @@ public:
 
 private:
 	RmlUiRenderer m_renderer;
-	SystemInterface_GLFW m_system;
+	//SystemInterface_GLFW m_system;
 	Rml::Context* m_context;
 	GraphicsContext* m_graphicsContext;
 	Rml::ElementDocument* m_doc;
+	std::mutex m_mutex;
 };
 
 }

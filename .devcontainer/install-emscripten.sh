@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-EM_VERSION='3.1.74'
+EM_VERSION='3.1.64'
 
 EMSDK_PATH=$HOME
 
@@ -16,6 +16,8 @@ git pull
 source ./emsdk_env.sh
 
 echo "source \"$EMSDK_PATH/emsdk/emsdk_env.sh\"" >> $HOME/.bash_profile
+
+embuilder build freetype
 
 # Workaround for clang-scan-deps
 cd $EMSDK_PATH
