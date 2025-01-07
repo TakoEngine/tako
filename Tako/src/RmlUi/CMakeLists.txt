@@ -6,4 +6,4 @@ target_sources(${TAKO_DLL} PRIVATE
 )
 
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/RmlUi/Backends")
-target_link_libraries(${TAKO_DLL} PRIVATE RmlUi::RmlUi)
+target_link_libraries(${TAKO_DLL} PUBLIC RmlUi::RmlUi)

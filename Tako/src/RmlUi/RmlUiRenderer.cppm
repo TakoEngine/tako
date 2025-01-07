@@ -103,7 +103,7 @@ public:
 
 	void EnableScissorRegion(bool enable) override
 	{
-		LOG("TODO: EnableScissorRegion")
+		LOG("TODO: EnableScissorRegion");
 	}
 
 	void SetScissorRegion(Rml::Rectanglei region) override

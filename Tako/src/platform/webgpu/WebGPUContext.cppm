@@ -712,7 +712,7 @@ namespace tako
 				CreateModelLayout();
 				CreateInstanceBuffer(1024);
 
-				LOG("Renderer Setup Complete!")
+				LOG("Renderer Setup Complete!");
 				m_initComplete = true;
 				/*
 				wgpu::SupportedLimits supportedLimits;

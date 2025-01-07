@@ -99,7 +99,7 @@ namespace tako
 			glfwPollEvents();
 			if (glfwJoystickIsGamepad(GLFW_JOYSTICK_1))
 			{
-				LOG("Detected!")
+				LOG("Detected!");
 				GLFWgamepadstate state;
 				if (glfwGetGamepadState(GLFW_JOYSTICK_1, &state))
 				{

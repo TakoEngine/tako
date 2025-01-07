@@ -1,5 +1,6 @@
 module;
 #include "Utility.hpp"
+#include "Reflection.hpp"
 //#include "RmlUi_Platform_GLFW.h"
 #include <RmlUi/Core.h>
 export module Tako.RmlUi;
@@ -8,6 +9,7 @@ import Tako.StringView;
 import Tako.GraphicsContext;
 import Tako.RmlUi.Renderer;
 import Tako.Window;
+import Tako.NumberTypes;
 
 namespace tako
 {
@@ -52,6 +54,30 @@ public:
 		//TODO: Check if RmlUi could accept string_view/c_str
 		Rml::String path(filePath);
 		ASSERT(Rml::LoadFontFace(path));
+	}
+
+	using ModelHandle = Rml::DataModelHandle;
+	template<typename T>
+	ModelHandle RegisterDataBinding(T& data)
+	{
+		LOG("{}", Reflection::Resolver::GetName<T>());
+		auto constructor = m_context->CreateDataModel(Reflection::Resolver::GetName<T>());
+		/*
+		if (auto structHandle = constructor.template RegisterStruct<T>())
+		{
+			auto regMember = [&](auto& arg)
+			{
+				structHandle.RegisterMember(arg.name, arg.memberPtr);
+			};
+			std::apply([&](auto&... args) {((regMember(args)), ...);}, T::ReflectionMemberPtrs);
+		}
+		*/
+		auto regMember = [&](auto& mem)
+		{
+			constructor.Bind(mem.name, &(data.*mem.memberPtr));
+		};
+		std::apply([&](auto&... args) {((regMember(args)), ...);}, T::ReflectionMemberPtrs);
+		return constructor.GetModelHandle();
 	}
 
 	void LoadDocument(StringView filePath)
