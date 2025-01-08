@@ -1,6 +1,7 @@
 module;
 #include <vector>
 #include <functional>
+#include <variant>
 #include <iostream>
 export module Tako.Event;
 
@@ -13,7 +14,9 @@ export namespace tako
 		WindowClose,
 		WindowResize,
 		KeyPress,
+		TextInputUpdate,
 		MouseMove,
+		MouseButtonPress,
 		AxisUpdate,
 		AppQuit
 	};
@@ -99,6 +102,7 @@ export namespace tako
 		Right,
 		Space,
 		Enter,
+		Backspace,
 		Gamepad_A,
 		Gamepad_B,
 		Gamepad_X,
@@ -131,12 +135,42 @@ export namespace tako
 		KeyStatus status;
 	};
 
+	class TextInputUpdate : public Event
+	{
+	public:
+		EVENT_CLASS_TYPE(TextInputUpdate)
+
+		std::variant<U32, const char*> input;
+	};
+
 	class MouseMove : public Event
 	{
 	public:
 		EVENT_CLASS_TYPE(MouseMove)
 
 		Vector2 position;
+	};
+
+	enum class MouseButton
+	{
+		Left = 1,
+		Right = 2,
+		Middle = 3
+	};
+
+	enum class MouseButtonStatus
+	{
+		Up = 0,
+		Down
+	};
+
+	class MouseButtonPress : public Event
+	{
+	public:
+		EVENT_CLASS_TYPE(MouseButtonPress)
+
+		MouseButton button;
+		MouseButtonStatus status;
 	};
 
 	enum class Axis

@@ -1,5 +1,6 @@
 module;
 #include "Utility.hpp"
+#include <string>
 #include <string_view>
 #include <optional>
 export module Tako.StringView;
@@ -12,6 +13,7 @@ namespace tako
 		constexpr CStringView() : m_str(nullptr), m_len(0) {}
 		constexpr CStringView(const char* str) : m_str(str), m_len(std::char_traits<char>::length(str)) {}
 		constexpr CStringView(const char* str, size_t len) : m_str(str), m_len(len) {}
+		constexpr CStringView(const std::string& str) : m_str(str.c_str()), m_len(str.length()) {}
 
 		constexpr const char* data() const noexcept
 		{
@@ -50,7 +52,7 @@ namespace tako
 		constexpr StringView(const char* str) : m_str(str), m_len(std::char_traits<char>::length(str)), m_isTerminated(true) {}
 		constexpr StringView(std::string_view str) : m_str(str.data()), m_len(str.size()), m_isTerminated(false) {}
 		constexpr StringView(CStringView str) : m_str(str), m_len(str.size()), m_isTerminated(true) {}
-
+		constexpr StringView(const std::string& str) : m_str(str.c_str()), m_len(str.length()), m_isTerminated(true) {}
 		constexpr const char* data() const noexcept
 		{
 			return m_str;

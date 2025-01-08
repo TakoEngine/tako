@@ -1,4 +1,5 @@
 #include "Reflection.hpp"
+#include <string>
 
 #define DEFINE_REFLECTION_PRIMITIVE(type) \
 	template<> \
@@ -11,3 +12,4 @@
 DEFINE_REFLECTION_PRIMITIVE(int)
 DEFINE_REFLECTION_PRIMITIVE(float)
 DEFINE_REFLECTION_PRIMITIVE(bool)
+DEFINE_REFLECTION_PRIMITIVE(std::string) //TODO: handle properly

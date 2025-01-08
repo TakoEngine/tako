@@ -322,6 +322,7 @@ namespace tako
 			}
 
 		#endif
+		tako::Broadcaster broadcaster;
 
 		Resources resources(context.get());
 		RmlUi ui;
@@ -334,7 +335,7 @@ namespace tako
 			config.Setup(gameData, { context.get(), &resources, &audio, &ui });
 		}
 #endif
-		tako::Broadcaster broadcaster;
+
 #ifdef TAKO_EDITOR
 		tako::FileWatcher watcher("./Assets");
 #endif
@@ -370,6 +371,7 @@ namespace tako
 
 		broadcaster.Register(&onEvent);
 		broadcaster.Register(context.get());
+		broadcaster.Register(&ui);
 		broadcaster.Register(&input);
 
 		window.SetEventCallback([&](tako::Event& evt)

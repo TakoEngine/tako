@@ -1,4 +1,5 @@
 module;
+#include "Utility.hpp"
 #include "GraphicsAPI.hpp"
 #include "WindowHandle.hpp"
 #include <emscripten/html5.h>
@@ -61,7 +62,8 @@ namespace tako
 			{"ArrowRight", Key::Right},
 			{"ArrowUp", Key::Up},
 			{"Space", Key::Space},
-			{"Enter", Key::Enter}
+			{"Enter", Key::Enter},
+			{"Backspace", Key::Backspace},
 		};
 
 		std::pair<int, Key> GamepadMapping[]
@@ -80,6 +82,13 @@ namespace tako
 			{13, Key::Gamepad_Dpad_Down},
 			{14, Key::Gamepad_Dpad_Left},
 			{15, Key::Gamepad_Dpad_Right},
+		};
+
+		std::array MouseButtonMapping
+		{
+			MouseButton::Left,
+			MouseButton::Middle,
+			MouseButton::Right,
 		};
 	}
 	class Window::WindowImpl
@@ -101,10 +110,13 @@ namespace tako
 			ResizeCallback();
 			emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, this, false, WindowResizeCallback);
 
-			emscripten_set_keypress_callback(HTML_TARGET, this, false, KeyPressCallback);
+			//emscripten_set_keypress_callback(HTML_TARGET, this, false, KeyPressCallback);
 			emscripten_set_keydown_callback(HTML_TARGET, this, false, KeyPressCallback);
 			emscripten_set_keyup_callback(HTML_TARGET, this, false, KeyPressCallback);
 			emscripten_set_mousemove_callback(HTML_TARGET, this, false, MouseMoveCallback);
+			//emscripten_set_click_callback(HTML_TARGET, this, false, MousePressCallback);
+			emscripten_set_mousedown_callback(HTML_TARGET, this, false, MousePressCallback);
+			emscripten_set_mouseup_callback(HTML_TARGET, this, false, MousePressCallback);
 			emscripten_set_touchstart_callback(HTML_TARGET, this, false, TouchCallback);
 			emscripten_set_touchend_callback(HTML_TARGET, this, false, TouchCallback);
 			emscripten_set_touchmove_callback(HTML_TARGET, this, false, TouchCallback);
@@ -220,25 +232,35 @@ namespace tako
 		static EM_BOOL KeyPressCallback(int eventType, const EmscriptenKeyboardEvent* keyEvent, void* userData)
 		{
 			Window::WindowImpl* win = static_cast<Window::WindowImpl*>(userData);
-			if (KeyCodeMapping.count(keyEvent->code) <= 0)
-			{
-				return false;
-			}
+
+			bool handled = false;
 			if (win->m_callback)
 			{
-				KeyPress evt;
-				evt.key = KeyCodeMapping[keyEvent->code];
-				switch (eventType)
+				if (KeyCodeMapping.count(keyEvent->code) > 0)
 				{
-					case EMSCRIPTEN_EVENT_KEYPRESS:
-					case EMSCRIPTEN_EVENT_KEYDOWN:
-						evt.status = KeyStatus::Down;
-						break;
-					case EMSCRIPTEN_EVENT_KEYUP:
-						evt.status = KeyStatus::Up;
-						break;
+					KeyPress evt;
+					evt.key = KeyCodeMapping[keyEvent->code];
+					switch (eventType)
+					{
+						case EMSCRIPTEN_EVENT_KEYDOWN:
+							evt.status = KeyStatus::Down;
+							break;
+						case EMSCRIPTEN_EVENT_KEYUP:
+							evt.status = KeyStatus::Up;
+							break;
+					}
+					win->m_callback(evt);
+					handled = true;
 				}
-				win->m_callback(evt);
+
+				//TODO: Checking for length == 1 might cause problems with special characters or IME
+				if (eventType == EMSCRIPTEN_EVENT_KEYDOWN && strlen(keyEvent->key) == 1)
+				{
+					TextInputUpdate evt;
+					evt.input = keyEvent->key;
+					win->m_callback(evt);
+					handled = true;
+				}
 			}
 
 			return true;
@@ -254,6 +276,28 @@ namespace tako
 				evt.position.y = win->m_height - mouseEvent->clientY;
 				win->m_callback(evt);
 				return true;
+			}
+			return false;
+		}
+
+		EM_BOOL static MousePressCallback(int eventType, const EmscriptenMouseEvent* mouseEvent, void *userData)
+		{
+			Window::WindowImpl* win = static_cast<Window::WindowImpl*>(userData);
+			if (win->m_callback)
+			{
+				MouseButtonPress evt;
+				evt.button = MouseButtonMapping[mouseEvent->button];
+				switch (eventType)
+				{
+					//case EMSCRIPTEN_EVENT_CLICK:
+					case EMSCRIPTEN_EVENT_MOUSEDOWN:
+						evt.status = MouseButtonStatus::Down;
+						break;
+					case EMSCRIPTEN_EVENT_MOUSEUP:
+						evt.status = MouseButtonStatus::Up;
+						break;
+				}
+				win->m_callback(evt);
 			}
 			return false;
 		}
