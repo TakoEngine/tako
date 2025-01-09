@@ -57,11 +57,12 @@ public:
 		geom.indices = m_context->CreateBuffer(BufferType::Index, ind.data(), ind.size() * sizeof(U16));
 		geom.count = indices.size();
 
-		if (m_freeGeometryHandles.size() > 0)
+		if (m_compiledGeometryFreelist)
 		{
-			auto handle = m_freeGeometryHandles.back();
-			m_freeGeometryHandles.pop_back();
-			m_compiledGeometry[handle - 1] = geom;
+			auto handle = m_compiledGeometryFreelist;
+			auto g = &m_compiledGeometry[m_compiledGeometryFreelist - 1];
+			m_compiledGeometryFreelist = g->count;
+			*g = geom;
 			return handle;
 		}
 
@@ -86,7 +87,16 @@ public:
 		auto& geom = m_compiledGeometry[geometry - 1];
 		m_context->ReleaseBuffer(geom.vertices);
 		m_context->ReleaseBuffer(geom.indices);
-		m_freeGeometryHandles.push_back(geometry);
+
+		if (m_compiledGeometryFreelist)
+		{
+			geom.count = m_compiledGeometryFreelist;
+		}
+		else
+		{
+			geom.count = 0;
+		}
+		m_compiledGeometryFreelist = geometry;
 	}
 
 	Rml::TextureHandle LoadTexture(Rml::Vector2i& texture_dimensions, const Rml::String& source) override
@@ -127,7 +137,7 @@ private:
 	{
 		Buffer vertices;
 		Buffer indices;
-		size_t count;
+		size_t count; // Also used for freelist
 	};
 
 	struct TexEntry
@@ -140,7 +150,7 @@ private:
 	Pipeline m_pipeline;
 	size_t m_zBuffer;
 	std::vector<CompiledGeometry> m_compiledGeometry;
-	std::vector<Rml::CompiledGeometryHandle> m_freeGeometryHandles;
+	size_t m_compiledGeometryFreelist = 0;
 	std::vector<TexEntry> m_textures;
 
 	void InitPipeline()
