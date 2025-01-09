@@ -89,7 +89,7 @@ namespace tako
 		void SetCameraView(const Matrix4& view);
 		void SetLightPosition(Vector3 lightPos);
 
-		Model LoadModel(const char* file);
+		Model LoadModel(StringView file);
 		Mesh LoadMesh(const char* file);
 		Texture CreateTexture(const Bitmap& bitmap);
 	protected:
@@ -324,11 +324,11 @@ namespace tako
 		m_context->UpdateUniform(&lights, sizeof(LightSettings));
 	}
 
-	Model Renderer3D::LoadModel(const char* file)
+	Model Renderer3D::LoadModel(StringView file)
 	{
 		Model model;
 		fastgltf::Parser parser;
-		std::filesystem::path path(file);
+		std::filesystem::path path(file.ToStringView());
 		auto data = fastgltf::GltfDataBuffer::FromPath(path);;
 		if( data.error() != fastgltf::Error::None)
 		{

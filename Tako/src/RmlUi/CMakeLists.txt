@@ -3,6 +3,7 @@ target_sources(${TAKO_DLL} PRIVATE
 	PUBLIC FILE_SET CXX_MODULES FILES
 	"RmlUi.cppm"
 	"RmlUiRenderer.cppm"
+	"RmlUiSystem.cppm"
 )
 
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/RmlUi/Backends")

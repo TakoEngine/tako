@@ -36,8 +36,8 @@ public:
 		auto proj = Matrix4::ortho(0, m_context->GetWidth(), m_context->GetHeight(), 0, -1000, 1000);
 		camera.proj = proj;
 		m_context->UpdateCamera(camera);
-		Vector4 uniform;
-		m_context->UpdateUniform(&uniform, sizeof(Vector4));
+		//Vector4 uniform;
+		//m_context->UpdateUniform(&uniform, sizeof(Vector4));
 		m_zBuffer = 0;
 	}
 
@@ -57,6 +57,14 @@ public:
 		geom.indices = m_context->CreateBuffer(BufferType::Index, ind.data(), ind.size() * sizeof(U16));
 		geom.count = indices.size();
 
+		if (m_freeGeometryHandles.size() > 0)
+		{
+			auto handle = m_freeGeometryHandles.back();
+			m_freeGeometryHandles.pop_back();
+			m_compiledGeometry[handle - 1] = geom;
+			return handle;
+		}
+
 		m_compiledGeometry.push_back(geom);
 		return m_compiledGeometry.size();
 	}
@@ -75,7 +83,10 @@ public:
 
 	void ReleaseGeometry(Rml::CompiledGeometryHandle geometry) override
 	{
-		LOG("TODO: ReleaseGeometry");
+		auto& geom = m_compiledGeometry[geometry - 1];
+		m_context->ReleaseBuffer(geom.vertices);
+		m_context->ReleaseBuffer(geom.indices);
+		m_freeGeometryHandles.push_back(geometry);
 	}
 
 	Rml::TextureHandle LoadTexture(Rml::Vector2i& texture_dimensions, const Rml::String& source) override
@@ -129,6 +140,7 @@ private:
 	Pipeline m_pipeline;
 	size_t m_zBuffer;
 	std::vector<CompiledGeometry> m_compiledGeometry;
+	std::vector<Rml::CompiledGeometryHandle> m_freeGeometryHandles;
 	std::vector<TexEntry> m_textures;
 
 	void InitPipeline()

@@ -194,4 +194,9 @@ namespace tako
 	{
 		return Buffer();
 	}
+
+	void OpenGLContext::ReleaseBuffer(Buffer buffer)
+	{
+
+	}
 }

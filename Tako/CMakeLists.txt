@@ -60,6 +60,11 @@ target_sources(
 	"src/Allocators/CachePoolAllocator.cppm"
 )
 
+option (TAKO_FORCE_LOG "Log even in release builds" OFF)
+if (TAKO_FORCE_LOG)
+	target_compile_definitions(${TAKO_DLL} PUBLIC TAKO_FORCE_LOG)
+endif()
+
 function(set_feature define val)
 	set(${define} ${val} PARENT_SCOPE)
 	if(val)

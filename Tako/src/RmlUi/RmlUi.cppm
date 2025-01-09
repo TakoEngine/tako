@@ -1,7 +1,6 @@
 module;
 #include "Utility.hpp"
 #include "Reflection.hpp"
-//#include "RmlUi_Platform_GLFW.h"
 #include <RmlUi/Core.h>
 #include <variant>
 export module Tako.RmlUi;
@@ -9,6 +8,7 @@ export module Tako.RmlUi;
 import Tako.StringView;
 import Tako.GraphicsContext;
 import Tako.RmlUi.Renderer;
+import Tako.RmlUi.System;
 import Tako.Event;
 import Tako.Window;
 import Tako.NumberTypes;
@@ -32,10 +32,9 @@ public:
 	{
 		m_graphicsContext = graphicsContext;
 		m_renderer.Init(graphicsContext);
-		//m_system.SetWindow(window->GetHandle());
 
 		Rml::SetRenderInterface(&m_renderer);
-		//Rml::SetSystemInterface(&m_system);
+		Rml::SetSystemInterface(&m_system);
 
 		Rml::Initialise();
 		m_context = Rml::CreateContext("main", Rml::Vector2i(graphicsContext->GetWidth(), graphicsContext->GetHeight()));
@@ -61,7 +60,10 @@ public:
 	{
 		//TODO: Check if RmlUi could accept string_view/c_str
 		Rml::String path(filePath);
-		ASSERT(Rml::LoadFontFace(path));
+		if (!Rml::LoadFontFace(path))
+		{
+			LOG_ERR("Error loading font {}", path);
+		}
 	}
 
 	using ModelHandle = Rml::DataModelHandle;
@@ -167,6 +169,7 @@ public:
 
 private:
 	RmlUiRenderer m_renderer;
+	RmlUiSystem m_system;
 	//SystemInterface_GLFW m_system;
 	Rml::Context* m_context = nullptr;
 	GraphicsContext* m_graphicsContext = nullptr;

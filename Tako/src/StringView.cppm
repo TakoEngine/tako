@@ -65,13 +65,18 @@ namespace tako
 
 		constexpr operator std::string_view() const noexcept
 		{
-			return {m_str, m_len};
+			return ToStringView();
 		}
 
 		CStringView ToCStringView()
 		{
 			ASSERT(m_isTerminated);
 			return CStringView(m_str, m_len);
+		}
+
+		constexpr std::string_view ToStringView() const noexcept
+		{
+			return {m_str, m_len};
 		}
 
 		constexpr bool IsCString() const noexcept

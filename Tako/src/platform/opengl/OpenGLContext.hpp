@@ -34,6 +34,8 @@ namespace tako
 		virtual Material CreateMaterial(const Texture* texture) override;
 		virtual Texture CreateTexture(const Bitmap& bitmap) override;
 		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) override;
+
+		virtual void ReleaseBuffer(Buffer buffer) override;
 	private:
 		WindowHandle m_handle;
 		U32 m_width, m_height;

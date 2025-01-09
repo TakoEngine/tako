@@ -81,5 +81,7 @@ namespace tako
 		virtual Texture CreateTexture(const Bitmap& bitmap) = 0;
 		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) = 0;
 
+		virtual void ReleaseBuffer(Buffer buffer) = 0;
+
 	};
 }

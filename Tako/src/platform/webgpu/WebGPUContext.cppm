@@ -99,6 +99,17 @@ namespace tako
 		size_t size;
 	};
 
+	struct CameraBuffer
+	{
+		wgpu::Buffer buffer;
+		wgpu::BindGroup group;
+	};
+
+	struct FrameState
+	{
+		size_t usedCameraBuffers = 0;
+	};
+
 	export class WebGPUContext final : public IGraphicsContext
 	{
 	public:
@@ -218,6 +229,7 @@ namespace tako
 
 			m_renderPass = wgpuCommandEncoderBeginRenderPass(m_encoder, &renderPassDesc);
 			m_instanceBuffer.currentIndex = 0;
+			m_currentFrame = {};
 
 			//wgpuRenderPassEncoderSetViewport(m_renderPass, 0, 0, m_width, m_height, 0, 1);
 
@@ -319,8 +331,13 @@ namespace tako
 
 		virtual void UpdateCamera(const CameraUniformData& cameraData) override
 		{
-			m_queue.WriteBuffer(m_cameraUniformBuffer, 0, &cameraData, sizeof(CameraUniformData));
-			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 0, m_cameraBindGroup.Get(), 0, nullptr);
+			if (m_currentFrame.usedCameraBuffers >= m_cameraBuffers.size())
+			{
+				CreateCameraBuffer();
+			}
+			auto& buffer = m_cameraBuffers[m_currentFrame.usedCameraBuffers++];
+			m_queue.WriteBuffer(buffer.buffer, 0, &cameraData, sizeof(CameraUniformData));
+			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 0, buffer.group.Get(), 0, nullptr);
 		}
 
 		virtual void UpdateUniform(const void* uniformData, size_t uniformSize, size_t offset = 0) override
@@ -477,7 +494,6 @@ namespace tako
 			pipelineDesc.layout = pipelineLayout.Get();
 
 			WGPURenderPipeline pipeline = wgpuDeviceCreateRenderPipeline(m_device.Get(), &pipelineDesc);
-			m_pipeline = pipeline;
 
 			wgpuShaderModuleRelease(shaderModule);
 
@@ -593,6 +609,11 @@ namespace tako
 			return {reinterpret_cast<U64>(buffer)};
 		}
 
+		virtual void ReleaseBuffer(Buffer buffer) override
+		{
+			wgpuBufferRelease(reinterpret_cast<WGPUBuffer>(buffer.value));
+		}
+
 		//Hacks to get IMGUI working
 		WGPUDevice GetDevice()
 		{
@@ -615,17 +636,14 @@ namespace tako
 		}
 
 	private:
-		//TEMP
-		WGPURenderPipeline m_pipeline;
-
 		WGPUTextureFormat m_depthTextureFormat = WGPUTextureFormat_Depth24Plus;
 		WGPUTexture m_depthTexture;
 		WGPUTextureView m_depthTextureView;
 		wgpu::TextureFormat m_textureFormat = wgpu::TextureFormat::RGBA8Unorm;
 
-		wgpu::Buffer m_cameraUniformBuffer;
+		FrameState m_currentFrame;
+		std::vector<CameraBuffer> m_cameraBuffers;
 		wgpu::BindGroupLayout m_cameraLayout;
-		wgpu::BindGroup m_cameraBindGroup;
 
 		wgpu::Buffer m_pipelineUniformBuffer;
 		wgpu::BindGroupLayout m_pipelineBindLayout;
@@ -867,16 +885,20 @@ namespace tako
 			bindGroupLayoutDesc.entryCount = 1;
 			bindGroupLayoutDesc.entries = &bindingLayout;
 			m_cameraLayout = m_device.CreateBindGroupLayout(&bindGroupLayoutDesc);
+		}
 
+		void CreateCameraBuffer()
+		{
+			CameraBuffer camBuf;
 			CameraUniformData uniform;
 			uniform.view = Matrix4::cameraViewMatrix(Vector3(0, 0, 0), {});
 			uniform.proj = Matrix4::perspective(45, GetWidth() / (float) GetHeight(), 1, 1000);
-			m_cameraUniformBuffer = wgpu::Buffer::Acquire(CreateWGPUBuffer(WGPUBufferUsage_Uniform, &uniform, sizeof(CameraUniformData)));
+			camBuf.buffer = wgpu::Buffer::Acquire(CreateWGPUBuffer(WGPUBufferUsage_Uniform, &uniform, sizeof(CameraUniformData)));
 
 			wgpu::BindGroupEntry binding;
 			binding.nextInChain = nullptr;
 			binding.binding = 0;
-			binding.buffer = m_cameraUniformBuffer;
+			binding.buffer = camBuf.buffer;
 			binding.offset = 0;
 			binding.size = sizeof(CameraUniformData);
 
@@ -886,7 +908,8 @@ namespace tako
 
 			bindGroupDesc.entryCount = 1;
 			bindGroupDesc.entries = &binding;
-			m_cameraBindGroup = m_device.CreateBindGroup(&bindGroupDesc);
+			camBuf.group = m_device.CreateBindGroup(&bindGroupDesc);
+			m_cameraBuffers.push_back(camBuf);
 		}
 
 		void CreatePipelineUniformLayout(size_t size)
