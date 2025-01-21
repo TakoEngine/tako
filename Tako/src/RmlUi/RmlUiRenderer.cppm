@@ -25,7 +25,7 @@ public:
 		bmp.Clear({255, 255, 255, 255});
 		TexEntry tex;
 		tex.tex = m_context->CreateTexture(bmp);
-		tex.mat = m_context->CreateMaterial(&tex.tex);
+		tex.mat = m_context->CreateMaterial(tex.tex);
 		m_textures.push_back(tex);
 	}
 
@@ -111,7 +111,7 @@ public:
 		Bitmap bmp(reinterpret_cast<const Color*>(source.data()), source_dimensions.x, source_dimensions.y);
 		TexEntry tex;
 		tex.tex = m_context->CreateTexture(bmp);
-		tex.mat = m_context->CreateMaterial(&tex.tex);
+		tex.mat = m_context->CreateMaterial(tex.tex);
 
 		m_textures.push_back(tex);
 		return m_textures.size() - 1;

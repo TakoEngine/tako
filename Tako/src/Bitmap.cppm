@@ -13,10 +13,38 @@ import Tako.NumberTypes;
 
 namespace tako
 {
+	export class ImageView
+	{
+	public:
+		ImageView() : m_data(nullptr), m_width(0), m_height(0) {}
+		ImageView(const Color* data, U32 w, U32 h) : m_data(data), m_width(w), m_height(h)
+		{
+		}
+
+		U32 GetWidth() const
+		{
+			return m_width;
+		}
+
+		U32 GetHeight() const
+		{
+			return m_height;
+		}
+
+		const Color* GetData() const
+		{
+			return m_data;
+		}
+	private:
+		U32 m_width, m_height;
+		const Color* m_data;
+	};
+
 	export class Bitmap
 	{
 	public:
 		Bitmap(I32 w, I32 h);
+		Bitmap(I32 w, I32 h, Color c);
 		Bitmap();
 		Bitmap(Bitmap&& other);
 		Bitmap(const Color* data, I32 w, I32 h);
@@ -37,6 +65,11 @@ namespace tako
 		Bitmap Clone() const;
 		static Bitmap FromFile(const char* filePath);
 		static Bitmap FromFileData(const U8* data, size_t size);
+
+		operator ImageView() const noexcept
+		{
+			return ImageView(GetData(), m_width, m_height);
+		}
 	private:
 		I32 m_width, m_height;
 		std::unique_ptr<Color[]> m_data;
@@ -47,6 +80,14 @@ namespace tako
 		m_data(new Color[w * h])
 	{
 		ASSERT(w >= 0 && h >= 0);
+	}
+
+	Bitmap::Bitmap(I32 w, I32 h, Color c) :
+		m_width(w), m_height(h),
+		m_data(new Color[w * h])
+	{
+		ASSERT(w >= 0 && h >= 0);
+		Clear(c);
 	}
 
 	Bitmap::Bitmap() :

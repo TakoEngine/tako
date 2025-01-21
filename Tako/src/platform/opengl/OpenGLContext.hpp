@@ -27,12 +27,15 @@ namespace tako
 		virtual void UpdateCamera(const CameraUniformData& cameraData) override;
 		virtual void UpdateUniform(const void* uniformData, size_t uniformSize, size_t offset = 0) override;
 
+		virtual void Draw(U32 vertexCount) override;
+
 		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) override;
 		virtual void DrawIndexed(uint32_t indexCount, uint32_t matrixCount, const Matrix4* renderMatrix) override;
 
 		virtual Pipeline CreatePipeline(const PipelineDescriptor& pipelineDescriptor) override;
-		virtual Material CreateMaterial(const Texture* texture) override;
-		virtual Texture CreateTexture(const Bitmap& bitmap) override;
+		virtual Material CreateMaterial(const Texture texture, const MaterialDescriptor& materialDescriptor = {}) override;
+		virtual Texture CreateTexture(const ImageView image) override;
+		virtual Texture CreateTexture(const std::span<const ImageView> images) override;
 		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) override;
 
 		virtual void ReleaseBuffer(Buffer buffer) override;

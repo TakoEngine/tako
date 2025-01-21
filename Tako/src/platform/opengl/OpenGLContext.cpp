@@ -97,7 +97,7 @@ namespace tako
 		return m_height;
 	}
 
-	Texture OpenGLContext::CreateTexture(const Bitmap& bitmap)
+	Texture OpenGLContext::CreateTexture(const ImageView image)
 	{
 		GLuint tex;
 		glGenTextures(1, &tex);
@@ -107,13 +107,19 @@ namespace tako
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bitmap.Width(), bitmap.Height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap.GetData());
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.GetWidth(), image.GetHeight(), 0, GL_RGBA, GL_UNSIGNED_BYTE, image.GetData());
 
 		Texture t;
-		t.width = bitmap.Width();
-		t.height = bitmap.Height();
+		t.width = image.GetWidth();
+		t.height = image.GetHeight();
 		t.handle.value = tex;
 		return t;
+	}
+
+	Texture OpenGLContext::CreateTexture(const std::span<const ImageView> images)
+	{
+		ASSERT(false);
+		return {};
 	}
 
 	void OpenGLContext::Begin()
@@ -171,6 +177,11 @@ namespace tako
 
 	}
 
+	void OpenGLContext::Draw(U32 vertexCount)
+	{
+
+	}
+
 	void OpenGLContext::DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix)
 	{
 
@@ -185,7 +196,7 @@ namespace tako
 		return Pipeline();
 	}
 
-	Material OpenGLContext::CreateMaterial(const Texture *texture)
+	Material OpenGLContext::CreateMaterial(const Texture texture, const MaterialDescriptor& materialDescriptor)
 	{
 		return Material();
 	}

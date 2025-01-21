@@ -91,11 +91,41 @@ namespace tako
 
 		Model LoadModel(StringView file);
 		Mesh LoadMesh(const char* file);
-		Texture CreateTexture(const Bitmap& bitmap);
+
+		Texture CreateTexture(const ImageView image)
+		{
+			return m_context->CreateTexture(image);
+		}
+
+		Texture CreateTexture(const std::span<const ImageView> images)
+		{
+			return m_context->CreateTexture(images);
+		}
+
+		Texture CreateTexture(const std::span<const Bitmap, 6> bitmaps)
+		{
+			std::array<ImageView, 6> images;
+			for (int i = 0; i < bitmaps.size(); i++)
+			{
+				images[i] = bitmaps[i];
+			}
+			return m_context->CreateTexture(images);
+		}
+
+		Material CreateSkybox(Texture cubemap);
+		void RenderSkybox(Material skybox);
 	protected:
 		GraphicsContext* m_context;
 		Mesh m_cubeMesh;
 		Pipeline m_pipeline;
+		Pipeline m_skyPipeline;
+		Texture m_skyTexture;
+		Material m_skyMaterial;
+
+	private:
+		CameraUniformData m_cameraData;
+		void CreatePipeline();
+		void CreateSkyboxPipeline();
 	};
 }
 
@@ -142,6 +172,14 @@ namespace tako
 	}
 
 	Renderer3D::Renderer3D(GraphicsContext* context) : m_context(context)
+	{
+		CreatePipeline();
+		CreateSkyboxPipeline();
+
+		m_cubeMesh = CreateMesh(cubeVertices, cubeIndices);
+	}
+
+	void Renderer3D::CreatePipeline()
 	{
 		const char* shaderSource = R"(
 			struct Camera
@@ -229,7 +267,6 @@ namespace tako
 		)";
 
 		std::array<PipelineVectorAttribute, 4> vertexAttributes = { PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec2 };
-		size_t pushConstant = sizeof(Matrix4);
 
 		PipelineDescriptor pipelineDescriptor;
 		pipelineDescriptor.shaderCode = shaderSource;
@@ -240,12 +277,75 @@ namespace tako
 
 		pipelineDescriptor.pipelineUniformSize = sizeof(LightSettings);
 
-		pipelineDescriptor.pushConstants = &pushConstant;
-		pipelineDescriptor.pushConstantsSize = 0;
-
 		m_pipeline = m_context->CreatePipeline(pipelineDescriptor);
+	}
 
-		m_cubeMesh = CreateMesh(cubeVertices, cubeIndices);
+	void Renderer3D::CreateSkyboxPipeline()
+	{
+		const char* shaderSource = R"(
+			struct Camera
+			{
+				viewDirectionProjectionInverse: mat4x4f,
+				projection: mat4x4f,
+			};
+
+			@group(0) @binding(0) var<uniform> camera: Camera;
+
+			@group(2) @binding(0) var skyTex: texture_cube<f32>;
+			@group(2) @binding(1) var skySampler: sampler;
+
+			struct VertexOutput {
+				@builtin(position) position: vec4f,
+				@location(0) pos: vec4f,
+			}
+
+			@vertex
+			fn vs_main (@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
+				let pos = array(
+					vec2f(-1, 3),
+					vec2f(-1,-1),
+					vec2f( 3,-1),
+				);
+				var out: VertexOutput;
+				out.position = vec4f(pos[vertexIndex], 1, 1);
+				out.pos = out.position;
+				return out;
+			}
+
+			@fragment
+			fn fs_main(in: VertexOutput) -> @location(0) vec4f {
+				let t = camera.viewDirectionProjectionInverse * in.pos;
+				return textureSample(skyTex, skySampler, normalize(t.xyz / t.w) * vec3f(1, 1, -1)); // z -1 necessary?
+			}
+		)";
+
+		PipelineDescriptor pipelineDescriptor;
+		pipelineDescriptor.shaderCode = shaderSource;
+		pipelineDescriptor.vertEntry = "vs_main";
+		pipelineDescriptor.fragEntry = "fs_main";
+
+		pipelineDescriptor.pipelineUniformSize = sizeof(LightSettings);
+		pipelineDescriptor.samplerTextureType = TextureType::Cube;
+
+		pipelineDescriptor.usePerDrawModel = false;
+
+		m_skyPipeline = m_context->CreatePipeline(pipelineDescriptor);
+	}
+
+	Material Renderer3D::CreateSkybox(Texture cubemap)
+	{
+		return m_context->CreateMaterial(cubemap, { TextureType::Cube });
+	}
+
+	void Renderer3D::RenderSkybox(Material skybox)
+	{
+		m_context->BindPipeline(&m_skyPipeline);
+		CameraUniformData cam;
+		cam.view = Matrix4::inverse(m_cameraData.proj * m_cameraData.view);
+		m_context->UpdateCamera(cam);
+		m_context->BindMaterial(&skybox);
+
+		m_context->Draw(3);
 	}
 
 	void Renderer3D::Begin()
@@ -310,11 +410,10 @@ namespace tako
 
 	void Renderer3D::SetCameraView(const Matrix4& view)
 	{
-		CameraUniformData cam;
-		cam.view = view;
-		cam.proj = Matrix4::perspective(45, m_context->GetWidth() / (float) m_context->GetHeight(), 1, 1000);
+		m_cameraData.view = view;
+		m_cameraData.proj = Matrix4::perspective(45, m_context->GetWidth() / (float) m_context->GetHeight(), 0.1, 1000);
 		//cam.viewProj = cam.proj * cam.view;
-		m_context->UpdateCamera(cam);
+		m_context->UpdateCamera(m_cameraData);
 	}
 
 	void Renderer3D::SetLightPosition(Vector3 lightPos)
@@ -395,7 +494,7 @@ namespace tako
 			ASSERT(mat.pbrData.baseColorTexture.has_value());
 			size_t texIndex = mat.pbrData.baseColorTexture.value().textureIndex;
 			size_t imageIndex = asset.textures[texIndex].imageIndex.value();
-			model.materials[i] = m_context->CreateMaterial(&model.textures[imageIndex]);
+			model.materials[i] = m_context->CreateMaterial(model.textures[imageIndex]);
 		}
 
 		fastgltf::iterateSceneNodes(asset, 0, fastgltf::math::fmat4x4(), [&](fastgltf::Node& node, fastgltf::math::fmat4x4 matrix)
@@ -556,10 +655,5 @@ namespace tako
 		}
 
 		return CreateMesh(vertices, indices);
-	}
-
-	Texture Renderer3D::CreateTexture(const Bitmap& bitmap)
-	{
-		return m_context->CreateTexture(bitmap);
 	}
 }

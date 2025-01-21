@@ -813,7 +813,7 @@ export namespace tako
 	{
 		U8 r = 0, g = 0, b = 0, a = 0;
 		constexpr Color() {}
-		constexpr Color(U8 r, U8 g, U8 b, U8 a) : r(r), g(g), b(b), a(a) {}
+		constexpr Color(U8 r, U8 g, U8 b, U8 a = 255) : r(r), g(g), b(b), a(a) {}
 		constexpr Color(std::string_view hexCode)
 		{
 			ASSERT(hexCode.size() == 7 || hexCode.size() == 9 || hexCode.size() == 4);
@@ -1039,7 +1039,7 @@ public:
 	template <typename Context>
 	constexpr auto format (const tako::Quaternion& q, Context& ctx) const
 	{
-		return format_to(ctx.out(), "({}, {}, {})", q.x, q.y, q.z, q.w);
+		return format_to(ctx.out(), "({}, {}, {}, {})", q.x, q.y, q.z, q.w);
 	}
 };
 
