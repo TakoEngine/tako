@@ -3,8 +3,14 @@ target_sources(${TAKO_DLL} PRIVATE
 	"WebGPUContext.cppm"
 )
 
+include(FetchContent)
+
 if (NOT EMSCRIPTEN)
 	#find_package(Dawn REQUIRED)
+	set(DAWN_FETCH_DEPENDENCIES ON CACHE BOOL "" FORCE)
+	set(DAWN_USE_WAYLAND ON CACHE BOOL "" FORCE)
+	set(DAWN_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+	FetchContent_MakeAvailable(dawn)
 	target_link_libraries(${TAKO_DLL} PRIVATE webgpu_dawn)
 endif()
 
