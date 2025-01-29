@@ -9,14 +9,43 @@ export module Tako.Bitmap;
 
 import Tako.Math;
 import Tako.Assets;
+import Tako.StringView;
 import Tako.NumberTypes;
 
 namespace tako
 {
+	export class ImageView
+	{
+	public:
+		ImageView() : m_data(nullptr), m_width(0), m_height(0) {}
+		ImageView(const Color* data, U32 w, U32 h) : m_data(data), m_width(w), m_height(h)
+		{
+		}
+
+		U32 GetWidth() const
+		{
+			return m_width;
+		}
+
+		U32 GetHeight() const
+		{
+			return m_height;
+		}
+
+		const Color* GetData() const
+		{
+			return m_data;
+		}
+	private:
+		U32 m_width, m_height;
+		const Color* m_data;
+	};
+
 	export class Bitmap
 	{
 	public:
 		Bitmap(I32 w, I32 h);
+		Bitmap(I32 w, I32 h, Color c);
 		Bitmap();
 		Bitmap(Bitmap&& other);
 		Bitmap(const Color* data, I32 w, I32 h);
@@ -35,8 +64,13 @@ namespace tako
 		void DrawBitmap(I32 x, I32 y, I32 xb, I32 yb, I32 w, I32 h, const Bitmap& bitmap);
 
 		Bitmap Clone() const;
-		static Bitmap FromFile(const char* filePath);
+		static Bitmap FromFile(CStringView filePath);
 		static Bitmap FromFileData(const U8* data, size_t size);
+
+		operator ImageView() const noexcept
+		{
+			return ImageView(GetData(), m_width, m_height);
+		}
 	private:
 		I32 m_width, m_height;
 		std::unique_ptr<Color[]> m_data;
@@ -47,6 +81,14 @@ namespace tako
 		m_data(new Color[w * h])
 	{
 		ASSERT(w >= 0 && h >= 0);
+	}
+
+	Bitmap::Bitmap(I32 w, I32 h, Color c) :
+		m_width(w), m_height(h),
+		m_data(new Color[w * h])
+	{
+		ASSERT(w >= 0 && h >= 0);
+		Clear(c);
 	}
 
 	Bitmap::Bitmap() :
@@ -157,7 +199,7 @@ namespace tako
 		return std::move(Bitmap(m_data.get(), m_width, m_height));
 	}
 
-	Bitmap Bitmap::FromFile(const char* filePath)
+	Bitmap Bitmap::FromFile(CStringView filePath)
 	{
 		tako::U8* buffer = new tako::U8[5242880];
 		size_t bytesRead = 0;

@@ -15,6 +15,10 @@ namespace tako
 			m_length = 0;
 			m_capacity = startCapacity;
 			m_data = reinterpret_cast<T*>(&m_reserved[0]);
+			for (size_t i = 0; i < m_length; i++)
+			{
+				new (m_data + i) T();
+			}
 		}
 
 		~SmallVec()
@@ -53,6 +57,11 @@ namespace tako
 		T* GetData() const
 		{
 			return m_data;
+		}
+
+		T* data() const
+		{
+			return GetData();
 		}
 
 		void Push(const T& element)

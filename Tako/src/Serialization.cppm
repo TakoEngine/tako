@@ -46,7 +46,8 @@ namespace tako::Serialization
 		for (auto& descriptor : info->fields)
 		{
 			out << ::YAML::Key << descriptor.name;
-			if (auto strInfo = dynamic_cast<const Reflection::StructInformation*>(descriptor.type))
+			//TODO
+			if (auto strInfo = reinterpret_cast<const Reflection::StructInformation*>(descriptor.type))
 			{
 				EmitMap(reinterpret_cast<const U8*>(data) + descriptor.offset, strInfo, out);
 			}
@@ -82,7 +83,8 @@ namespace tako::Serialization
 	{
 		for (auto& descriptor : info->fields)
 		{
-			if (auto strInfo = dynamic_cast<const Reflection::StructInformation*>(descriptor.type))
+			//TODO:
+			if (auto strInfo = reinterpret_cast<const Reflection::StructInformation*>(descriptor.type))
 			{
 				auto strData = reinterpret_cast<U8*>(data) + descriptor.offset;
 				strInfo->constr(strData);

@@ -1,16 +1,15 @@
-#pragma once
+module;
 #include "GraphicsAPI.hpp"
 #include "WindowHandle.hpp"
 #include <functional>
 #include <memory>
+export module Tako.Window;
 
-import Tako.Event;
+export import Tako.Event;
 
 namespace tako
 {
-	enum class GraphicsAPI;
-
-	class Window
+	export class Window
 	{
 	public:
 		Window(GraphicsAPI api);

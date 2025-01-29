@@ -11,6 +11,7 @@ export module Tako.WebGPU;
 
 import Tako.JobSystem;
 import Tako.StringView;
+import Tako.SmallVec;
 
 class WStringView : public tako::CStringView
 {
@@ -98,6 +99,19 @@ namespace tako
 		size_t currentIndex = 0;
 		size_t size;
 	};
+
+	struct CameraBuffer
+	{
+		wgpu::Buffer buffer;
+		wgpu::BindGroup group;
+	};
+
+	struct FrameState
+	{
+		size_t usedCameraBuffers = 0;
+	};
+
+	wgpu::TextureViewDimension ConvertToWGPU(TextureType type);
 
 	export class WebGPUContext final : public IGraphicsContext
 	{
@@ -218,6 +232,9 @@ namespace tako
 
 			m_renderPass = wgpuCommandEncoderBeginRenderPass(m_encoder, &renderPassDesc);
 			m_instanceBuffer.currentIndex = 0;
+			m_currentFrame = {};
+
+			//wgpuRenderPassEncoderSetViewport(m_renderPass, 0, 0, m_width, m_height, 0, 1);
 
 			//Render
 			/*
@@ -317,8 +334,13 @@ namespace tako
 
 		virtual void UpdateCamera(const CameraUniformData& cameraData) override
 		{
-			m_queue.WriteBuffer(m_cameraUniformBuffer, 0, &cameraData, sizeof(CameraUniformData));
-			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 0, m_cameraBindGroup.Get(), 0, nullptr);
+			if (m_currentFrame.usedCameraBuffers >= m_cameraBuffers.size())
+			{
+				CreateCameraBuffer();
+			}
+			auto& buffer = m_cameraBuffers[m_currentFrame.usedCameraBuffers++];
+			m_queue.WriteBuffer(buffer.buffer, 0, &cameraData, sizeof(CameraUniformData));
+			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 0, buffer.group.Get(), 0, nullptr);
 		}
 
 		virtual void UpdateUniform(const void* uniformData, size_t uniformSize, size_t offset = 0) override
@@ -327,6 +349,10 @@ namespace tako
 			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 1, m_pipelineBindGroup.Get(), 0, nullptr);
 		}
 
+		virtual void Draw(U32 vertexCount) override
+		{
+			wgpuRenderPassEncoderDraw(m_renderPass, vertexCount, 1, 0, 0);
+		}
 
 		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) override
 		{
@@ -349,91 +375,6 @@ namespace tako
 
 		virtual Pipeline CreatePipeline(const PipelineDescriptor& pipelineDescriptor) override
 		{
-			const char* shaderSource = R"(
-				struct Camera
-				{
-					view: mat4x4f,
-					projection: mat4x4f,
-				};
-
-				struct Lighting
-				{
-					lightPos: vec4f,
-				};
-
-				@group(0) @binding(0) var<uniform> camera: Camera;
-
-				@group(1) @binding(0) var<uniform> lighting: Lighting;
-
-				@group(2) @binding(0) var baseColorTexture: texture_2d<f32>;
-				@group(2) @binding(1) var baseColorSampler: sampler;
-
-				@group(3) @binding(0) var<storage, read> models : array<mat4x4f>;
-
-				struct VertexInput {
-					@location(0) position: vec3f,
-					@location(1) normal: vec3f,
-					@location(2) color: vec3f,
-					@location(3) uv: vec2f,
-				};
-
-				struct VertexOutput {
-					@builtin(position) position: vec4f,
-					@location(0) color: vec3f,
-					@location(1) normal: vec3f,
-					@location(2) uv: vec2f,
-					@location(3) positionWorld: vec3f,
-					@location(4) normalCamera: vec3f,
-					@location(5) eyeDirection: vec3f,
-					@location(6) lightDirection: vec3f,
-				}
-
-				@vertex
-				fn vs_main(in: VertexInput, @builtin(instance_index) instanceIndex: u32) -> VertexOutput {
-					let model = models[instanceIndex];
-					var out: VertexOutput;
-					out.position = camera.projection * camera.view * model * vec4f(in.position, 1.0);
-					out.color = in.color;
-					out.normal = (model * vec4f(in.normal, 0.0)).xyz;
-					out.uv = in.uv;
-
-					out.positionWorld = (model * vec4f(in.position, 1)).xyz;
-
-					let vertexPosCamera = (camera.view * model * vec4f(in.position,1)).xyz;
-					out.eyeDirection = vec3f(0,0,0) - vertexPosCamera;
-
-					let lightPosCamera = (camera.view * lighting.lightPos).xyz;
-					out.lightDirection = lightPosCamera + out.eyeDirection;
-
-					out.normalCamera = ( camera.view * model * vec4f(in.normal, 0)).xyz;
-
-					return out;
-				}
-
-				@fragment
-				fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-					let normal = normalize(in.normal);
-					let dist = length(lighting.lightPos.xyz - in.positionWorld);
-					let n = normalize(in.normalCamera);
-					let l = normalize(in.lightDirection);
-					let cosTheta = clamp(dot(n,l), 0, 1);
-
-					let E = normalize(in.eyeDirection);
-					let R = reflect(-l, n);
-					let cosAlpha = clamp( dot(E,R), 0, 1);
-
-					let baseColor = textureSample(baseColorTexture, baseColorSampler, in.uv).rgb;
-					let color =
-						baseColor * vec3f(0.1,0.1,0.1) +
-						baseColor * vec3f(1,1,1) * 200 * cosTheta / (dist*dist) +
-						vec3f(0.3,0.3,0.3) * vec3f(1,1,1) * 200 * pow(cosAlpha, 5) / (dist*dist);
-
-					//let color = baseColor * shading;
-
-					return vec4f(color, 1.0);
-				}
-			)";
-
 			WGPUShaderModuleDescriptor shaderDesc{};
 
 			WGPUShaderModuleWGSLDescriptor shaderCodeDesc{};
@@ -443,10 +384,10 @@ namespace tako
 			#else
 			shaderCodeDesc.chain.sType = WGPUSType_ShaderSourceWGSL;
 			#endif
-			shaderCodeDesc.code = WStringView(shaderSource);
+			shaderCodeDesc.code = WStringView(pipelineDescriptor.shaderCode);
 
 			shaderDesc.nextInChain = &shaderCodeDesc.chain;
-			shaderCodeDesc.code = WStringView(shaderSource);
+			shaderCodeDesc.code = WStringView(pipelineDescriptor.shaderCode);
 			WGPUShaderModule shaderModule = wgpuDeviceCreateShaderModule(m_device.Get(), &shaderDesc);
 
 			WGPURenderPipelineDescriptor pipelineDesc{};
@@ -454,38 +395,54 @@ namespace tako
 
 			WGPUVertexBufferLayout vertexBufferLayout{};
 			std::vector<WGPUVertexAttribute> vertexAttribs(pipelineDescriptor.vertexAttributeSize);
-			size_t stride = 0;
-			for (int i = 0; i < pipelineDescriptor.vertexAttributeSize; i++)
+			if (pipelineDescriptor.vertexAttributeSize > 0)
 			{
-				WGPUVertexFormat format;
-				size_t attribSize;
-				switch (pipelineDescriptor.vertexAttributes[i])
+				size_t stride = 0;
+				for (int i = 0; i < pipelineDescriptor.vertexAttributeSize; i++)
 				{
-					case PipelineVectorAttribute::Vec2:
-						format = WGPUVertexFormat_Float32x2;
-						attribSize = 2;
-						break;
-					case PipelineVectorAttribute::Vec3:
-						format = WGPUVertexFormat_Float32x3;
-						attribSize = 3;
-						break;
+					WGPUVertexFormat format;
+					size_t attribSize;
+					switch (pipelineDescriptor.vertexAttributes[i])
+					{
+						case PipelineVectorAttribute::Vec2:
+							format = WGPUVertexFormat_Float32x2;
+							attribSize = 2;
+							break;
+						case PipelineVectorAttribute::Vec3:
+							format = WGPUVertexFormat_Float32x3;
+							attribSize = 3;
+							break;
+						case PipelineVectorAttribute::Vec4:
+							format = WGPUVertexFormat_Float32x4;
+							attribSize = 4;
+							break;
+						case PipelineVectorAttribute::RGBA:
+							format = WGPUVertexFormat_Unorm8x4;
+							attribSize = 1;
+							break;
+					}
+					vertexAttribs[i].shaderLocation = i;
+					vertexAttribs[i].format = format;
+					vertexAttribs[i].offset = stride;
+					stride += attribSize * sizeof(float);
 				}
-				vertexAttribs[i].shaderLocation = i;
-				vertexAttribs[i].format = format;
-				vertexAttribs[i].offset = stride;
-				stride += attribSize * sizeof(float);
+
+				vertexBufferLayout.attributeCount = vertexAttribs.size();
+				vertexBufferLayout.attributes = vertexAttribs.data();
+				vertexBufferLayout.arrayStride = stride;
+				vertexBufferLayout.stepMode = WGPUVertexStepMode_Vertex;
+
+				pipelineDesc.vertex.bufferCount = 1;
+				pipelineDesc.vertex.buffers = &vertexBufferLayout;
+			}
+			else
+			{
+				pipelineDesc.vertex.bufferCount = 0;
+				pipelineDesc.vertex.buffers = nullptr;
 			}
 
-			vertexBufferLayout.attributeCount = vertexAttribs.size();
-			vertexBufferLayout.attributes = vertexAttribs.data();
-			vertexBufferLayout.arrayStride = stride;
-			vertexBufferLayout.stepMode = WGPUVertexStepMode_Vertex;
-
-			pipelineDesc.vertex.bufferCount = 1;
-			pipelineDesc.vertex.buffers = &vertexBufferLayout;
-
 			pipelineDesc.vertex.module = shaderModule;
-			pipelineDesc.vertex.entryPoint = WStringView("vs_main");
+			pipelineDesc.vertex.entryPoint = WStringView(pipelineDescriptor.vertEntry);
 			pipelineDesc.vertex.constantCount = 0;
 			pipelineDesc.vertex.constants = nullptr;
 
@@ -496,7 +453,7 @@ namespace tako
 
 			WGPUFragmentState fragmentState{};
 			fragmentState.module = shaderModule;
-			fragmentState.entryPoint = WStringView("fs_main");
+			fragmentState.entryPoint = WStringView(pipelineDescriptor.fragEntry);
 			fragmentState.constantCount = 0;
 			fragmentState.constants = nullptr;
 
@@ -520,7 +477,7 @@ namespace tako
 
 			WGPUDepthStencilState depthStencilState;
 			SetDefault(depthStencilState);
-			depthStencilState.depthCompare = WGPUCompareFunction_Less;
+			depthStencilState.depthCompare = WGPUCompareFunction_LessEqual;
 			depthStencilState.depthWriteEnabled = WBool(true);
 			depthStencilState.format = m_depthTextureFormat;
 			depthStencilState.stencilReadMask = 0;
@@ -534,13 +491,22 @@ namespace tako
 
 			CreatePipelineUniformLayout(pipelineDescriptor.pipelineUniformSize);
 
-			std::array layouts
+			std::vector<wgpu::BindGroupLayout> layouts; //TODO: Use SmallVec
+			layouts.push_back(m_cameraLayout);
+			layouts.push_back(m_pipelineBindLayout);
+			switch (pipelineDescriptor.samplerTextureType)
 			{
-				m_cameraLayout,
-				m_pipelineBindLayout,
-				m_materialLayout,
-				m_modelLayout,
-			};
+				case TextureType::E2D:
+					layouts.push_back(m_materialLayout);
+					break;
+				case TextureType::Cube:
+					layouts.push_back(m_cubeMaterialLayout);
+					break;
+			}
+			if (pipelineDescriptor.usePerDrawModel)
+			{
+				layouts.push_back(m_modelLayout);
+			}
 
 
 			wgpu::PipelineLayoutDescriptor layoutDesc;
@@ -552,7 +518,6 @@ namespace tako
 			pipelineDesc.layout = pipelineLayout.Get();
 
 			WGPURenderPipeline pipeline = wgpuDeviceCreateRenderPipeline(m_device.Get(), &pipelineDesc);
-			m_pipeline = pipeline;
 
 			wgpuShaderModuleRelease(shaderModule);
 
@@ -560,18 +525,26 @@ namespace tako
 			return {reinterpret_cast<U64>(pipeline)};
 		}
 
-		virtual Material CreateMaterial(const Texture* texture) override
+		virtual Material CreateMaterial(const Texture texture, const MaterialDescriptor& materialDescriptor = {}) override
 		{
-			wgpu::Texture tex = wgpu::Texture(reinterpret_cast<WGPUTexture>(texture->handle.value));
+			wgpu::Texture tex = wgpu::Texture(reinterpret_cast<WGPUTexture>(texture.handle.value));
 
 			wgpu::TextureViewDescriptor textureViewDesc {};
 			textureViewDesc.nextInChain = nullptr;
 			textureViewDesc.aspect = wgpu::TextureAspect::All;
 			textureViewDesc.baseArrayLayer = 0;
-			textureViewDesc.arrayLayerCount = 1;
+			switch (materialDescriptor.textureType)
+			{
+				case TextureType::E2D:
+					textureViewDesc.arrayLayerCount = 1;
+					break;
+				case TextureType::Cube:
+					textureViewDesc.arrayLayerCount = 6;
+					break;
+			}
 			textureViewDesc.baseMipLevel = 0;
 			textureViewDesc.mipLevelCount = 1;
-			textureViewDesc.dimension = wgpu::TextureViewDimension::e2D;
+			textureViewDesc.dimension = ConvertToWGPU(materialDescriptor.textureType);
 			textureViewDesc.format = m_textureFormat; //TODO: Get from texture?
 			wgpu::TextureView textureView = tex.CreateView(&textureViewDesc);
 			ASSERT(textureView);
@@ -603,51 +576,30 @@ namespace tako
 
 			wgpu::BindGroupDescriptor bindGroupDesc{};
 			bindGroupDesc.nextInChain = nullptr;
-			bindGroupDesc.layout = m_materialLayout;
+			switch (materialDescriptor.textureType)
+			{
+				case TextureType::E2D:
+					bindGroupDesc.layout = m_materialLayout;
+					break;
+				case TextureType::Cube:
+					bindGroupDesc.layout = m_cubeMaterialLayout;
+					break;
+			}
+
 			bindGroupDesc.entryCount = bindings.size();
 			bindGroupDesc.entries = bindings.data();
 			wgpu::BindGroup bindGroup = m_device.CreateBindGroup(&bindGroupDesc);
 			return { reinterpret_cast<U64>(bindGroup.MoveToCHandle()) };
 		}
 
-		virtual Texture CreateTexture(const Bitmap& bitmap) override
+		virtual Texture CreateTexture(const ImageView image) override
 		{
-			wgpu::TextureDescriptor textureDesc;
-			textureDesc.nextInChain = nullptr;
-			textureDesc.dimension = wgpu::TextureDimension::e2D;
-			textureDesc.size = { (U32) bitmap.Width(), (U32) bitmap.Height(), 1 };
-			textureDesc.mipLevelCount = 1;
-			textureDesc.sampleCount = 1;
-			textureDesc.format = m_textureFormat;
-			textureDesc.usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;
-			textureDesc.viewFormatCount = 0;
-			textureDesc.viewFormats = nullptr;
+			return CreateWGPUTexture(std::span<const ImageView>{&image, 1}, wgpu::TextureDimension::e2D);
+		}
 
-			wgpu::Texture texture = m_device.CreateTexture(&textureDesc);
-
-			wgpu::ImageCopyTexture destination;
-			#ifdef TAKO_EMSCRIPTEN
-			destination.nextInChain = nullptr;
-			#endif
-			destination.texture = texture;
-			destination.mipLevel = 0;
-			destination.origin = { 0, 0, 0 };
-			destination.aspect = wgpu::TextureAspect::All;
-
-			wgpu::TextureDataLayout source;
-			source.nextInChain = nullptr;
-			source.offset = 0;
-			source.bytesPerRow = 4 * textureDesc.size.width;
-			source.rowsPerImage = textureDesc.size.height;
-
-			size_t imageSize = sizeof(Color) * (U32) bitmap.Width() *  (U32) bitmap.Height();
-			m_queue.WriteTexture(&destination, bitmap.GetData(), imageSize, &source, &textureDesc.size);
-
-			Texture tex;
-			tex.handle.value = reinterpret_cast<U64>(texture.MoveToCHandle());
-			tex.width = bitmap.Width();
-			tex.height = bitmap.Height();
-			return tex;
+		virtual Texture CreateTexture(const std::span<const ImageView> images) override
+		{
+			return CreateWGPUTexture(images, wgpu::TextureDimension::e2D);
 		}
 
 		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) override
@@ -666,6 +618,11 @@ namespace tako
 			WGPUBuffer buffer = CreateWGPUBuffer(usage, bufferData, bufferSize);
 
 			return {reinterpret_cast<U64>(buffer)};
+		}
+
+		virtual void ReleaseBuffer(Buffer buffer) override
+		{
+			wgpuBufferRelease(reinterpret_cast<WGPUBuffer>(buffer.value));
 		}
 
 		//Hacks to get IMGUI working
@@ -690,23 +647,21 @@ namespace tako
 		}
 
 	private:
-		//TEMP
-		WGPURenderPipeline m_pipeline;
-
 		WGPUTextureFormat m_depthTextureFormat = WGPUTextureFormat_Depth24Plus;
 		WGPUTexture m_depthTexture;
 		WGPUTextureView m_depthTextureView;
 		wgpu::TextureFormat m_textureFormat = wgpu::TextureFormat::RGBA8Unorm;
 
-		wgpu::Buffer m_cameraUniformBuffer;
+		FrameState m_currentFrame;
+		std::vector<CameraBuffer> m_cameraBuffers;
 		wgpu::BindGroupLayout m_cameraLayout;
-		wgpu::BindGroup m_cameraBindGroup;
 
 		wgpu::Buffer m_pipelineUniformBuffer;
 		wgpu::BindGroupLayout m_pipelineBindLayout;
 		wgpu::BindGroup m_pipelineBindGroup;
 
 		wgpu::BindGroupLayout m_materialLayout;
+		wgpu::BindGroupLayout m_cubeMaterialLayout;
 		wgpu::BindGroupLayout m_modelLayout;
 
 		InstanceBuffer m_instanceBuffer;
@@ -783,11 +738,12 @@ namespace tako
 				ConfigureSurface();
 				CreateDepthTexture();
 				CreateCameraUniformLayout();
-				CreateMaterialLayout();
+				m_materialLayout = CreateMaterialLayout(wgpu::TextureViewDimension::e2D);
+				m_cubeMaterialLayout = CreateMaterialLayout(wgpu::TextureViewDimension::Cube);
 				CreateModelLayout();
 				CreateInstanceBuffer(1024);
 
-				LOG("Renderer Setup Complete!")
+				LOG("Renderer Setup Complete!");
 				m_initComplete = true;
 				/*
 				wgpu::SupportedLimits supportedLimits;
@@ -852,6 +808,55 @@ namespace tako
 			WGPUTextureView targetView = surfaceTexture.texture.CreateView(&viewDescriptor).MoveToCHandle();
 
 			return targetView;
+		}
+
+		Texture CreateWGPUTexture(const std::span<const ImageView> images, wgpu::TextureDimension dimension)
+		{
+			ASSERT(images.size() > 0);
+			// Assume all images are the same dimensions
+			auto width = images[0].GetWidth();
+			auto height = images[0].GetHeight();
+			wgpu::TextureDescriptor textureDesc;
+			textureDesc.nextInChain = nullptr;
+			textureDesc.dimension = dimension;
+			textureDesc.size = { width, height, static_cast<U32>(images.size()) };
+			textureDesc.mipLevelCount = 1;
+			textureDesc.sampleCount = 1;
+			textureDesc.format = m_textureFormat;
+			textureDesc.usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;
+			textureDesc.viewFormatCount = 0;
+			textureDesc.viewFormats = nullptr;
+
+			wgpu::Texture texture = m_device.CreateTexture(&textureDesc);
+
+			for (U32 i = 0; i < images.size(); i++)
+			{
+				wgpu::ImageCopyTexture destination;
+				#ifdef TAKO_EMSCRIPTEN
+				destination.nextInChain = nullptr;
+				#endif
+				destination.texture = texture;
+				destination.mipLevel = 0;
+				destination.origin = { 0, 0, i };
+				destination.aspect = wgpu::TextureAspect::All;
+
+				wgpu::TextureDataLayout source;
+				source.nextInChain = nullptr;
+				source.offset = 0;
+				source.bytesPerRow = 4 * textureDesc.size.width;
+				source.rowsPerImage = textureDesc.size.height;
+
+				size_t imageSize = sizeof(Color) * width * height;
+				auto writeSize = textureDesc.size;
+				writeSize.depthOrArrayLayers = 1;
+				m_queue.WriteTexture(&destination, images[i].GetData(), imageSize, &source, &writeSize); //TODO: Write all layers at once
+			}
+
+			Texture tex;
+			tex.handle.value = reinterpret_cast<U64>(texture.MoveToCHandle());
+			tex.width = width;
+			tex.height = height;
+			return tex;
 		}
 
 		WGPUBuffer CreateWGPUBuffer(WGPUBufferUsage bufferType, const void* bufferData, size_t dataSize)
@@ -942,16 +947,20 @@ namespace tako
 			bindGroupLayoutDesc.entryCount = 1;
 			bindGroupLayoutDesc.entries = &bindingLayout;
 			m_cameraLayout = m_device.CreateBindGroupLayout(&bindGroupLayoutDesc);
+		}
 
+		void CreateCameraBuffer()
+		{
+			CameraBuffer camBuf;
 			CameraUniformData uniform;
 			uniform.view = Matrix4::cameraViewMatrix(Vector3(0, 0, 0), {});
 			uniform.proj = Matrix4::perspective(45, GetWidth() / (float) GetHeight(), 1, 1000);
-			m_cameraUniformBuffer = wgpu::Buffer::Acquire(CreateWGPUBuffer(WGPUBufferUsage_Uniform, &uniform, sizeof(CameraUniformData)));
+			camBuf.buffer = wgpu::Buffer::Acquire(CreateWGPUBuffer(WGPUBufferUsage_Uniform, &uniform, sizeof(CameraUniformData)));
 
 			wgpu::BindGroupEntry binding;
 			binding.nextInChain = nullptr;
 			binding.binding = 0;
-			binding.buffer = m_cameraUniformBuffer;
+			binding.buffer = camBuf.buffer;
 			binding.offset = 0;
 			binding.size = sizeof(CameraUniformData);
 
@@ -961,7 +970,8 @@ namespace tako
 
 			bindGroupDesc.entryCount = 1;
 			bindGroupDesc.entries = &binding;
-			m_cameraBindGroup = m_device.CreateBindGroup(&bindGroupDesc);
+			camBuf.group = m_device.CreateBindGroup(&bindGroupDesc);
+			m_cameraBuffers.push_back(camBuf);
 		}
 
 		void CreatePipelineUniformLayout(size_t size)
@@ -996,14 +1006,14 @@ namespace tako
 			m_pipelineBindGroup = m_device.CreateBindGroup(&bindGroupDesc);
 		}
 
-		void CreateMaterialLayout()
+		wgpu::BindGroupLayout CreateMaterialLayout(wgpu::TextureViewDimension viewDimension)
 		{
 			std::array<wgpu::BindGroupLayoutEntry, 2> bindingLayoutEntries;
 			auto& textureBindingLayout = bindingLayoutEntries[0];
 			textureBindingLayout.binding = 0;
 			textureBindingLayout.visibility = wgpu::ShaderStage::Fragment;
 			textureBindingLayout.texture.sampleType = wgpu::TextureSampleType::Float;
-			textureBindingLayout.texture.viewDimension = wgpu::TextureViewDimension::e2D;
+			textureBindingLayout.texture.viewDimension = viewDimension;
 
 			auto& samplerBindingLayout = bindingLayoutEntries[1];
 			samplerBindingLayout.binding = 1;
@@ -1014,7 +1024,7 @@ namespace tako
 			bindGroupLayoutDesc.nextInChain = nullptr;
 			bindGroupLayoutDesc.entryCount = bindingLayoutEntries.size();
 			bindGroupLayoutDesc.entries = bindingLayoutEntries.data();
-			m_materialLayout = m_device.CreateBindGroupLayout(&bindGroupLayoutDesc);
+			return m_device.CreateBindGroupLayout(&bindGroupLayoutDesc);
 		}
 
 		void CreateModelLayout()
@@ -1095,7 +1105,7 @@ namespace tako
 			requiredLimits.limits.maxUniformBufferBindingSize = 16 * 4 * sizeof(float);
 			requiredLimits.limits.maxTextureDimension1D = 2160;
 			requiredLimits.limits.maxTextureDimension2D = 3840;
-			requiredLimits.limits.maxTextureArrayLayers = 1;
+			requiredLimits.limits.maxTextureArrayLayers = 6;
 			requiredLimits.limits.maxSampledTexturesPerShaderStage = 1;
 			requiredLimits.limits.maxSamplersPerShaderStage = 1;
 
@@ -1105,5 +1115,14 @@ namespace tako
 			return requiredLimits;
 		}
 	};
+
+	wgpu::TextureViewDimension ConvertToWGPU(TextureType type)
+	{
+		switch (type)
+		{
+			case TextureType::E2D: return wgpu::TextureViewDimension::e2D;
+			case TextureType::Cube: return wgpu::TextureViewDimension::Cube;
+		}
+	}
 
 }

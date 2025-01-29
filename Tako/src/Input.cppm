@@ -14,7 +14,8 @@ namespace tako
 	public:
 		virtual void HandleEvent(Event& evt) override
 		{
-			switch (evt.GetType()) {
+			switch (evt.GetType())
+			{
 				case tako::EventType::KeyPress:
 				{
 					tako::KeyPress& press = static_cast<tako::KeyPress &>(evt);

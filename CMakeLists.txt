@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.30)
 project("tako")
 
+include(FetchContent)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -27,20 +29,23 @@ add_subdirectory("dependencies/json" EXCLUDE_FROM_ALL)
 set(FASTGLTF_COMPILE_AS_CPP20 ON CACHE BOOL "" FORCE)
 #set(FASTGLTF_ENABLE_CPP_MODULES ON CACHE BOOL "" FORCE)
 add_subdirectory("dependencies/fastgltf" EXCLUDE_FROM_ALL)
+add_subdirectory("dependencies/RmlUi" EXCLUDE_FROM_ALL)
 
-set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 if (NOT EMSCRIPTEN)
+	set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+	set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+	set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 	add_subdirectory("dependencies/glfw" EXCLUDE_FROM_ALL)
 
-	set(DAWN_FETCH_DEPENDENCIES ON CACHE BOOL "" FORCE)
-	set(DAWN_ENABLE_INSTALL ON CACHE BOOL "" FORCE)
-	set(DAWN_USE_WAYLAND ON CACHE BOOL "" FORCE)
-	add_subdirectory("dependencies/dawn" EXCLUDE_FROM_ALL)
+	FetchContent_Declare(
+		dawn
+		URL https://github.com/google/dawn/archive/66bf64e67071911fffd159a4e3d556d055e76d85.zip
+		FIND_PACKAGE_ARGS NAMES Dawn
+	)
 
 	#add_subdirectory("dependencies/assimp" EXCLUDE_FROM_ALL)
 endif()
+
 add_subdirectory("Tako")
 
 # Examples

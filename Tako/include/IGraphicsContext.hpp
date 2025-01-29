@@ -1,38 +1,57 @@
 #pragma once
 #include "GraphicsAPI.hpp"
-#include "Window.hpp"
 #include "Texture.hpp"
 #include "VertexBuffer.hpp"
 #include "Material.hpp"
 #include "Pipeline.hpp"
+#include <cstddef>
+#include <span>
 
 import Tako.Math;
 import Tako.Bitmap;
-import Tako.NumberTypes;
 import Tako.Event;
+import Tako.StringView;
+import Tako.Window;
 
 namespace tako
 {
 	enum class PipelineVectorAttribute
 	{
 		Vec2,
-		Vec3
+		Vec3,
+		Vec4,
+		RGBA
+	};
+
+	enum class TextureType
+	{
+		E2D,
+		Cube
 	};
 
 	struct PipelineDescriptor
 	{
+		const char* shaderCode = nullptr;
+		const char* vertEntry = nullptr;
+		const char* fragEntry = nullptr;
+		/*
 		U8* vertCode;
 		size_t vertSize;
 		U8* fragCode;
 		size_t fragSize;
+		*/
 
-		PipelineVectorAttribute* vertexAttributes;
-		size_t vertexAttributeSize;
+		PipelineVectorAttribute* vertexAttributes = nullptr;
+		size_t vertexAttributeSize = 0;
 
-		size_t pipelineUniformSize;
+		size_t pipelineUniformSize = 0;
 
-		size_t* pushConstants;
-		size_t pushConstantsSize;
+		TextureType samplerTextureType = TextureType::E2D;
+
+		bool usePerDrawModel = true;
+
+		size_t* pushConstants = nullptr;
+		size_t pushConstantsSize = 0;
 
 	};
 
@@ -41,6 +60,11 @@ namespace tako
 		Matrix4 view;
 		Matrix4 proj;
 		//Matrix4 viewProj;
+	};
+
+	struct MaterialDescriptor
+	{
+		TextureType textureType = TextureType::E2D;
 	};
 
 	class IGraphicsContext : public IEventHandler
@@ -65,13 +89,18 @@ namespace tako
 		virtual void UpdateCamera(const CameraUniformData& cameraData) = 0;
 		virtual void UpdateUniform(const void* uniformData, size_t uniformSize, size_t offset = 0) = 0;
 
+		virtual void Draw(U32 vertexCount) = 0;
+
 		virtual void DrawIndexed(uint32_t indexCount, Matrix4 renderMatrix) = 0;
 		virtual void DrawIndexed(uint32_t indexCount, uint32_t matrixCount, const Matrix4* renderMatrix) = 0;
 
 		virtual Pipeline CreatePipeline(const PipelineDescriptor& pipelineDescriptor) = 0;
-		virtual Material CreateMaterial(const Texture* texture) = 0;
-		virtual Texture CreateTexture(const Bitmap& bitmap) = 0;
+		virtual Material CreateMaterial(const Texture texture, const MaterialDescriptor& materialDescriptor = {}) = 0;
+		virtual Texture CreateTexture(const ImageView image) = 0;
+		virtual Texture CreateTexture(const std::span<const ImageView> images) = 0;
 		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) = 0;
+
+		virtual void ReleaseBuffer(Buffer buffer) = 0;
 
 	};
 }

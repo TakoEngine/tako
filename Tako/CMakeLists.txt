@@ -10,7 +10,6 @@ add_library(${TAKO_DLL}
 target_sources(
 	${TAKO_DLL} PUBLIC
 	FILE_SET HEADERS FILES
-	"include/Window.hpp"
 	"include/Log.hpp"
 	"include/Utility.hpp"
 	"include/NumberTypes.hpp"
@@ -32,6 +31,7 @@ target_sources(
 target_sources(
 	${TAKO_DLL} PUBLIC
 	FILE_SET CXX_MODULES FILES
+	"src/Window.cppm"
 	"src/ECS/World.cppm"
 	"src/NumberTypes.cppm"
 	"src/Math.cppm"
@@ -59,6 +59,11 @@ target_sources(
 	"src/Allocators/PoolAllocator.cppm"
 	"src/Allocators/CachePoolAllocator.cppm"
 )
+
+option (TAKO_FORCE_LOG "Log even in release builds" OFF)
+if (TAKO_FORCE_LOG)
+	target_compile_definitions(${TAKO_DLL} PUBLIC TAKO_FORCE_LOG)
+endif()
 
 function(set_feature define val)
 	set(${define} ${val} PARENT_SCOPE)
@@ -308,6 +313,8 @@ if (TAKO_IMGUI)
 	target_link_libraries(imgui PUBLIC glfw webgpu_dawn)
 	target_link_libraries(${TAKO_DLL} PUBLIC imgui)
 endif()
+
+add_subdirectory("src/RmlUi")
 
 if (TAKO_GLFW)
 	target_link_libraries(${TAKO_DLL} PUBLIC glfw)

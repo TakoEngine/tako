@@ -2,8 +2,10 @@
 #include "IGraphicsContext.hpp"
 #include "Utility.hpp"
 #include <array>
+#include <vector>
 
 import Tako.Assets;
+//import Tako.Math;
 
 namespace tako
 {
@@ -83,10 +85,12 @@ namespace tako
 			size_t pushConstant = sizeof(Matrix4);
 
 			PipelineDescriptor pipelineDescriptor;
+			/*
 			pipelineDescriptor.vertCode = vertCode.data();
 			pipelineDescriptor.vertSize = vertCode.size();
 			pipelineDescriptor.fragCode = fragCode.data();
 			pipelineDescriptor.fragSize = fragCode.size();
+			*/
 			pipelineDescriptor.vertexAttributes = vertexAttributes.data();
 			pipelineDescriptor.vertexAttributeSize = vertexAttributes.size();
 			pipelineDescriptor.pushConstants = &pushConstant;
@@ -111,10 +115,12 @@ namespace tako
 			size_t pushConstant = sizeof(Matrix4);
 
 			PipelineDescriptor pipelineDescriptor;
+			/*
 			pipelineDescriptor.vertCode = vertCode.data();
 			pipelineDescriptor.vertSize = vertCode.size();
 			pipelineDescriptor.fragCode = fragCode.data();
 			pipelineDescriptor.fragSize = fragCode.size();
+			*/
 			pipelineDescriptor.vertexAttributes = vertexAttributes.data();
 			pipelineDescriptor.vertexAttributeSize = vertexAttributes.size();
 			pipelineDescriptor.pushConstants = &pushConstant;
@@ -246,7 +252,7 @@ namespace tako
 		if (matSearch == m_texMatMap.end())
 		{
 			Texture tex = { texture, 42, 42 }; //Create dummy texture, needs a refactor
-			auto material = m_context->CreateMaterial(&tex);
+			auto material = m_context->CreateMaterial(tex);
 			m_texMatMap[texture.value] = material;
 			m_context->BindMaterial(&material);
 		}

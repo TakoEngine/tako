@@ -1,8 +1,11 @@
 #pragma once
 #include "Resources.hpp"
+#include "GraphicsAPI.hpp"
 
 import Tako.Input;
 import Tako.Audio;
+import Tako.RmlUi;
+import Tako.NumberTypes;
 
 namespace tako
 {
@@ -11,6 +14,7 @@ namespace tako
 		GraphicsContext* context;
 		Resources* resources;
 		Audio* audio;
+		RmlUi* ui;
 	};
 
 	struct GameStageData

@@ -3,6 +3,7 @@ module;
 #include "Timer.hpp"
 #include "Resources.hpp"
 #include <thread>
+#include <functional>
 //#include "OpenGLPixelArtDrawer.hpp"
 #ifdef TAKO_EMSCRIPTEN
 #include <emscripten.h>
@@ -33,8 +34,9 @@ export module EntryPoint;
 import Tako.Audio;
 //import Tako.Renderer3D;
 import Tako.Application;
-import Tako.Serialization;
+//import Tako.Serialization;
 import Tako.JobSystem;
+import Tako.RmlUi;
 import Tako.Allocators.CachePoolAllocator;
 
 namespace tako
@@ -46,6 +48,7 @@ namespace tako
 		tako::Input& input;
 		tako::Audio& audio;
 		tako::Resources& resources;
+		tako::RmlUi& ui;
 		void* gameData;
 		GameConfig& config;
 		JobSystem& jobSys;
@@ -150,6 +153,7 @@ namespace tako
 					{
 						data->config.Update(stageData, &data->input, dt);
 					}
+					data->ui.Update();
 				});
 			}
 			data->jobSys.Continuation([=]()
@@ -162,7 +166,7 @@ namespace tako
 				//LOG("Start Draw {}", thisFrame);
 				//data->jobSys.Schedule([=]()
 				#ifdef TAKO_EMSCRIPTEN
-				data->proxyQueue.proxySync(data->mainThread, [=]()
+				//data->proxyQueue.proxySync(data->mainThread, [=]()
 				#endif
 				{
 					data->context.Begin();
@@ -194,6 +198,7 @@ namespace tako
 						#endif
 					}
 					#endif
+					data->ui.Draw();
 					data->context.End();
 
 					#ifdef TAKO_IMGUI
@@ -206,7 +211,7 @@ namespace tako
 					data->context.Present();
 					//LOG("Tick End");
 				#ifdef TAKO_EMSCRIPTEN
-				});
+				}
 				#else
 				}
 				#endif
@@ -223,6 +228,7 @@ namespace tako
 					data->frameDataPoolLock.clear(std::memory_order_release);
 					*/
 					free(frameData);
+					//LOG("Tick End");
 				});
 			});
 		});
@@ -237,13 +243,14 @@ namespace tako
 		{
 			data->jobSys.RunJob([=]()
 			{
-				data->config.Setup(data->gameData, { &data->context, &data->resources, &data->audio });
+				data->config.Setup(data->gameData, { &data->context, &data->resources, &data->audio, &data->ui });
 			});
 		}
 	}
 
 	void ScheduleTick(void* p)
 	{
+		//LOG("Schedule Tick")
 		TickStruct* data = reinterpret_cast<TickStruct*>(p);
 		data->jobSys.RunJob(std::bind(Tick, p));
 	}
@@ -315,16 +322,20 @@ namespace tako
 			}
 
 		#endif
+		tako::Broadcaster broadcaster;
 
 		Resources resources(context.get());
+		RmlUi ui;
+		ui.Init(&window, context.get());
+
 		void* gameData = malloc(config.gameDataSize);
 #ifndef EMSCRIPTEN
 		if (config.Setup)
 		{
-			config.Setup(gameData, { context.get(), &resources, &audio });
+			config.Setup(gameData, { context.get(), &resources, &audio, &ui });
 		}
 #endif
-		tako::Broadcaster broadcaster;
+
 #ifdef TAKO_EDITOR
 		tako::FileWatcher watcher("./Assets");
 #endif
@@ -360,6 +371,7 @@ namespace tako
 
 		broadcaster.Register(&onEvent);
 		broadcaster.Register(context.get());
+		broadcaster.Register(&ui);
 		broadcaster.Register(&input);
 
 		window.SetEventCallback([&](tako::Event& evt)
@@ -377,6 +389,7 @@ namespace tako
 			input,
 			audio,
 			resources,
+			ui,
 			gameData,
 			config,
 			jobSys,

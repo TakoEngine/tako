@@ -4,7 +4,7 @@ module;
 #include <string_view>
 export module Tako.Math;
 
-import Tako.NumberTypes;
+export import Tako.NumberTypes;
 
 export namespace tako
 {
@@ -286,6 +286,17 @@ export namespace tako
 		{
 			return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
 		}
+
+		float& operator[](size_t i)
+		{
+			return (&x)[i];
+		}
+
+		const float& operator[](size_t i) const
+		{
+			return (&x)[i];
+		}
+
 	};
 
 	struct Vector4
@@ -295,6 +306,16 @@ export namespace tako
 		constexpr Vector4() : x(0), y(0), z(0), w(0) {}
 		constexpr Vector4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
 		constexpr Vector4(Vector3 v, float w = 1) : x(v.x), y(v.y), z(v.z), w(w) {}
+
+		float& operator[](size_t i)
+		{
+			return (&x)[i];
+		}
+
+		const float& operator[](size_t i) const
+		{
+			return (&x)[i];
+		}
 	};
 
 	struct Quaternion;
@@ -542,6 +563,20 @@ export namespace tako
 			return res;
 		}
 
+		friend constexpr Vector4 operator*(const Matrix4 m, const Vector4 v)
+		{
+			Vector4 r;
+			for (size_t i = 0; i < 4; i++)
+			{
+				for (size_t j = 0; j < 4; j++)
+				{
+					r[j] += m[j*4 + i] * v[i];
+				}
+			}
+
+			return r;
+		}
+
 		static Matrix4 rotate(float angle)
 		{
 			return Matrix4
@@ -606,15 +641,15 @@ export namespace tako
 			return result;
 		}
 
-		constexpr static Matrix4 ortho(float left, float right, float bottom, float top, float nearDistance, float farDistance)
+		constexpr static Matrix4 ortho(float left, float right, float bottom, float top, float near, float far)
 		{
 			Matrix4 m = Matrix4::identity;
-			m[0] = 2 / (right - left);
-			m[3] = -(right + left) / (right - left);
-			m[5] = 2 / (top - bottom);
-			m[7] = -(top + bottom) / (top - bottom);
-			m[10] = -2 / (farDistance - nearDistance);
-			m[11] = -(farDistance + nearDistance) / (farDistance - nearDistance);
+			m[0]  = 2 / (right - left);
+			m[5]  = 2 / (top - bottom);
+			m[10] = 1 / (near - far);
+			m[12] = (right + left) / (left - right);
+			m[13] = (top + bottom) / (bottom - top);
+			m[14] = near / (near - far);
 
 			return m;
 		}
@@ -778,7 +813,7 @@ export namespace tako
 	{
 		U8 r = 0, g = 0, b = 0, a = 0;
 		constexpr Color() {}
-		constexpr Color(U8 r, U8 g, U8 b, U8 a) : r(r), g(g), b(b), a(a) {}
+		constexpr Color(U8 r, U8 g, U8 b, U8 a = 255) : r(r), g(g), b(b), a(a) {}
 		constexpr Color(std::string_view hexCode)
 		{
 			ASSERT(hexCode.size() == 7 || hexCode.size() == 9 || hexCode.size() == 4);
@@ -975,7 +1010,7 @@ public:
 	template <typename Context>
 	constexpr auto format (const tako::Vector4& vec, Context& ctx) const
 	{
-		return format_to(ctx.out(), "({}, {}, {})", vec.x, vec.y, vec.z, vec.w);
+		return format_to(ctx.out(), "({}, {}, {}, {})", vec.x, vec.y, vec.z, vec.w);
 	}
 };
 
@@ -1004,7 +1039,7 @@ public:
 	template <typename Context>
 	constexpr auto format (const tako::Quaternion& q, Context& ctx) const
 	{
-		return format_to(ctx.out(), "({}, {}, {})", q.x, q.y, q.z, q.w);
+		return format_to(ctx.out(), "({}, {}, {}, {})", q.x, q.y, q.z, q.w);
 	}
 };
 
