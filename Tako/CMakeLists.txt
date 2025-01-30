@@ -53,6 +53,7 @@ target_sources(
 	"src/Renderer3D.cppm"
 	"src/JobSystem.cppm"
 	"src/StringView.cppm"
+	"src/HandleVec.cppm"
 	"src/Allocators/Allocator.cppm"
 	"src/Allocators/FreeListAllocator.cppm"
 	"src/Allocators/LinearAllocator.cppm"
