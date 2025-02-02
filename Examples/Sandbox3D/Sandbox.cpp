@@ -107,10 +107,10 @@ public:
 		data.lightPos.x = PingPong(passed, 20) - 10;
 
 		#ifdef TAKO_IMGUI
-		ImGui::Begin("Camera");
-		ImGui::InputFloat3("pos", &data.trans.x);
-		ImGui::InputFloat4("rot", &data.rot.x);
-		ImGui::End();
+		//ImGui::Begin("Camera");
+		//ImGui::InputFloat3("pos", &data.trans.x);
+		//ImGui::InputFloat4("rot", &data.rot.x);
+		//ImGui::End();
 		#endif
 
 		//Sync for renderphase
@@ -120,9 +120,8 @@ public:
 	void Draw(FrameData* frameData)
 	{
 		renderer->Begin();
-
-		//renderer->SetLightPosition(frameData->lightPos);
 		renderer->SetCameraView(tako::Matrix4::cameraViewMatrix(frameData->trans, frameData->rotation));
+		renderer->SetLightPosition(frameData->lightPos);
 		//renderer->SetCameraView(tako::Matrix4::lookAt(frameData->trans, tako::Vector3(0,0,0), tako::Vector3(0, 1, 0)));
 
 

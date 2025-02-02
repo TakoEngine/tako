@@ -6,7 +6,9 @@ namespace tako
 	enum class BufferType
 	{
 		Vertex,
-		Index
+		Index,
+		Uniform,
+		Storage
 	};
 
 	struct Buffer

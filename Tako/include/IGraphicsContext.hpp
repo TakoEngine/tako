@@ -2,9 +2,9 @@
 #include "GraphicsAPI.hpp"
 #include "Texture.hpp"
 #include "VertexBuffer.hpp"
-#include "Material.hpp"
 #include "Pipeline.hpp"
 #include <cstddef>
+#include <variant>
 #include <span>
 
 import Tako.Math;
@@ -29,6 +29,26 @@ namespace tako
 		Cube
 	};
 
+	enum class ShaderBindingType
+	{
+		Uniform,
+		Storage,
+		Texture2D,
+		TextureCube,
+		Sampler
+	};
+
+	struct ShaderEntry
+	{
+		ShaderBindingType type;
+		size_t size;
+	};
+
+	struct ShaderBindingDescriptor
+	{
+		std::span<ShaderEntry> entries;
+	};
+
 	struct PipelineDescriptor
 	{
 		const char* shaderCode = nullptr;
@@ -44,28 +64,12 @@ namespace tako
 		PipelineVectorAttribute* vertexAttributes = nullptr;
 		size_t vertexAttributeSize = 0;
 
-		size_t pipelineUniformSize = 0;
-
-		TextureType samplerTextureType = TextureType::E2D;
+		std::span<ShaderBindingDescriptor> shaderBindings;
 
 		bool usePerDrawModel = true;
-
-		size_t* pushConstants = nullptr;
-		size_t pushConstantsSize = 0;
-
 	};
 
-	struct CameraUniformData
-	{
-		Matrix4 view;
-		Matrix4 proj;
-		//Matrix4 viewProj;
-	};
-
-	struct MaterialDescriptor
-	{
-		TextureType textureType = TextureType::E2D;
-	};
+	using ShaderBindingEntryData = std::variant<Buffer, Texture, Sampler>;
 
 	class IGraphicsContext : public IEventHandler
 	{
@@ -84,10 +88,7 @@ namespace tako
 		virtual void BindPipeline(const Pipeline* pipeline) = 0;
 		virtual void BindVertexBuffer(const Buffer* buffer) = 0;
 		virtual void BindIndexBuffer(const Buffer* buffer) = 0;
-		virtual void BindMaterial(const Material* material) = 0;
-
-		virtual void UpdateCamera(const CameraUniformData& cameraData) = 0;
-		virtual void UpdateUniform(const void* uniformData, size_t uniformSize, size_t offset = 0) = 0;
+		virtual void Bind(ShaderBinding binding, U32 slot) = 0;
 
 		virtual void Draw(U32 vertexCount) = 0;
 
@@ -95,12 +96,18 @@ namespace tako
 		virtual void DrawIndexed(uint32_t indexCount, uint32_t matrixCount, const Matrix4* renderMatrix) = 0;
 
 		virtual Pipeline CreatePipeline(const PipelineDescriptor& pipelineDescriptor) = 0;
-		virtual Material CreateMaterial(const Texture texture, const MaterialDescriptor& materialDescriptor = {}) = 0;
-		virtual Texture CreateTexture(const ImageView image) = 0;
-		virtual Texture CreateTexture(const std::span<const ImageView> images) = 0;
-		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) = 0;
+		virtual ShaderBindingLayout GetPipelineShaderBindingLayout(Pipeline pipeline, size_t slot) = 0;
+		virtual Texture CreateTexture(ImageView image, TextureType type = TextureType::E2D) = 0;
+		virtual Texture CreateTexture(std::span<const ImageView> images, TextureType type = TextureType::Cube) = 0;
+		virtual void ReleaseTexture(Texture texture) = 0;
 
+		virtual Sampler CreateSampler() = 0;
+
+		virtual Buffer CreateBuffer(BufferType bufferType, size_t bufferSize) = 0;
+		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) = 0;
+		virtual void UpdateBuffer(Buffer buffer, const void* data, size_t writeSize, size_t offset = 0) = 0;
 		virtual void ReleaseBuffer(Buffer buffer) = 0;
 
+		virtual ShaderBinding CreateShaderBinding(ShaderBindingLayout layout, std::span<ShaderBindingEntryData> entryData) = 0;
 	};
 }

@@ -49,6 +49,20 @@ namespace tako
 		}
 	};
 
+	struct CameraUniformData
+	{
+		Matrix4 view;
+		Matrix4 proj;
+		//Matrix4 viewProj;
+	};
+
+	export using Material = ShaderBinding;
+
+	struct MaterialDescriptor
+	{
+		TextureType textureType = TextureType::E2D;
+	};
+
 	export struct Mesh
 	{
 		Buffer vertexBuffer;
@@ -69,6 +83,8 @@ namespace tako
 		std::vector<Texture> textures;
 		std::vector<Node> nodes;
 	};
+
+	export using Skybox = ShaderBinding;
 
 	export class Renderer3D
 	{
@@ -112,15 +128,34 @@ namespace tako
 			return m_context->CreateTexture(images);
 		}
 
-		Material CreateSkybox(Texture cubemap);
-		void RenderSkybox(Material skybox);
+		Material CreateMaterial(Texture texture, const MaterialDescriptor& materialDescriptor = {})
+		{
+			std::array<ShaderBindingEntryData, 2> bindingData
+			{{
+				texture,
+				m_sampler,
+			}};
+			auto binding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(m_pipeline, 2), bindingData);
+			return binding;
+		}
+
+		Skybox CreateSkybox(Texture cubemap);
+		void RenderSkybox(Skybox skybox);
 	protected:
 		GraphicsContext* m_context;
+		Sampler m_sampler;
 		Mesh m_cubeMesh;
 		Pipeline m_pipeline;
+		Buffer m_cameraBuffer;
+		ShaderBinding m_cameraBinding;
+		Buffer m_lightSettingsBuffer;
+		Buffer m_lightBuffer;
+		ShaderBinding m_lightBinding;
 		Pipeline m_skyPipeline;
 		Texture m_skyTexture;
 		Material m_skyMaterial;
+		Buffer m_skyCameraBuffer;
+		ShaderBinding m_skyCameraBinding;
 
 	private:
 		CameraUniformData m_cameraData;
@@ -174,7 +209,30 @@ namespace tako
 	Renderer3D::Renderer3D(GraphicsContext* context) : m_context(context)
 	{
 		CreatePipeline();
+		m_sampler = m_context->CreateSampler();
+		m_cameraBuffer = m_context->CreateBuffer(BufferType::Uniform, sizeof(CameraUniformData));
+		std::array<ShaderBindingEntryData, 1> cameraBindingData
+		{{
+				m_cameraBuffer,
+		}};
+		m_cameraBinding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(m_pipeline, 0), cameraBindingData);
+
+		m_lightSettingsBuffer = m_context->CreateBuffer(BufferType::Uniform, sizeof(LightSettings));
+		m_lightBuffer = m_context->CreateBuffer(BufferType::Storage, sizeof(Vector4));
+		std::array<ShaderBindingEntryData, 2> lightingBindingData
+		{{
+			m_lightSettingsBuffer,
+			m_lightBuffer,
+		}};
+		m_lightBinding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(m_pipeline, 1), lightingBindingData);
+
 		CreateSkyboxPipeline();
+		m_skyCameraBuffer = m_context->CreateBuffer(BufferType::Uniform, sizeof(Matrix4));
+		std::array<ShaderBindingEntryData, 1> skyCameraBindingData
+		{{
+			m_skyCameraBuffer,
+		}};
+		m_skyCameraBinding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(m_skyPipeline, 0), skyCameraBindingData);
 
 		m_cubeMesh = CreateMesh(cubeVertices, cubeIndices);
 	}
@@ -188,14 +246,20 @@ namespace tako
 				projection: mat4x4f,
 			};
 
+			struct Light
+			{
+				positionWS: vec4f
+			};
+
 			struct Lighting
 			{
-				lightPos: vec4f,
+				lightCount: u32,
 			};
 
 			@group(0) @binding(0) var<uniform> camera: Camera;
 
 			@group(1) @binding(0) var<uniform> lighting: Lighting;
+			@group(1) @binding(1) var<storage, read> lights: array<Light>;
 
 			@group(2) @binding(0) var baseColorTexture: texture_2d<f32>;
 			@group(2) @binding(1) var baseColorSampler: sampler;
@@ -234,7 +298,7 @@ namespace tako
 				let vertexPosCamera = (camera.view * model * vec4f(in.position,1)).xyz;
 				out.eyeDirection = vec3f(0,0,0) - vertexPosCamera;
 
-				let lightPosCamera = (camera.view * lighting.lightPos).xyz;
+				let lightPosCamera = (camera.view * lights[0].positionWS).xyz;
 				out.lightDirection = lightPosCamera + out.eyeDirection;
 
 				out.normalCamera = ( camera.view * model * vec4f(in.normal, 0)).xyz;
@@ -245,7 +309,7 @@ namespace tako
 			@fragment
 			fn fs_main(in: VertexOutput) -> @location(0) vec4f {
 				let normal = normalize(in.normal);
-				let dist = length(lighting.lightPos.xyz - in.positionWorld);
+				let dist = length(lights[0].positionWS.xyz - in.positionWorld);
 				let n = normalize(in.normalCamera);
 				let l = normalize(in.lightDirection);
 				let cosTheta = clamp(dot(n,l), 0, 1);
@@ -266,7 +330,7 @@ namespace tako
 			}
 		)";
 
-		std::array<PipelineVectorAttribute, 4> vertexAttributes = { PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec2 };
+		std::array vertexAttributes = { PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec2 };
 
 		PipelineDescriptor pipelineDescriptor;
 		pipelineDescriptor.shaderCode = shaderSource;
@@ -275,9 +339,30 @@ namespace tako
 		pipelineDescriptor.vertexAttributes = vertexAttributes.data();
 		pipelineDescriptor.vertexAttributeSize = vertexAttributes.size();
 
-		pipelineDescriptor.pipelineUniformSize = sizeof(LightSettings);
+		std::array<ShaderEntry, 1> cameraBinding
+		{
+			{ShaderBindingType::Uniform, sizeof(CameraUniformData)}
+		};
+		std::array<ShaderEntry, 2> lightingBinding
+		{{
+			ShaderBindingType::Uniform, sizeof(LightSettings),
+			ShaderBindingType::Storage, sizeof(LightSettings)
+		}};
+		std::array<ShaderEntry, 2> materialBinding
+		{{
+			ShaderBindingType::Texture2D, 0,
+			ShaderBindingType::Sampler, 0
+		}};
+		std::array<ShaderBindingDescriptor, 3> shaderBindings
+		{{
+			cameraBinding,
+			lightingBinding,
+			materialBinding
+		}};
+		pipelineDescriptor.shaderBindings = shaderBindings;
 
 		m_pipeline = m_context->CreatePipeline(pipelineDescriptor);
+		LOG("Created pipeline");
 	}
 
 	void Renderer3D::CreateSkyboxPipeline()
@@ -286,13 +371,12 @@ namespace tako
 			struct Camera
 			{
 				viewDirectionProjectionInverse: mat4x4f,
-				projection: mat4x4f,
 			};
 
 			@group(0) @binding(0) var<uniform> camera: Camera;
 
-			@group(2) @binding(0) var skyTex: texture_cube<f32>;
-			@group(2) @binding(1) var skySampler: sampler;
+			@group(1) @binding(0) var skyTex: texture_cube<f32>;
+			@group(1) @binding(1) var skySampler: sampler;
 
 			struct VertexOutput {
 				@builtin(position) position: vec4f,
@@ -324,26 +408,45 @@ namespace tako
 		pipelineDescriptor.vertEntry = "vs_main";
 		pipelineDescriptor.fragEntry = "fs_main";
 
-		pipelineDescriptor.pipelineUniformSize = sizeof(LightSettings);
-		pipelineDescriptor.samplerTextureType = TextureType::Cube;
+		std::array<ShaderEntry, 1> cameraBinding
+		{
+			{ShaderBindingType::Uniform, sizeof(Matrix4)}
+		};
+		std::array<ShaderEntry, 2> materialBinding
+		{{
+			ShaderBindingType::TextureCube, 0,
+			ShaderBindingType::Sampler, 0
+		}};
+		std::array<ShaderBindingDescriptor, 2> shaderBindings
+		{{
+			cameraBinding,
+			materialBinding
+		}};
+		pipelineDescriptor.shaderBindings = shaderBindings;
 
 		pipelineDescriptor.usePerDrawModel = false;
 
 		m_skyPipeline = m_context->CreatePipeline(pipelineDescriptor);
 	}
 
-	Material Renderer3D::CreateSkybox(Texture cubemap)
+	Skybox Renderer3D::CreateSkybox(Texture cubemap)
 	{
-		return m_context->CreateMaterial(cubemap, { TextureType::Cube });
+		std::array<ShaderBindingEntryData, 2> bindingData
+		{{
+			cubemap,
+			m_sampler,
+		}};
+		auto binding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(m_skyPipeline, 1), bindingData);
+		return binding;
 	}
 
-	void Renderer3D::RenderSkybox(Material skybox)
+	void Renderer3D::RenderSkybox(const Skybox skybox)
 	{
 		m_context->BindPipeline(&m_skyPipeline);
-		CameraUniformData cam;
-		cam.view = Matrix4::inverse(m_cameraData.proj * m_cameraData.view);
-		m_context->UpdateCamera(cam);
-		m_context->BindMaterial(&skybox);
+		Matrix4 viewProjectionInverse = Matrix4::inverse(m_cameraData.proj * m_cameraData.view);
+		m_context->UpdateBuffer(m_skyCameraBuffer, &viewProjectionInverse, sizeof(viewProjectionInverse));
+		m_context->Bind(m_skyCameraBinding, 0);
+		m_context->Bind(skybox, 1);
 
 		m_context->Draw(3);
 	}
@@ -351,6 +454,8 @@ namespace tako
 	void Renderer3D::Begin()
 	{
 		m_context->BindPipeline(&m_pipeline);
+		m_context->Bind(m_cameraBinding, 0);
+		m_context->Bind(m_lightBinding, 1);
 	}
 
 	void Renderer3D::End()
@@ -361,7 +466,7 @@ namespace tako
 	{
 		m_context->BindVertexBuffer(&mesh.vertexBuffer);
 		m_context->BindIndexBuffer(&mesh.indexBuffer);
-		m_context->BindMaterial(&material);
+		m_context->Bind(material, 2);
 		m_context->DrawIndexed(mesh.indexCount, model);
 	}
 
@@ -369,7 +474,7 @@ namespace tako
 	{
 		m_context->BindVertexBuffer(&mesh.vertexBuffer);
 		m_context->BindIndexBuffer(&mesh.indexBuffer);
-		m_context->BindMaterial(&material);
+		m_context->Bind(material, 2);
 		m_context->DrawIndexed(mesh.indexCount, instanceCount, transforms);
 	}
 
@@ -413,14 +518,13 @@ namespace tako
 		m_cameraData.view = view;
 		m_cameraData.proj = Matrix4::perspective(45, m_context->GetWidth() / (float) m_context->GetHeight(), 0.1, 1000);
 		//cam.viewProj = cam.proj * cam.view;
-		m_context->UpdateCamera(m_cameraData);
+		m_context->UpdateBuffer(m_cameraBuffer, &m_cameraData, sizeof(m_cameraData));
 	}
 
 	void Renderer3D::SetLightPosition(Vector3 lightPos)
 	{
-		LightSettings lights;
-		lights.lightPos = Vector4(lightPos);
-		m_context->UpdateUniform(&lights, sizeof(LightSettings));
+		auto light = Vector4(lightPos);
+		m_context->UpdateBuffer(m_lightBuffer, &light, sizeof(light));
 	}
 
 	Model Renderer3D::LoadModel(StringView file)
@@ -494,7 +598,7 @@ namespace tako
 			ASSERT(mat.pbrData.baseColorTexture.has_value());
 			size_t texIndex = mat.pbrData.baseColorTexture.value().textureIndex;
 			size_t imageIndex = asset.textures[texIndex].imageIndex.value();
-			model.materials[i] = m_context->CreateMaterial(model.textures[imageIndex]);
+			model.materials[i] = CreateMaterial(model.textures[imageIndex]);
 		}
 
 		fastgltf::iterateSceneNodes(asset, 0, fastgltf::math::fmat4x4(), [&](fastgltf::Node& node, fastgltf::math::fmat4x4 matrix)

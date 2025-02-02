@@ -1,4 +1,5 @@
 #include "Tako.hpp"
+#include "Reflection.hpp"
 #ifdef TAKO_OPENGL
 #include "OpenGLPixelArtDrawer.hpp"
 #endif
@@ -86,6 +87,7 @@ void ImGuiRenderComponent(void* data, const tako::Reflection::StructInformation*
 {
 	for (auto& field : info->fields)
 	{
+		/*
 		if (auto strInfo = dynamic_cast<const tako::Reflection::StructInformation*>(field.type))
 		{
 			auto strData = reinterpret_cast<tako::U8*>(data) + field.offset;
@@ -108,6 +110,7 @@ void ImGuiRenderComponent(void* data, const tako::Reflection::StructInformation*
 				ImGui::Checkbox(field.name, ptr);
 			}
 		}
+		*/
 	}
 }
 #endif

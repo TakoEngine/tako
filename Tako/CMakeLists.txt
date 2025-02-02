@@ -1,7 +1,7 @@
 include(tako)
 set(TAKO_DLL "tako")
 add_library(${TAKO_DLL}
-	"src/PixelArtDrawer.cpp"
+	#"src/PixelArtDrawer.cpp"
 	"src/Resources.cpp"
 	"src/Reflection.cpp"
 	"src/AudioImpl.cpp"
@@ -14,7 +14,7 @@ target_sources(
 	"include/Utility.hpp"
 	"include/NumberTypes.hpp"
 	"include/Texture.hpp"
-	"include/PixelArtDrawer.hpp"
+	#"include/PixelArtDrawer.hpp"
 	"include/Tako.hpp"
 	"include/Sprite.hpp"
 	"include/Entity.hpp"
@@ -23,7 +23,6 @@ target_sources(
 	"include/GraphicsAPI.hpp"
 	"include/IGraphicsContext.hpp"
 	"include/VertexBuffer.hpp"
-	"include/Material.hpp"
 	"include/Pipeline.hpp"
 	"include/GameConfig.hpp"
 	"include/Reflection.hpp"
@@ -77,7 +76,7 @@ endfunction()
 
 if (WIN32)
 set_feature(TAKO_WIN32 true)
-set_feature(TAKO_OPENGL true)
+set_feature(TAKO_OPENGL false)
 set_feature(TAKO_VULKAN true)
 set_feature(TAKO_GLAD true)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -90,7 +89,7 @@ endif(WIN32)
 
 if (EMSCRIPTEN)
 set_feature(TAKO_EMSCRIPTEN true)
-set_feature(TAKO_OPENGL true)
+set_feature(TAKO_OPENGL false)
 set_feature(TAKO_WEBGPU true)
 set_feature(TAKO_VULKAN false)
 set_feature(TAKO_EDITOR false)
@@ -102,7 +101,7 @@ set_feature(TAKO_LINUX true)
 endif()
 
 if (TAKO_MAC OR TAKO_LINUX)
-set_feature(TAKO_OPENGL true)
+set_feature(TAKO_OPENGL false)
 set_feature(TAKO_VULKAN false)
 set_feature(TAKO_WEBGPU true)
 set_feature(TAKO_GLFW true)

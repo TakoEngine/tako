@@ -19,25 +19,31 @@ public:
 	{
 		m_context = context;
 		InitPipeline();
-
+		m_sampler = context->CreateSampler();
+		m_texLayout = context->GetPipelineShaderBindingLayout(m_pipeline, 1);
 		// Add white texture at index 0 to avoid creating a "no texture" pipeline
 		Bitmap bmp(1, 1);
 		bmp.Clear({255, 255, 255, 255});
 		TexEntry tex;
 		tex.tex = m_context->CreateTexture(bmp);
-		tex.mat = m_context->CreateMaterial(tex.tex);
+		tex.mat = CreateTextureBinding(tex.tex);
 		m_textures.push_back(tex);
+
+		m_sampler = m_context->CreateSampler();
+		m_cameraBuffer = m_context->CreateBuffer(BufferType::Uniform, sizeof(Matrix4));
+		std::array<ShaderBindingEntryData, 1> cameraBindingData
+		{{
+			m_cameraBuffer,
+		}};
+		m_cameraBinding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(m_pipeline, 0), cameraBindingData);
 	}
 
 	void Begin()
 	{
 		m_context->BindPipeline(&m_pipeline);
-		CameraUniformData camera;
 		auto proj = Matrix4::ortho(0, m_context->GetWidth(), m_context->GetHeight(), 0, -1000, 1000);
-		camera.proj = proj;
-		m_context->UpdateCamera(camera);
-		//Vector4 uniform;
-		//m_context->UpdateUniform(&uniform, sizeof(Vector4));
+		m_context->UpdateBuffer(m_cameraBuffer, &proj, sizeof(proj));
+		m_context->Bind(m_cameraBinding, 0);
 		m_zBuffer = 0;
 	}
 
@@ -76,7 +82,7 @@ public:
 		auto& tex = m_textures[texture];
 		m_context->BindVertexBuffer(&geom.vertices);
 		m_context->BindIndexBuffer(&geom.indices);
-		m_context->BindMaterial(&tex.mat);
+		m_context->Bind(tex.mat, 1);
 
 		Matrix4 trans = Matrix4::translation(translation.x, translation.y, m_zBuffer++);
 		m_context->DrawIndexed(geom.count, trans);
@@ -111,7 +117,7 @@ public:
 		Bitmap bmp(reinterpret_cast<const Color*>(source.data()), source_dimensions.x, source_dimensions.y);
 		TexEntry tex;
 		tex.tex = m_context->CreateTexture(bmp);
-		tex.mat = m_context->CreateMaterial(tex.tex);
+		tex.mat = CreateTextureBinding(tex.tex);
 
 		m_textures.push_back(tex);
 		return m_textures.size() - 1;
@@ -143,11 +149,15 @@ private:
 	struct TexEntry
 	{
 		Texture tex;
-		Material mat;
+		ShaderBinding mat;
 	};
 
 	GraphicsContext* m_context;
 	Pipeline m_pipeline;
+	Sampler m_sampler;
+	Buffer m_cameraBuffer;
+	ShaderBinding m_cameraBinding;
+	ShaderBindingLayout m_texLayout;
 	size_t m_zBuffer;
 	std::vector<CompiledGeometry> m_compiledGeometry;
 	size_t m_compiledGeometryFreelist = 0;
@@ -158,23 +168,15 @@ private:
 		const char* shaderSource = R"(
 			struct Camera
 			{
-				view: mat4x4f,
 				projection: mat4x4f,
-			};
-
-			struct Lighting
-			{
-				lightPos: vec4f,
 			};
 
 			@group(0) @binding(0) var<uniform> camera: Camera;
 
-			//@group(1) @binding(0) var<uniform> lighting: Lighting;
+			@group(1) @binding(0) var baseColorTexture: texture_2d<f32>;
+			@group(1) @binding(1) var baseColorSampler: sampler;
 
-			@group(2) @binding(0) var baseColorTexture: texture_2d<f32>;
-			@group(2) @binding(1) var baseColorSampler: sampler;
-
-			@group(3) @binding(0) var<storage, read> models : array<mat4x4f>;
+			@group(2) @binding(0) var<storage, read> models : array<mat4x4f>;
 
 			struct VertexInput {
 				@location(0) position: vec2f,
@@ -217,12 +219,33 @@ private:
 		pipelineDescriptor.vertexAttributes = vertexAttributes.data();
 		pipelineDescriptor.vertexAttributeSize = vertexAttributes.size();
 
-		pipelineDescriptor.pipelineUniformSize = sizeof(Vector4);
-
-		pipelineDescriptor.pushConstants = nullptr;
-		pipelineDescriptor.pushConstantsSize = 0;
+		std::array<ShaderEntry, 1> cameraBinding
+		{{
+				ShaderBindingType::Uniform, sizeof(Matrix4)
+		}};
+		std::array<ShaderEntry, 2> materialBinding
+		{{
+			ShaderBindingType::Texture2D, 0,
+			ShaderBindingType::Sampler, 0
+		}};
+		std::array<ShaderBindingDescriptor, 2> shaderBindings
+		{{
+			cameraBinding,
+			materialBinding
+		}};
+		pipelineDescriptor.shaderBindings = shaderBindings;
 
 		m_pipeline = m_context->CreatePipeline(pipelineDescriptor);
+	}
+
+	ShaderBinding CreateTextureBinding(Texture tex)
+	{
+		std::array<ShaderBindingEntryData, 2> bindings
+		{{
+			tex,
+			m_sampler
+		}};
+		return m_context->CreateShaderBinding(m_texLayout, bindings);
 	}
 };
 

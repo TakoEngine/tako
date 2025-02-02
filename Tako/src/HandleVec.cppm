@@ -54,7 +54,7 @@ namespace tako
 		void Remove(Handle handle)
 		{
 			GenHandle h = std::bit_cast<GenHandle>(handle.value);
-			auto entry = GetEntry(h);
+			auto& entry = GetEntry(h);
 			ASSERT(entry.gen == h.gen);
 			entry.value = m_freeHandle;
 			m_freeHandle = h.index;
@@ -64,7 +64,7 @@ namespace tako
 		T& operator[](const Handle& handle)
 		{
 			GenHandle h = std::bit_cast<GenHandle>(handle.value);
-			auto entry = GetEntry(h);
+			auto& entry = GetEntry(h);
 			ASSERT(entry.gen == h.gen);
 			ASSERT(std::holds_alternative<T>(entry.value));
 			return *std::get_if<T>(&entry.value);
