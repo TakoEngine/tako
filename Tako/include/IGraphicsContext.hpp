@@ -109,5 +109,6 @@ namespace tako
 		virtual void ReleaseBuffer(Buffer buffer) = 0;
 
 		virtual ShaderBinding CreateShaderBinding(ShaderBindingLayout layout, std::span<ShaderBindingEntryData> entryData) = 0;
+		virtual void ReleaseShaderBinding(ShaderBinding binding) = 0;
 	};
 }

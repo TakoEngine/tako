@@ -113,11 +113,19 @@ public:
 
 	Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte> source, Rml::Vector2i source_dimensions) override
 	{
-		//TODO: Implement "BitmapView" to avoid copy
-		Bitmap bmp(reinterpret_cast<const Color*>(source.data()), source_dimensions.x, source_dimensions.y);
+		ImageView img(reinterpret_cast<const Color*>(source.data()), source_dimensions.x, source_dimensions.y);
 		TexEntry tex;
-		tex.tex = m_context->CreateTexture(bmp);
+		tex.tex = m_context->CreateTexture(img);
 		tex.mat = CreateTextureBinding(tex.tex);
+
+		if (m_textureFreelist)
+		{
+			auto handle = m_textureFreelist;
+			auto t = &m_textures[m_textureFreelist];
+			m_textureFreelist = *reinterpret_cast<size_t*>(t);
+			*t = tex;
+			return handle;
+		}
 
 		m_textures.push_back(tex);
 		return m_textures.size() - 1;
@@ -125,7 +133,13 @@ public:
 
 	void ReleaseTexture(Rml::TextureHandle texture) override
 	{
-		LOG("TODO: ReleaseTexture");
+		LOG("Release Texture");
+		auto tex = &m_textures[texture];
+		m_context->ReleaseShaderBinding(tex->mat);
+		m_context->ReleaseTexture(tex->tex);
+
+		*reinterpret_cast<size_t*>(tex) = m_textureFreelist;
+		m_textureFreelist = texture;
 	}
 
 	void EnableScissorRegion(bool enable) override
@@ -162,6 +176,7 @@ private:
 	std::vector<CompiledGeometry> m_compiledGeometry;
 	size_t m_compiledGeometryFreelist = 0;
 	std::vector<TexEntry> m_textures;
+	size_t m_textureFreelist = 0;
 
 	void InitPipeline()
 	{

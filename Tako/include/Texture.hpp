@@ -6,6 +6,6 @@ namespace tako
 {
 	struct Texture
 	{
-		U64 value;
+		U64 value = 0;
 	};
 }

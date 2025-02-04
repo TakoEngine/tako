@@ -119,10 +119,15 @@ public:
 
 	void Draw(FrameData* frameData)
 	{
-		renderer->Begin();
+
 		renderer->SetCameraView(tako::Matrix4::cameraViewMatrix(frameData->trans, frameData->rotation));
-		renderer->SetLightPosition(frameData->lightPos);
 		//renderer->SetCameraView(tako::Matrix4::lookAt(frameData->trans, tako::Vector3(0,0,0), tako::Vector3(0, 1, 0)));
+		std::array lights
+		{
+			tako::Light{frameData->lightPos, tako::Color("#AAAAAA")},
+		};
+		renderer->SetLights(lights);
+		renderer->Begin();
 
 
 		auto transform = tako::Matrix4::ScaleMatrix(frameData->zoom, frameData->zoom, frameData->zoom);

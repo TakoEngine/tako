@@ -84,6 +84,12 @@ namespace tako
 		std::vector<Node> nodes;
 	};
 
+	export struct Light
+	{
+		Vector3 position;
+		Color color = Color(1.0f, 1.0f, 1.0f, 1.0f);
+	};
+
 	export using Skybox = ShaderBinding;
 
 	export class Renderer3D
@@ -103,7 +109,7 @@ namespace tako
 		Mesh CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices);
 
 		void SetCameraView(const Matrix4& view);
-		void SetLightPosition(Vector3 lightPos);
+		void SetLights(std::span<Light> lights);
 
 		Model LoadModel(StringView file);
 		Mesh LoadMesh(const char* file);
@@ -150,6 +156,7 @@ namespace tako
 		ShaderBinding m_cameraBinding;
 		Buffer m_lightSettingsBuffer;
 		Buffer m_lightBuffer;
+		size_t m_lightBufferSize = 0;
 		ShaderBinding m_lightBinding;
 		Pipeline m_skyPipeline;
 		Texture m_skyTexture;
@@ -160,6 +167,7 @@ namespace tako
 	private:
 		CameraUniformData m_cameraData;
 		void CreatePipeline();
+		void CreateLightBuffer(size_t size);
 		void CreateSkyboxPipeline();
 	};
 }
@@ -189,9 +197,17 @@ namespace tako
 		4, 5, 0, 0, 5, 1
 	};
 
+	struct GPULight
+	{
+		Vector4 positionVS;
+		Vector4 color;
+	};
+
 	struct LightSettings
 	{
-		Vector4 lightPos;
+		Vector4 ambient;
+		U32 lightCount;
+		U32 padding[3];
 	};
 
 	std::vector<U8> LoadShaderCode(const char* codePath)
@@ -218,13 +234,7 @@ namespace tako
 		m_cameraBinding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(m_pipeline, 0), cameraBindingData);
 
 		m_lightSettingsBuffer = m_context->CreateBuffer(BufferType::Uniform, sizeof(LightSettings));
-		m_lightBuffer = m_context->CreateBuffer(BufferType::Storage, sizeof(Vector4));
-		std::array<ShaderBindingEntryData, 2> lightingBindingData
-		{{
-			m_lightSettingsBuffer,
-			m_lightBuffer,
-		}};
-		m_lightBinding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(m_pipeline, 1), lightingBindingData);
+		CreateLightBuffer(1);
 
 		CreateSkyboxPipeline();
 		m_skyCameraBuffer = m_context->CreateBuffer(BufferType::Uniform, sizeof(Matrix4));
@@ -248,11 +258,13 @@ namespace tako
 
 			struct Light
 			{
-				positionWS: vec4f
+				positionVS: vec4f,
+				color: vec4f
 			};
 
 			struct Lighting
 			{
+				ambient: vec4f,
 				lightCount: u32,
 			};
 
@@ -276,57 +288,51 @@ namespace tako
 			struct VertexOutput {
 				@builtin(position) position: vec4f,
 				@location(0) color: vec3f,
-				@location(1) normal: vec3f,
-				@location(2) uv: vec2f,
-				@location(3) positionWorld: vec3f,
-				@location(4) normalCamera: vec3f,
-				@location(5) eyeDirection: vec3f,
-				@location(6) lightDirection: vec3f,
+				@location(1) uv: vec2f,
+				@location(2) positionVS: vec3f,
+				@location(3) normalVS: vec3f,
 			}
 
 			@vertex
 			fn vs_main(in: VertexInput, @builtin(instance_index) instanceIndex: u32) -> VertexOutput {
 				let model = models[instanceIndex];
+				let modelView = camera.view * model;
 				var out: VertexOutput;
-				out.position = camera.projection * camera.view * model * vec4f(in.position, 1.0);
+				out.position = camera.projection * modelView * vec4f(in.position, 1.0);
 				out.color = in.color;
-				out.normal = (model * vec4f(in.normal, 0.0)).xyz;
 				out.uv = in.uv;
 
-				out.positionWorld = (model * vec4f(in.position, 1)).xyz;
-
-				let vertexPosCamera = (camera.view * model * vec4f(in.position,1)).xyz;
-				out.eyeDirection = vec3f(0,0,0) - vertexPosCamera;
-
-				let lightPosCamera = (camera.view * lights[0].positionWS).xyz;
-				out.lightDirection = lightPosCamera + out.eyeDirection;
-
-				out.normalCamera = ( camera.view * model * vec4f(in.normal, 0)).xyz;
+				out.positionVS = (modelView * vec4f(in.position, 1.0)).xyz;
+				out.normalVS = (modelView * vec4f(in.normal, 0)).xyz;
 
 				return out;
 			}
 
 			@fragment
 			fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-				let normal = normalize(in.normal);
-				let dist = length(lights[0].positionWS.xyz - in.positionWorld);
-				let n = normalize(in.normalCamera);
-				let l = normalize(in.lightDirection);
-				let cosTheta = clamp(dot(n,l), 0, 1);
+				let eyePos = vec4f(0, 0, 0, 1);
+				let baseColor = textureSample(baseColorTexture, baseColorSampler, in.uv);
+				let N = normalize(vec4f(in.normalVS, 1));
+				let P = vec4f(in.positionVS, 1);
 
-				let E = normalize(in.eyeDirection);
-				let R = reflect(-l, n);
-				let cosAlpha = clamp( dot(E,R), 0, 1);
+				let V = normalize(eyePos - P);
+				var shading = lighting.ambient;
+				for (var i : u32 = 0; i < lighting.lightCount; i += 1) {
+					let light = lights[i];
+					var L = light.positionVS - P;
+					let distance = length(L);
+					L = L / distance;
+					shading += max(dot(N, L), 0) * light.color;
+				}
+				//let color =
+				//	baseColor * vec3f(0.1,0.1,0.1) +
+				//	baseColor * vec3f(1,1,1) * 200 * cosTheta / (dist*dist) +
+				//	vec3f(0.3,0.3,0.3) * vec3f(1,1,1) * 200 * pow(cosAlpha, 5) / (dist*dist);
 
-				let baseColor = textureSample(baseColorTexture, baseColorSampler, in.uv).rgb;
-				let color =
-					baseColor * vec3f(0.1,0.1,0.1) +
-					baseColor * vec3f(1,1,1) * 200 * cosTheta / (dist*dist) +
-					vec3f(0.3,0.3,0.3) * vec3f(1,1,1) * 200 * pow(cosAlpha, 5) / (dist*dist);
+				let color = baseColor * shading;
+				//let color = baseColor;
 
-				//let color = baseColor * shading;
-
-				return vec4f(color, 1.0);
+				return color;
 			}
 		)";
 
@@ -346,7 +352,7 @@ namespace tako
 		std::array<ShaderEntry, 2> lightingBinding
 		{{
 			ShaderBindingType::Uniform, sizeof(LightSettings),
-			ShaderBindingType::Storage, sizeof(LightSettings)
+			ShaderBindingType::Storage, sizeof(GPULight)
 		}};
 		std::array<ShaderEntry, 2> materialBinding
 		{{
@@ -363,6 +369,26 @@ namespace tako
 
 		m_pipeline = m_context->CreatePipeline(pipelineDescriptor);
 		LOG("Created pipeline");
+	}
+
+	void Renderer3D::CreateLightBuffer(size_t size)
+	{
+		if (m_lightBuffer.value)
+		{
+			m_context->ReleaseBuffer(m_lightBuffer);
+		}
+		m_lightBuffer = m_context->CreateBuffer(BufferType::Storage, size * sizeof(GPULight));
+		m_lightBufferSize = size;
+		std::array<ShaderBindingEntryData, 2> lightingBindingData
+		{{
+			m_lightSettingsBuffer,
+			m_lightBuffer,
+		}};
+		if (m_lightBinding.value)
+		{
+			m_context->ReleaseShaderBinding(m_lightBinding);
+		}
+		m_lightBinding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(m_pipeline, 1), lightingBindingData);
 	}
 
 	void Renderer3D::CreateSkyboxPipeline()
@@ -521,10 +547,31 @@ namespace tako
 		m_context->UpdateBuffer(m_cameraBuffer, &m_cameraData, sizeof(m_cameraData));
 	}
 
-	void Renderer3D::SetLightPosition(Vector3 lightPos)
+	void Renderer3D::SetLights(::std::span<Light> lights)
 	{
-		auto light = Vector4(lightPos);
-		m_context->UpdateBuffer(m_lightBuffer, &light, sizeof(light));
+		std::vector<GPULight> gpuLights;
+		gpuLights.reserve(lights.size());
+
+		for (auto& light : lights)
+		{
+			GPULight& gpuLight = gpuLights.emplace_back();
+			gpuLight.positionVS = m_cameraData.view * Vector4(light.position);
+			gpuLight.color = light.color;
+		}
+
+		if (gpuLights.size() > 0)
+		{
+			if (gpuLights.size() > m_lightBufferSize)
+			{
+				CreateLightBuffer(gpuLights.size());
+			}
+			m_context->UpdateBuffer(m_lightBuffer, gpuLights.data(), gpuLights.size() * sizeof(GPULight));
+		}
+
+		LightSettings settings;
+		settings.ambient = Vector4(0.1f, 0.1f, 0.1f, 1.0f);
+		settings.lightCount = gpuLights.size();
+		m_context->UpdateBuffer(m_lightSettingsBuffer, &settings, sizeof(settings));
 	}
 
 	Model Renderer3D::LoadModel(StringView file)

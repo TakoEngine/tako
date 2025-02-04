@@ -856,6 +856,11 @@ export namespace tako
 			return a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a;
 		}
 
+		operator Vector4() const
+		{
+			return Vector4(r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f);
+		}
+
 	private:
 		constexpr static U8 ParseHex(std::string_view str)
 		{

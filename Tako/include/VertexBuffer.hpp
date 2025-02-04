@@ -13,6 +13,6 @@ namespace tako
 
 	struct Buffer
 	{
-		U64 value;
+		U64 value = 0;
 	};
 }

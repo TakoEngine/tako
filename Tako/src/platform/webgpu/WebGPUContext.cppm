@@ -658,6 +658,11 @@ namespace tako
 			return m_shaderBindings.Insert(std::move(shaderBinding));
 		}
 
+		void ReleaseShaderBinding(ShaderBinding binding) override
+		{
+			m_shaderBindings.Remove(binding);
+		}
+
 		//Hacks to get IMGUI working
 		WGPUDevice GetDevice()
 		{
