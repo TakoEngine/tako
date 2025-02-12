@@ -57,8 +57,15 @@ export namespace tako
 		{
 			return deg * PI / 180;
 		}
+
+		constexpr float Lerp(float a, float b, float t)
+		{
+			return a + (b - a) * t;
+		}
 	}
 
+namespace Math
+{
 	struct Vector2
 	{
 		float x, y;
@@ -285,6 +292,11 @@ export namespace tako
 		constexpr static float dot(const Vector3& lhs, const Vector3& rhs)
 		{
 			return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
+		}
+
+		constexpr static Vector3 Lerp(Vector3 a, Vector3 b, float t)
+		{
+			return a + (b - a) * t;
 		}
 
 		float& operator[](size_t i)
@@ -913,6 +925,13 @@ export namespace tako
 			return p;
 		}
 	};
+}
+	using Vector2 = Math::Vector2;
+	using Vector3 = Math::Vector3;
+	using Vector4 = Math::Vector4;
+	using Color = Math::Color;
+	using Matrix4 = Math::Matrix4;
+	using Quaternion = Math::Quaternion;
 
 	namespace literals
 	{

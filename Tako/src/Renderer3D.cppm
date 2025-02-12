@@ -673,7 +673,7 @@ namespace tako
 					{
 						Vertex v;
 						v.pos = pos;
-						v.pos.y *= -1;
+						//v.pos.y *= -1;
 						v.color = Vector3(1, 1, 1);
 						vertices[index] = v;
 					});
