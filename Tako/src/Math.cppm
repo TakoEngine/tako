@@ -144,7 +144,7 @@ namespace Math
 			return operator/=(mag);
 		}
 
-		static Vector2 Normalized(tako::Vector2 v)
+		static Vector2 Normalized(Vector2 v)
 		{
 			return v.normalize();
 		}
