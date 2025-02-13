@@ -7,15 +7,13 @@ module;
 #include <webgpu/webgpu_glfw.h>
 #endif
 #include <webgpu/webgpu_cpp.h>
+#include <bit>
 export module Tako.WebGPU;
 
 import Tako.JobSystem;
 import Tako.StringView;
 import Tako.HandleVec;
 import Tako.SmallVec;
-
-template<class... Ts>
-struct overloaded : Ts... { using Ts::operator()...; };
 
 class WStringView : public tako::CStringView
 {
@@ -334,13 +332,13 @@ namespace tako
 
 		virtual void BindVertexBuffer(const Buffer* buffer) override
 		{
-			WGPUBuffer wBuffer = std::bit_cast<WGPUBuffer>(buffer->value);
+			WGPUBuffer wBuffer = reinterpret_cast<WGPUBuffer>(buffer->value);
 			wgpuRenderPassEncoderSetVertexBuffer(m_renderPass, 0, wBuffer, 0, wgpuBufferGetSize(wBuffer));
 		}
 
 		virtual void BindIndexBuffer(const Buffer* buffer) override
 		{
-			WGPUBuffer wBuffer = std::bit_cast<WGPUBuffer>(buffer->value);
+			WGPUBuffer wBuffer = reinterpret_cast<WGPUBuffer>(buffer->value);
 			wgpuRenderPassEncoderSetIndexBuffer(m_renderPass, wBuffer, WGPUIndexFormat_Uint16, 0, wgpuBufferGetSize(wBuffer));
 		}
 
@@ -352,7 +350,7 @@ namespace tako
 
 		virtual void UpdateBuffer(Buffer buffer, const void* data, size_t writeSize, size_t offset = 0) override
 		{
-			auto buf = std::bit_cast<WGPUBuffer>(buffer.value);
+			auto buf = reinterpret_cast<WGPUBuffer>(buffer.value);
 			m_queue.WriteBuffer(buf, offset, data, writeSize);
 		}
 
@@ -586,7 +584,7 @@ namespace tako
 
 			WGPUBuffer buffer = CreateWGPUBuffer(usage, bufferData, bufferSize);
 
-			return {std::bit_cast<U64>(buffer)};
+			return {reinterpret_cast<U64>(buffer)};
 		}
 
 		Buffer CreateBuffer(BufferType bufferType, size_t bufferSize) override
@@ -610,12 +608,12 @@ namespace tako
 
 			WGPUBuffer buffer = CreateWGPUBuffer(usage, bufferSize);
 
-			return {std::bit_cast<U64>(buffer)};
+			return {reinterpret_cast<U64>(buffer)};
 		}
 
 		virtual void ReleaseBuffer(Buffer buffer) override
 		{
-			wgpuBufferRelease(std::bit_cast<WGPUBuffer>(buffer.value));
+			wgpuBufferRelease(reinterpret_cast<WGPUBuffer>(buffer.value));
 		}
 
 		ShaderBinding CreateShaderBinding(ShaderBindingLayout layout, std::span<ShaderBindingEntryData> entries) override
@@ -631,7 +629,7 @@ namespace tako
 				{
 					[&](const Buffer buffer)
 					{
-						binding.buffer = wgpu::Buffer(std::bit_cast<WGPUBuffer>(buffer.value));
+						binding.buffer = wgpu::Buffer(reinterpret_cast<WGPUBuffer>(buffer.value));
 						binding.offset = 0;
 						//TODO: size?
 					},

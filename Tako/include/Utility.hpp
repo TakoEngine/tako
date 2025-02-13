@@ -21,3 +21,6 @@
 #define LOG_ERR(format, ...)    ::tako::Log(tako::LogLevel::Error, format, ##__VA_ARGS__)
 
 #endif
+
+template<class... Ts>
+struct overloaded : Ts... { using Ts::operator()...; };

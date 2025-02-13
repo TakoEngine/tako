@@ -13,8 +13,7 @@ import Tako.Event;
 import Tako.Window;
 import Tako.NumberTypes;
 
-template<class... Ts>
-struct overloaded : Ts... { using Ts::operator()...; };
+
 
 namespace tako
 {
