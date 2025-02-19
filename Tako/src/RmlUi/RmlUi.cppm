@@ -29,6 +29,7 @@ public:
 
 	void Init(Window* window, GraphicsContext* graphicsContext)
 	{
+		m_window = window;
 		m_graphicsContext = graphicsContext;
 		m_renderer.Init(graphicsContext);
 
@@ -171,6 +172,7 @@ private:
 	RmlUiSystem m_system;
 	//SystemInterface_GLFW m_system;
 	Rml::Context* m_context = nullptr;
+	Window* m_window = nullptr;
 	GraphicsContext* m_graphicsContext = nullptr;
 	Rml::ElementDocument* m_doc = nullptr;
 	std::mutex m_mutex;

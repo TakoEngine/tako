@@ -131,8 +131,11 @@ namespace tako
 	export class WebGPUContext final : public IGraphicsContext
 	{
 	public:
-		WebGPUContext(Window* window) : m_width(window->GetWidth()), m_height(window->GetHeight())
+		WebGPUContext(Window* window)
 		{
+			auto frameBufferSize = window->GetFramebufferSize();
+			m_width = frameBufferSize.x;
+			m_height = frameBufferSize.y;
 			wgpu::InstanceDescriptor desc;
 
 			wgpu::Instance instance;

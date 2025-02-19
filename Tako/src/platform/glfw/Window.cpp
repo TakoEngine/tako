@@ -87,6 +87,8 @@ namespace tako
 				return;
 			}
 
+			glfwGetFramebufferSize(m_window, &m_frameBufferSize.x, &m_frameBufferSize.y);
+
 			glfwSetWindowUserPointer(m_window, this);
 
 			//LOG("GLVersion {} {}.{}", glGetString(GL_SHADING_LANGUAGE_VERSION),GLVersion.major, GLVersion.minor);
@@ -96,6 +98,7 @@ namespace tako
 			glfwSetCursorPosCallback(m_window, CursorPositionCallback);
 			glfwSetMouseButtonCallback(m_window, MouseButtonCallback);
 			glfwSetWindowSizeCallback(m_window, WindowSizeCallback);
+			glfwSetFramebufferSizeCallback(m_window, FramebufferSizeCallback);
 		}
 
 		void Poll()
@@ -129,6 +132,7 @@ namespace tako
 		}
 
 		int m_width, m_height;
+		Point m_frameBufferSize;
 		GLFWwindow* m_window;
 		std::function<void(Event&)> m_callback;
 
@@ -196,6 +200,17 @@ namespace tako
 			evt.height = height;
 			win->m_callback(evt);
 		}
+
+		static void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
+		{
+			auto win = static_cast<WindowImpl*>(glfwGetWindowUserPointer(window));
+			win->m_frameBufferSize.x = width;
+			win->m_frameBufferSize.y = height;
+			FramebufferResize evt;
+			evt.width = width;
+			evt.height = height;
+			win->m_callback(evt);
+		}
 	};
 
 	Window::Window(GraphicsAPI api) : m_impl(new WindowImpl(api))
@@ -222,6 +237,11 @@ namespace tako
 	int Window::GetHeight()
 	{
 		return m_impl->m_height;
+	}
+
+	Point Window::GetFramebufferSize()
+	{
+		return m_impl->m_frameBufferSize;
 	}
 
 	WindowHandle Window::GetHandle() const

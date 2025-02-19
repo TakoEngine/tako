@@ -13,6 +13,7 @@ export namespace tako
 	{
 		WindowClose,
 		WindowResize,
+		FramebufferResize,
 		KeyPress,
 		TextInputUpdate,
 		MouseMove,
@@ -58,6 +59,20 @@ export namespace tako
 	{
 	public:
 		EVENT_CLASS_TYPE(WindowResize)
+
+		int width;
+		int height;
+	protected:
+		virtual void DebugPrint(std::ostream& os) const override
+		{
+			os << GetName() << "(" << width << "," << height << ")";
+		}
+	};
+
+	class FramebufferResize : public Event
+	{
+	public:
+		EVENT_CLASS_TYPE(FramebufferResize)
 
 		int width;
 		int height;

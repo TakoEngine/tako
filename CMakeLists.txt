@@ -40,6 +40,7 @@ if (NOT EMSCRIPTEN)
 	FetchContent_Declare(
 		dawn
 		URL https://github.com/google/dawn/archive/66bf64e67071911fffd159a4e3d556d055e76d85.zip
+		URL_HASH SHA256=1af27805b8fa86527397c7a2d852f31634348a16437958dd70e79d1a16293570
 		FIND_PACKAGE_ARGS NAMES Dawn
 	)
 

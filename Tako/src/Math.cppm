@@ -150,6 +150,13 @@ namespace Math
 		}
 	};
 
+	struct Point
+	{
+		constexpr Point() : x(0), y(0) {}
+		constexpr Point(int x, int y) : x(x), y(y) {}
+		int x, y;
+	};
+
 
 
 	struct Vector3
@@ -927,6 +934,7 @@ namespace Math
 	};
 }
 	using Vector2 = Math::Vector2;
+	using Point = Math::Point;
 	using Vector3 = Math::Vector3;
 	using Vector4 = Math::Vector4;
 	using Color = Math::Color;

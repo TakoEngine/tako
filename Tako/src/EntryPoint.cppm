@@ -99,6 +99,7 @@ namespace tako
 		data->jobSys.Schedule([=]()
 		{
 			data->window.Poll();
+			data->input.Update();
 #ifdef TAKO_IMGUI
 			switch (data->context.GetAPI())
 			{
@@ -121,7 +122,6 @@ namespace tako
 #endif
 			ImGui::NewFrame();
 #endif
-			data->input.Update();
 		});
 
 
@@ -180,8 +180,8 @@ namespace tako
 						};
 						data->config.Draw(stageData);
 					}
+					data->ui.Draw();
 					#ifdef TAKO_IMGUI
-					ImGui::EndFrame();
 					ImGui::Render();
 					switch (data->context.GetAPI())
 					{
@@ -198,7 +198,6 @@ namespace tako
 						#endif
 					}
 					#endif
-					data->ui.Draw();
 					data->context.End();
 
 					#ifdef TAKO_IMGUI
@@ -346,9 +345,9 @@ namespace tako
 			//LOG("Event: {}", ev);
 			switch (ev.GetType())
 			{
-				case tako::EventType::WindowResize:
+				case tako::EventType::FramebufferResize:
 				{
-					tako::WindowResize& res = static_cast<tako::WindowResize&>(ev);
+					tako::FramebufferResize& res = static_cast<tako::FramebufferResize&>(ev);
 					LOG("Resize {} {}", res.width, res.height);
 					context->Resize(res.width, res.height);
 				} break;
