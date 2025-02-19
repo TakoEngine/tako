@@ -22,6 +22,7 @@ export module Tako.Renderer3D;
 import Tako.StringView;
 import Tako.FileSystem;
 import Tako.GraphicsContext;
+import Tako.Math;
 
 
 template <>
@@ -84,11 +85,22 @@ namespace tako
 		std::vector<Node> nodes;
 	};
 
-	export struct Light
+	export struct PointLight
 	{
-		Vector3 position;
+		Vector3 position{};
 		Color color = Color(1.0f, 1.0f, 1.0f, 1.0f);
 	};
+
+	export struct DirectionalLight
+	{
+		Vector3 direction{};
+		Color color = Color(1.0f, 1.0f, 1.0f, 1.0f);
+	};
+
+	export using Light = std::variant<PointLight, DirectionalLight>;
+
+	template<typename T>
+	concept LightRange = std::ranges::range<T> && std::is_same_v<Light&, std::ranges::range_reference_t<T>>;
 
 	export using Skybox = ShaderBinding;
 
@@ -109,7 +121,7 @@ namespace tako
 		Mesh CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices);
 
 		void SetCameraView(const Matrix4& view);
-		void SetLights(std::span<Light> lights);
+		void SetLights(LightRange auto lights);
 
 		Model LoadModel(StringView file);
 		Mesh LoadMesh(const char* file);
@@ -197,10 +209,19 @@ namespace tako
 		4, 5, 0, 0, 5, 1
 	};
 
+	enum class GPULightType
+	{
+		None = 0,
+		Point = 1,
+		Directional = 2
+	};
+
 	struct GPULight
 	{
 		Vector4 positionVS;
 		Vector4 color;
+		GPULightType type;
+		U32 padding[3];
 	};
 
 	struct LightSettings
@@ -259,7 +280,8 @@ namespace tako
 			struct Light
 			{
 				positionVS: vec4f,
-				color: vec4f
+				color: vec4f,
+				lightType: u32
 			};
 
 			struct Lighting
@@ -308,6 +330,18 @@ namespace tako
 				return out;
 			}
 
+			fn CalculatePointLight(light: Light, P: vec4f, N: vec4f) -> f32 {
+				var L = light.positionVS - P;
+				let distance = length(L);
+				L = L / distance;
+				return max(dot(N, L), 0);
+			}
+
+			fn CalculateDirectionalLight(light: Light, P: vec4f, N: vec4f) -> f32 {
+				var L = normalize(-light.positionVS);
+				return max(dot(N, L), 0);
+			}
+
 			@fragment
 			fn fs_main(in: VertexOutput) -> @location(0) vec4f {
 				let eyePos = vec4f(0, 0, 0, 1);
@@ -319,18 +353,23 @@ namespace tako
 				var shading = lighting.ambient;
 				for (var i : u32 = 0; i < lighting.lightCount; i += 1) {
 					let light = lights[i];
-					var L = light.positionVS - P;
-					let distance = length(L);
-					L = L / distance;
-					shading += max(dot(N, L), 0) * light.color;
+					var l: f32;
+					switch light.lightType {
+						case 1: {
+							l = CalculatePointLight(light, P, N);
+						}
+						case 2: {
+							l = CalculateDirectionalLight(light, P, N);
+						}
+						default: {
+							continue;
+						}
+					}
+
+					shading += l * light.color;
 				}
-				//let color =
-				//	baseColor * vec3f(0.1,0.1,0.1) +
-				//	baseColor * vec3f(1,1,1) * 200 * cosTheta / (dist*dist) +
-				//	vec3f(0.3,0.3,0.3) * vec3f(1,1,1) * 200 * pow(cosAlpha, 5) / (dist*dist);
 
 				let color = baseColor * shading;
-				//let color = baseColor;
 
 				return color;
 			}
@@ -547,16 +586,34 @@ namespace tako
 		m_context->UpdateBuffer(m_cameraBuffer, &m_cameraData, sizeof(m_cameraData));
 	}
 
-	void Renderer3D::SetLights(::std::span<Light> lights)
+	void Renderer3D::SetLights(LightRange auto lights)
 	{
 		std::vector<GPULight> gpuLights;
 		gpuLights.reserve(lights.size());
 
-		for (auto& light : lights)
+		for (auto& lightVariant : lights)
 		{
-			GPULight& gpuLight = gpuLights.emplace_back();
-			gpuLight.positionVS = m_cameraData.view * Vector4(light.position);
-			gpuLight.color = light.color;
+			std::visit([&](auto& light)
+			{
+				using T = std::decay_t<decltype(light)>;
+				GPULight& gpuLight = gpuLights.emplace_back();
+				if constexpr (std::is_same_v<T, PointLight>)
+				{
+					gpuLight.positionVS = m_cameraData.view * Vector4(light.position);
+					gpuLight.type = GPULightType::Point;
+				}
+				else if constexpr (std::is_same_v<T, DirectionalLight>)
+				{
+					gpuLight.positionVS = m_cameraData.view * Vector4(light.direction);
+					gpuLight.type = GPULightType::Directional;
+				}
+				else
+				{
+					static_assert(false, "non exhaustive light variant");
+				}
+
+				gpuLight.color = light.color;
+			}, lightVariant);
 		}
 
 		if (gpuLights.size() > 0)
