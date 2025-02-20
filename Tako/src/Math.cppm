@@ -306,6 +306,11 @@ namespace Math
 			return a + (b - a) * t;
 		}
 
+		constexpr static Vector3 Reflect(Vector3 direction, Vector3 normal)
+		{
+			return -2 * dot(normal, direction) * normal + direction;
+		}
+
 		float& operator[](size_t i)
 		{
 			return (&x)[i];
