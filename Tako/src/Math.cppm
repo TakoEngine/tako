@@ -331,6 +331,31 @@ namespace Math
 		constexpr Vector4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
 		constexpr Vector4(Vector3 v, float w = 1) : x(v.x), y(v.y), z(v.z), w(w) {}
 
+		float Magnitude() const
+		{
+			return mathf::sqrt(x * x + y * y + z * z);
+		}
+
+		Vector4& Normalize()
+		{
+			float mag = Magnitude();
+			if (mag < 0.0001f)
+			{
+				return *this = Vector4(0, 0, 0, 1);
+			}
+
+			return operator/=(mag);
+		}
+
+		constexpr Vector4& operator/=(const float factor)
+		{
+			x /= factor;
+			y /= factor;
+			z /= factor;
+            w /= factor;
+			return *this;
+		}
+
 		float& operator[](size_t i)
 		{
 			return (&x)[i];

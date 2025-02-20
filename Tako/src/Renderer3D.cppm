@@ -604,7 +604,7 @@ namespace tako
 				}
 				else if constexpr (std::is_same_v<T, DirectionalLight>)
 				{
-					gpuLight.positionVS = m_cameraData.view * Vector4(light.direction);
+					gpuLight.positionVS = (m_cameraData.view * Vector4(light.direction, 0)).Normalize();
 					gpuLight.type = GPULightType::Directional;
 				}
 				else
