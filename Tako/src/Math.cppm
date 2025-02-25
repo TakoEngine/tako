@@ -763,6 +763,15 @@ namespace Math
 			return { std::cos(deg), axis.x * sd , axis.y * sd, axis.z * sd };
 		}
 
+		static Quaternion Rotation(Vector3 start, Vector3 target)
+		{
+			auto dot = Vector3::dot(start, target);
+			//TODO: same and opposite edge cases
+
+			auto rotAxis = Vector3::cross(start, target);
+			return Quaternion::AngleAxisRadians(std::acos(dot), rotAxis);
+		}
+
 		friend constexpr Quaternion operator*(const Quaternion& q, const Quaternion& r)
 		{
 			return Quaternion(
