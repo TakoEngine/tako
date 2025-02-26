@@ -431,6 +431,11 @@ namespace Math
 			return *this;
 		}
 
+		constexpr Matrix4& scale(Vector3 vec)
+		{
+			return this->scale(vec.x, vec.y, vec.z);
+		}
+
 		constexpr Matrix4& Transpose()
 		{
 			*this = transpose(*this);
