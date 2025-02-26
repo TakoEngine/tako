@@ -12,6 +12,7 @@ module;
 #include <map>
 #include <algorithm>
 #include <optional>
+#include <ranges>
 
 export module Tako.World;
 
@@ -89,7 +90,7 @@ namespace tako
 		return arr;
 	}
 
-		
+
 	std::size_t CalculateEntitySize()
 	{
 		return sizeof(Entity);
@@ -106,7 +107,7 @@ namespace tako
 		{
 			return sizeof(C) + CalculateEntitySize<Cs...>();
 		}
-			
+
 	}
 
 /*
@@ -300,7 +301,7 @@ namespace tako
 
 			}
 		}
-		
+
 
 		int AddEntityToChunk(Chunk& chunk, Entity entity)
 		{
@@ -511,13 +512,18 @@ namespace tako
 			{
 				return std::make_tuple((static_cast<typename type_list<C*, Cs*...>::template type<I>>(arch.GetComponentArray(chunk, std::get<I>(componentID))))...);
 			}
-				
+
 		}
 
 		template<typename Cb>
 		static inline void CallbackTuple(const std::tuple<C*, Cs*...>& componentArray, int index, Cb callback)
 		{
 			return CallbackTupleSequence(componentArray, index, callback, FullSequence);
+		}
+
+		static inline auto CreateTuple(const std::tuple<C*, Cs*...>& componentArray, int index)
+		{
+			return CreateTupleSequence(componentArray, index, FullSequence);
 		}
 
 		template<std::size_t I>
@@ -537,6 +543,12 @@ namespace tako
 		static inline void CallbackTupleSequence(const std::tuple<C*, Cs*...>& componentArray, int index, Cb callback, std::index_sequence<I...>)
 		{
 			callback(IndexCompArray<I>(componentArray, index)...);
+		}
+
+		template<std::size_t... I>
+		static inline auto CreateTupleSequence(const std::tuple<C*, Cs*...>& componentArray, int index, std::index_sequence<I...>)
+		{
+			return std::make_tuple(IndexCompArray<I>(componentArray, index)...);
 		}
 	};
 
@@ -680,7 +692,7 @@ namespace tako
 							callback(comps[i]);
 						}
 					}
-					
+
 
 				}
 			}
@@ -710,6 +722,29 @@ namespace tako
 					}
 				}
 			}
+		}
+
+		template<typename... Cs>
+		auto Iterate()
+		{
+			return m_archetypes
+			| std::views::filter([hash = EntityTupleHelper<Cs...>::GetHash()](auto& pair)
+			{
+				return (pair.first & hash) == hash;
+			})
+			| std::views::transform([componentID = EntityTupleHelper<Cs...>::GetIDArray()](auto& pair)
+			{
+				auto& arch = pair.second;
+				return arch.chunks | std::views::transform([&](auto& chunk)
+				{
+					auto comps = EntityTupleHelper<Cs...>::GetComponentArrays(arch, *chunk, componentID);
+					auto chunkIndices = std::views::iota(0) | std::views::take(chunk->header.last);
+					return chunkIndices | std::views::transform([comps = std::move(comps)](auto i)
+					{
+						return EntityTupleHelper<Cs...>::CreateTuple(comps, i);
+					});
+				}) | std::views::join;
+			}) | std::views::join;
 		}
 
 		void Delete(Entity entity)
@@ -822,7 +857,7 @@ namespace tako
 				return *this;
 			}
 
-			
+
 			++m_archetypesIter;
 			SetupArcheType();
 
@@ -844,7 +879,7 @@ namespace tako
 		{
 			return std::make_tuple(std::ref(std::get<I>(m_componentArray)[m_indexComponentArray])...);
 		}
-		
+
 		ComponentIterator begin() const
 		{
 			return *this;
@@ -854,7 +889,7 @@ namespace tako
 			return {};
 		}
 
-		
+
 
 	private:
 		int m_indexComponentArray;
@@ -892,10 +927,10 @@ namespace tako
 
 		inline void SetupArcheType()
 		{
-			
+
 			while (m_archetypesIter != m_archetypesEnd)
 			{
-				
+
 				auto& pair = *m_archetypesIter;
 				if ((pair.first & hash) != hash)
 				{
