@@ -100,7 +100,7 @@ namespace tako
 	export using Light = std::variant<PointLight, DirectionalLight>;
 
 	template<typename T>
-	concept LightRange = std::ranges::range<T> && std::is_same_v<Light&, std::ranges::range_reference_t<T>>;
+	concept LightRange = std::ranges::range<T> && (std::is_same_v<Light&, std::ranges::range_reference_t<T>> || std::is_convertible_v<Light&, std::ranges::range_value_t<T>>);
 
 	export using Skybox = ShaderBinding;
 
@@ -589,9 +589,12 @@ namespace tako
 	void Renderer3D::SetLights(LightRange auto lights)
 	{
 		std::vector<GPULight> gpuLights;
-		gpuLights.reserve(lights.size());
+		if constexpr (std::ranges::sized_range<decltype(lights)>)
+		{
+			gpuLights.reserve(lights.size());
+		}
 
-		for (auto& lightVariant : lights)
+		for (auto lightVariant : lights)
 		{
 			std::visit([&](auto& light)
 			{
