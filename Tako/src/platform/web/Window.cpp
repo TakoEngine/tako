@@ -372,6 +372,11 @@ namespace tako
 		return m_impl->m_height;
 	}
 
+	Point Window::GetFramebufferSize()
+	{
+		return {m_impl->m_width, m_impl->m_height};
+	}
+
 	WindowHandle Window::GetHandle() const
 	{
 		return HTML_TARGET;
