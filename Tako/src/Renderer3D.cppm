@@ -16,6 +16,7 @@ module;
 #include <vector>
 #include <array>
 #include <algorithm>
+#include <unordered_map>
 export module Tako.Renderer3D;
 
 //import fastgltf;
@@ -30,6 +31,30 @@ struct fastgltf::ElementTraits<tako::Vector2> : fastgltf::ElementTraitsBase<tako
 
 template <>
 struct fastgltf::ElementTraits<tako::Vector3> : fastgltf::ElementTraitsBase<tako::Vector3, AccessorType::Vec3, float> {};
+
+struct SphereCubeGenerationParams
+{
+	float radius;
+	int resolution;
+
+	bool operator==(const SphereCubeGenerationParams& b) const
+	{
+		return radius == b.radius && resolution == b.resolution;
+	}
+};
+
+
+template<>
+struct std::hash<SphereCubeGenerationParams>
+{
+	std::size_t operator()(const SphereCubeGenerationParams& params) const
+	{
+		std::hash<float> fhash;
+		std::hash<int> ihash;
+
+		return fhash(params.radius) ^ (ihash(params.resolution) << 1);
+	}
+};
 
 namespace tako
 {
@@ -114,11 +139,16 @@ namespace tako
 
 		void DrawMesh(const Mesh& mesh, const Material& material, const Matrix4& model);
 		void DrawMeshInstanced(const Mesh& mesh, const Material& material, size_t instanceCount, const Matrix4* transforms);
+		Mesh CreateMesh(std::span<const Vertex> vertices, std::span<const uint16_t> indices);
+
 		void DrawCube(const Matrix4& model, const Material& material);
+		void DrawCube(Vector3 size, const Matrix4& model, const Material& material);
 		void DrawCubeInstanced(const Material& material, size_t instanceCount, const Matrix4* transforms);
+
+		void DrawSphereCube(float radius, int resolution, const Matrix4& model, const Material& material);
+
 		void DrawModel(const Model& model, const Matrix4& transform);
 		void DrawModelInstanced(const Model& model, size_t instanceCount, const Matrix4* transforms);
-		Mesh CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices);
 
 		void SetCameraView(const Matrix4& view);
 		void SetLights(LightRange auto lights);
@@ -163,6 +193,8 @@ namespace tako
 		GraphicsContext* m_context;
 		Sampler m_sampler;
 		Mesh m_cubeMesh;
+		std::unordered_map<Vector3, Mesh> m_cubeMeshCache;
+		std::unordered_map<SphereCubeGenerationParams, Mesh> m_sphereMeshCache;
 		Pipeline m_pipeline;
 		Buffer m_cameraBuffer;
 		ShaderBinding m_cameraBinding;
@@ -181,33 +213,151 @@ namespace tako
 		void CreatePipeline();
 		void CreateLightBuffer(size_t size);
 		void CreateSkyboxPipeline();
+		Mesh CreateCubeMesh(Vector3 size);
 	};
 }
 
 
 namespace tako
 {
-	const std::vector<Vertex> cubeVertices =
+	const std::array<Vertex, 24> GenerateCubeVertices(Vector3 size)
 	{
-		{{-1, -1, -1}, {}, {1.0f, 0.0f, 0.0f}, {}},
-		{{ 1, -1, -1}, {}, {0.0f, 1.0f, 0.0f}, {}},
-		{{ 1,  1, -1}, {}, {0.0f, 0.0f, 1.0f}, {}},
-		{{-1,  1, -1}, {}, {1.0f, 1.0f, 0.0f}, {}},
-		{{-1, -1,  1}, {}, {0.0f, 1.0f, 1.0f}, {}},
-		{{ 1, -1,  1}, {}, {1.0f, 0.0f, 1.0f}, {}},
-		{{ 1,  1,  1}, {}, {0.0f, 0.0f, 0.0f}, {}},
-		{{-1,  1,  1}, {}, {1.0f, 1.0f, 1.0f}, {}},
+		float x = size.x * 0.5f;
+		float y = size.y * 0.5f;
+		float z = size.z * 0.5f;
+
+		return
+		{
+			// Front
+			Vertex{{-x, -y, -z}, {0, 0, -1}, {1.0f, 0.0f, 0.0f}, {}},
+			Vertex{{ x, -y, -z}, {0, 0, -1}, {0.0f, 1.0f, 0.0f}, {}},
+			Vertex{{ x,  y, -z}, {0, 0, -1}, {0.0f, 0.0f, 1.0f}, {}},
+			Vertex{{-x,  y, -z}, {0, 0, -1}, {1.0f, 1.0f, 0.0f}, {}},
+
+			// Back
+			Vertex{{-x, -y,  z}, {0, 0, 1}, {0.0f, 1.0f, 1.0f}, {}},
+			Vertex{{ x, -y,  z}, {0, 0, 1}, {1.0f, 0.0f, 1.0f}, {}},
+			Vertex{{ x,  y,  z}, {0, 0, 1}, {0.0f, 0.0f, 0.0f}, {}},
+			Vertex{{-x,  y,  z}, {0, 0, 1}, {1.0f, 1.0f, 1.0f}, {}},
+
+			// Left
+			Vertex{{-x, -y, -z}, {-1, 0, 0}, {1.0f, 0.0f, 0.0f}, {}},
+			Vertex{{-x,  y, -z}, {-1, 0, 0}, {1.0f, 1.0f, 0.0f}, {}},
+			Vertex{{-x,  y,  z}, {-1, 0, 0}, {1.0f, 1.0f, 1.0f}, {}},
+			Vertex{{-x, -y,  z}, {-1, 0, 0}, {0.0f, 1.0f, 1.0f}, {}},
+
+			// Right
+			Vertex{{ x, -y, -z}, {1, 0, 0}, {0.0f, 1.0f, 0.0f}, {}},
+			Vertex{{ x,  y, -z}, {1, 0, 0}, {0.0f, 0.0f, 1.0f}, {}},
+			Vertex{{ x,  y,  z}, {1, 0, 0}, {0.0f, 0.0f, 0.0f}, {}},
+			Vertex{{ x, -y,  z}, {1, 0, 0}, {1.0f, 0.0f, 1.0f}, {}},
+
+			// Top
+			Vertex{{-x,  y, -z}, {0, 1, 0}, {1.0f, 1.0f, 0.0f}, {}},
+			Vertex{{ x,  y, -z}, {0, 1, 0}, {0.0f, 0.0f, 1.0f}, {}},
+			Vertex{{ x,  y,  z}, {0, 1, 0}, {0.0f, 0.0f, 0.0f}, {}},
+			Vertex{{-x,  y,  z}, {0, 1, 0}, {1.0f, 1.0f, 1.0f}, {}},
+
+			// Bottom
+			Vertex{{-x, -y, -z}, {0, -1, 0}, {1.0f, 0.0f, 0.0f}, {}},
+			Vertex{{ x, -y, -z}, {0, -1, 0}, {0.0f, 1.0f, 0.0f}, {}},
+			Vertex{{ x, -y,  z}, {0, -1, 0}, {1.0f, 0.0f, 1.0f}, {}},
+			Vertex{{-x, -y,  z}, {0, -1, 0}, {0.0f, 1.0f, 1.0f}, {}},
+		};
+	}
+
+	const std::array<U16, 36> cubeIndices =
+	{
+		0, 1, 2,  2, 3, 0,  // Front
+		4, 5, 6,  6, 7, 4,  // Back
+		8, 9, 10, 10, 11, 8, // Left
+		12, 13, 14, 14, 15, 12, // Right
+		16, 17, 18, 18, 19, 16, // Top
+		20, 21, 22, 22, 23, 20  // Bottom
 	};
 
-	const std::vector<uint16_t> cubeIndices =
+	Mesh Renderer3D::CreateCubeMesh(Vector3 size)
 	{
-		0, 1, 3, 3, 1, 2,
-		1, 5, 2, 2, 5, 6,
-		5, 4, 6, 6, 4, 7,
-		4, 0, 7, 7, 0, 3,
-		3, 2, 7, 7, 2, 6,
-		4, 5, 0, 0, 5, 1
+		auto vertices = GenerateCubeVertices(size);
+		return CreateMesh(vertices, cubeIndices);
+	}
+
+	struct MeshData
+	{
+		std::vector<Vertex> vertices;
+		std::vector<U16> indices;
 	};
+
+	Vector3 ProjectToSphere(Vector3 cubePoint)
+	{
+		float xx = cubePoint.x * cubePoint.x;
+		float yy = cubePoint.y * cubePoint.y;
+		float zz = cubePoint.z * cubePoint.z;
+		return Vector3
+		(
+			cubePoint.x * std::sqrt(1.0f - (yy + zz) / 2.0f + (yy * zz) / 3.0f),
+			cubePoint.y * std::sqrt(1.0f - (xx + zz) / 2.0f + (xx * zz) / 3.0f),
+			cubePoint.z * std::sqrt(1.0f - (xx + yy) / 2.0f + (xx * yy) / 3.0f)
+		).normalized();
+	}
+
+	MeshData GenerateSphereCubeData(float radius, int resolution)
+	{
+		std::vector<Vertex> vertices;
+		std::vector<U16> indices;
+
+		size_t verticesPerFace = (resolution + 1) * (resolution + 1);
+		vertices.reserve(verticesPerFace * 6);
+		indices.reserve(resolution * resolution * 6 * 6);
+
+		float step = 2.0f / resolution;
+		int start = 0;
+		auto GenFace = [&](auto callback)
+		{
+			for (int y = 0; y <= resolution; y++)
+			{
+				for (int x = 0; x <= resolution; x++)
+				{
+					float sx = x * step - 1.0f;
+					float sy = y * step - 1.0f;
+
+					Vector3 cubePoint = callback(sx, sy);
+					Vector3 point = ProjectToSphere(cubePoint);
+					Vertex vert;
+					vert.pos = point * radius;
+					vert.normal = point;
+					vert.uv = Vector2(x, y) / resolution; //TODO: Proper UV
+					vertices.push_back(vert);
+
+					if (x < resolution && y < resolution)
+					{
+						int i0 = start + y * (resolution + 1) + x;
+						int i1 = i0 + 1;
+						int i2 = i0 + (resolution + 1);
+						int i3 = i2 + 1;
+
+						indices.push_back(i0);
+						indices.push_back(i2);
+						indices.push_back(i1);
+
+						indices.push_back(i1);
+						indices.push_back(i2);
+						indices.push_back(i3);
+					}
+				}
+			}
+			start += verticesPerFace;
+		};
+
+		GenFace([](float sx, float sy) { return Vector3(1.0f, sy, -sx); } );
+		GenFace([](float sx, float sy) { return Vector3(-1.0f, sy, sx); } );
+		GenFace([](float sx, float sy) { return Vector3(sx, 1.0f, -sy); } );
+		GenFace([](float sx, float sy) { return Vector3(sx, -1.0f, sy); } );
+		GenFace([](float sx, float sy) { return Vector3(sx, sy, 1.0f); } );
+		GenFace([](float sx, float sy) { return Vector3(-sx, sy, -1.0f); } );
+
+		return {vertices, indices};
+	}
 
 	enum class GPULightType
 	{
@@ -265,7 +415,7 @@ namespace tako
 		}};
 		m_skyCameraBinding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(m_skyPipeline, 0), skyCameraBindingData);
 
-		m_cubeMesh = CreateMesh(cubeVertices, cubeIndices);
+		m_cubeMesh = CreateCubeMesh({1, 1, 1});
 	}
 
 	void Renderer3D::CreatePipeline()
@@ -548,9 +698,44 @@ namespace tako
 		DrawMesh(m_cubeMesh, material, model);
 	}
 
+	void Renderer3D::DrawCube(Vector3 size, const Matrix4& model, const Material& material)
+	{
+		auto it = m_cubeMeshCache.find(size);
+		Mesh cubeMesh;
+		if (it != m_cubeMeshCache.end())
+		{
+			cubeMesh = it->second;
+		}
+		else
+		{
+			cubeMesh = CreateCubeMesh(size);
+			m_cubeMeshCache.emplace(size, cubeMesh);
+		}
+		DrawMesh(cubeMesh, material, model);
+	}
+
 	void Renderer3D::DrawCubeInstanced(const Material& material, size_t instanceCount, const Matrix4* transforms)
 	{
 		DrawMeshInstanced(m_cubeMesh, material, instanceCount, transforms);
+	}
+
+
+	void Renderer3D::DrawSphereCube(float radius, int resolution, const Matrix4& model, const Material& material)
+	{
+		SphereCubeGenerationParams key{radius, resolution};
+		auto it = m_sphereMeshCache.find(key);
+		Mesh sphereMesh;
+		if (it != m_sphereMeshCache.end())
+		{
+			sphereMesh = it->second;
+		}
+		else
+		{
+			auto data = GenerateSphereCubeData(radius, resolution);
+			sphereMesh = CreateMesh(data.vertices, data.indices);
+			m_sphereMeshCache.emplace(key, sphereMesh);
+		}
+		DrawMesh(sphereMesh, material, model);
 	}
 
 	void Renderer3D::DrawModel(const Model& model, const Matrix4& transform)
@@ -569,7 +754,7 @@ namespace tako
 		}
 	}
 
-	Mesh Renderer3D::CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices)
+	Mesh Renderer3D::CreateMesh(std::span<const Vertex> vertices,std::span<const uint16_t> indices)
 	{
 		Mesh mesh;
 		mesh.vertexBuffer = m_context->CreateBuffer(BufferType::Vertex, vertices.data(), sizeof(vertices[0]) * vertices.size());

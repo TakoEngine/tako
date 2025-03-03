@@ -1053,6 +1053,16 @@ namespace tako
 
 }
 
+template<>
+struct std::hash<tako::Vector3>
+{
+	std::size_t operator()(const tako::Vector3& vec) const
+	{
+		std::hash<float> fhash;
+
+		return fhash(vec.x) ^ (fhash(vec.y) << 1) ^ (fhash(vec.z) << 2);
+	}
+};
 
 export template <>
 class fmt::formatter<tako::Vector2>
