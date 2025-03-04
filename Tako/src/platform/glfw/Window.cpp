@@ -49,6 +49,24 @@ namespace tako
 		{GLFW_KEY_BACKSPACE, Key::Backspace},
 	};
 
+	std::pair<U8, Key> GamepadMapping[]
+	{
+		{GLFW_GAMEPAD_BUTTON_A, Key::Gamepad_A},
+		{GLFW_GAMEPAD_BUTTON_B, Key::Gamepad_B},
+		{GLFW_GAMEPAD_BUTTON_X, Key::Gamepad_X},
+		{GLFW_GAMEPAD_BUTTON_Y, Key::Gamepad_Y},
+		{GLFW_GAMEPAD_BUTTON_LEFT_BUMPER, Key::Gamepad_L},
+		{GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER, Key::Gamepad_R},
+		//{6, Key::Gamepad_L2},
+		//{7, Key::Gamepad_R2},
+		{GLFW_GAMEPAD_BUTTON_BACK, Key::Gamepad_Select},
+		{GLFW_GAMEPAD_BUTTON_START, Key::Gamepad_Start},
+		{GLFW_GAMEPAD_BUTTON_DPAD_UP, Key::Gamepad_Dpad_Up},
+		{GLFW_GAMEPAD_BUTTON_DPAD_DOWN, Key::Gamepad_Dpad_Down},
+		{GLFW_GAMEPAD_BUTTON_DPAD_LEFT, Key::Gamepad_Dpad_Left},
+		{GLFW_GAMEPAD_BUTTON_DPAD_RIGHT, Key::Gamepad_Dpad_Right},
+	};
+
 	std::map<int, MouseButton> MouseCodeMapping
 	{
 		{GLFW_MOUSE_BUTTON_LEFT, MouseButton::Left},
@@ -122,6 +140,14 @@ namespace tako
 					right.axis = Axis::Right;
 					right.value = Vector2(state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X], state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y]);
 					m_callback(right);
+
+					for (auto [index, key] : GamepadMapping)
+					{
+						KeyPress evt;
+						evt.key = key;
+						evt.status = state.buttons[index] ? KeyStatus::Down : KeyStatus::Up;
+						m_callback(evt);
+					}
 				}
 			}
 		}
