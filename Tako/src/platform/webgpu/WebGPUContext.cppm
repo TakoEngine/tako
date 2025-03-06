@@ -733,14 +733,36 @@ namespace tako
 
 				#ifdef TAKO_EMSCRIPTEN
 				m_surfaceFormat = m_surface.GetPreferredFormat(adapter);
+				//TODO: check if format is sRGB or not
 				#else
-				wgpu::SurfaceCapabilities capabilities;
-				m_surface.GetCapabilities(adapter, &capabilities);
-				for (int i = 0; i < capabilities.formatCount; i++)
 				{
-					LOG("supported format: {}", (uint32_t) capabilities.formats[i]);
+					wgpu::SurfaceCapabilities capabilities;
+					m_surface.GetCapabilities(adapter, &capabilities);
+					for (int i = 0; i < capabilities.formatCount; i++)
+					{
+						LOG("Supported Surface Format: {}", (uint32_t) capabilities.formats[i]);
+					}
+					wgpu::TextureFormat matchingFormat = wgpu::TextureFormat::Undefined;
+					for (int i = 0; i < capabilities.formatCount; i++)
+					{
+						auto format = capabilities.formats[i];
+						if (format == wgpu::TextureFormat::RGBA8Unorm || format == wgpu::TextureFormat::BGRA8Unorm)
+						{
+							matchingFormat = format;
+						}
+					}
+					if (matchingFormat != wgpu::TextureFormat::Undefined)
+					{
+						m_surfaceFormat = matchingFormat;
+					}
+					else
+					{
+						ASSERT(capabilities.formatCount > 0);
+						LOG_ERR("TODO: none of expected surface formats are supported");
+						m_surfaceFormat = capabilities.formats[0];
+					}
+
 				}
-				m_surfaceFormat = capabilities.formats[0]; //Dawn workaround
 				#endif
 
 				LOG("Surface Format: {}", (uint32_t) m_surfaceFormat);

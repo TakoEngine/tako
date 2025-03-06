@@ -171,7 +171,7 @@ namespace tako
 			std::array<ImageView, 6> images;
 			for (int i = 0; i < bitmaps.size(); i++)
 			{
-				images[i] = bitmaps[i];
+				images[i] = bitmaps[i].ToView();
 			}
 			return m_context->CreateTexture(std::span(images));
 		}

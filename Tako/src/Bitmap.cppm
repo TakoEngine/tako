@@ -69,10 +69,20 @@ namespace tako
 
 		operator const ImageView() const noexcept
 		{
-			return ImageView(GetData(), m_width, m_height);
+			return ToView();
 		}
 
 		operator ImageView() noexcept
+		{
+			return ToView();
+		}
+
+		ImageView ToView() noexcept
+		{
+			return ImageView(GetData(), m_width, m_height);
+		}
+
+		const ImageView ToView() const noexcept
 		{
 			return ImageView(GetData(), m_width, m_height);
 		}
