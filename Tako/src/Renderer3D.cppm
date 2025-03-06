@@ -521,7 +521,7 @@ namespace tako
 
 				let color = baseColor * shading;
 
-				return color;
+				return vec4f(pow(color.rgb, vec3f(1/2.2)), color.a);
 			}
 		)";
 

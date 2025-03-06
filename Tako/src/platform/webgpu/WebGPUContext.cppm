@@ -736,8 +736,14 @@ namespace tako
 				#else
 				wgpu::SurfaceCapabilities capabilities;
 				m_surface.GetCapabilities(adapter, &capabilities);
+				for (int i = 0; i < capabilities.formatCount; i++)
+				{
+					LOG("supported format: {}", (uint32_t) capabilities.formats[i]);
+				}
 				m_surfaceFormat = capabilities.formats[0]; //Dawn workaround
 				#endif
+
+				LOG("Surface Format: {}", (uint32_t) m_surfaceFormat);
 
 				wgpu::DeviceDescriptor deviceDesc;
 				deviceDesc.nextInChain = nullptr;
