@@ -1,12 +1,12 @@
 module;
 #include "Utility.hpp"
 #include <IGraphicsContext.hpp>
+#include <webgpu/webgpu_cpp.h>
 #if defined(TAKO_EMSCRIPTEN)
 #include <emscripten.h>
 #elif defined(TAKO_GLFW)
 #include <webgpu/webgpu_glfw.h>
 #endif
-#include <webgpu/webgpu_cpp.h>
 #include <bit>
 export module Tako.WebGPU;
 
@@ -139,6 +139,8 @@ namespace tako
 			wgpu::InstanceDescriptor desc;
 
 			wgpu::Instance instance;
+
+
 #ifdef EMSCRIPTEN
 			instance = wgpu::CreateInstance(nullptr);
 #else
@@ -150,7 +152,15 @@ namespace tako
 			toggles.enabledToggles = &toggleName;
 
 			desc.nextInChain = &toggles;
+#ifndef TAKO_WIN32
 			instance = wgpu::CreateInstance(&desc);
+#else
+			// Workaround required to compile under windows
+			{
+				auto result = wgpuCreateInstance(reinterpret_cast<WGPUInstanceDescriptor const*>(&desc));
+				instance = wgpu::Instance::Acquire(result);
+			}
+#endif
 #endif
 			ASSERT(instance);
 			m_instance = instance;
@@ -539,7 +549,7 @@ namespace tako
 			return CreateWGPUTexture(std::span<const ImageView>{&image, 1}, wgpu::TextureDimension::e2D, ConvertToWGPU(type));
 		}
 
-		virtual Texture CreateTexture(const std::span<const ImageView> images, TextureType type = TextureType::Cube) override
+		virtual Texture CreateTexture(std::span<const ImageView> images, TextureType type = TextureType::Cube) override
 		{
 			return CreateWGPUTexture(images, wgpu::TextureDimension::e2D, ConvertToWGPU(type));
 		}
@@ -1119,6 +1129,7 @@ namespace tako
 			case TextureType::E2D: return wgpu::TextureViewDimension::e2D;
 			case TextureType::Cube: return wgpu::TextureViewDimension::Cube;
 		}
+		ASSERT(false);
 	}
 
 }

@@ -9,27 +9,51 @@
     {
       "name": "native-base",
       "hidden": true,
-      "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-${presetName}",
       "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
     },
     {
-      "name": "native-debug",
-      "displayName": "Native Debug",
+      "name": "windows-base",
+      "hidden": true,
       "inherits": [ "native-base" ],
+      "generator": "Visual Studio 17 2022",
+      "cacheVariables": {
+        "BUILD_SHARED_LIBS": "OFF"
+      }
+    },
+    {
+      "name": "windows-debug",
+      "displayName": "Windows Debug",
+      "inherits": [ "windows-base" ],
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
-      "name": "native-release",
-      "displayName": "Native Release",
+      "name": "linux-base",
+      "hidden": true,
       "inherits": [ "native-base" ],
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    },
+    {
+      "name": "linux-debug",
+      "displayName": "Linux Debug",
+      "inherits": [ "linux-base" ],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "linux-release",
+      "displayName": "Linux Release",
+      "inherits": [ "linux-base" ],
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }

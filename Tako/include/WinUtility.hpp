@@ -3,6 +3,8 @@
 #include "Utility.hpp"
 #include <Windows.h>
 #include <functional>
+#include <string_view>
+#include <iostream>
 
 class WinString
 {

@@ -161,19 +161,19 @@ namespace tako
 			return m_context->CreateTexture(image);
 		}
 
-		Texture CreateTexture(const std::span<const ImageView> images)
+		Texture CreateTexture(std::span<const ImageView> images)
 		{
 			return m_context->CreateTexture(images);
 		}
 
-		Texture CreateTexture(const std::span<const Bitmap, 6> bitmaps)
+		Texture CreateTexture(const std::array<Bitmap, 6>& bitmaps)
 		{
 			std::array<ImageView, 6> images;
 			for (int i = 0; i < bitmaps.size(); i++)
 			{
 				images[i] = bitmaps[i];
 			}
-			return m_context->CreateTexture(images);
+			return m_context->CreateTexture(std::span(images));
 		}
 
 		Material CreateMaterial(Texture texture, const MaterialDescriptor& materialDescriptor = {})

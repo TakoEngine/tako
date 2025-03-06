@@ -3,6 +3,7 @@ module;
 #include "Reflection.hpp"
 #include <RmlUi/Core.h>
 #include <variant>
+#include <mutex>
 export module Tako.RmlUi;
 
 import Tako.StringView;

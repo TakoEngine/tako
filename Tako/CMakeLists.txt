@@ -77,8 +77,10 @@ endfunction()
 if (WIN32)
 set_feature(TAKO_WIN32 true)
 set_feature(TAKO_OPENGL false)
-set_feature(TAKO_VULKAN true)
-set_feature(TAKO_GLAD true)
+set_feature(TAKO_WEBGPU true)
+set_feature(TAKO_VULKAN false)
+set_feature(TAKO_GLAD false)
+set_feature(TAKO_GLFW true)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set_feature(TAKO_EDITOR false)
 	set_feature(TAKO_IMGUI false)
@@ -93,7 +95,7 @@ set_feature(TAKO_OPENGL false)
 set_feature(TAKO_WEBGPU true)
 set_feature(TAKO_VULKAN false)
 set_feature(TAKO_EDITOR false)
-set_feature(TAKO_IMGUI false)
+set_feature(TAKO_IMGUI true)
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 set_feature(TAKO_MAC true)
 elseif(UNIX AND NOT APPLE)
@@ -117,11 +119,11 @@ endif()
 if (WIN32)
 target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/win32/Main.cppm"
-	"src/platform/win32/Window.cpp"
+	#"src/platform/win32/Window.cpp"
 	"src/platform/win32/Log.cpp"
 	"include/WinUtility.hpp"
 	"src/platform/win32/WinUtility.cpp"
-	"src/platform/default/Timer.cpp"
+	#"src/platform/default/Timer.cpp"
 	PUBLIC FILE_SET CXX_MODULES FILES
 	"src/platform/default/FileSystem.cppm"
 )
