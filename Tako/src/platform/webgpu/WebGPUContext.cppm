@@ -152,7 +152,7 @@ namespace tako
 			toggles.enabledToggles = &toggleName;
 
 			desc.nextInChain = &toggles;
-#ifndef TAKO_WIN32
+#ifndef TAKO_WINDOWS
 			instance = wgpu::CreateInstance(&desc);
 #else
 			// Workaround required to compile under windows
@@ -749,6 +749,7 @@ namespace tako
 						if (format == wgpu::TextureFormat::RGBA8Unorm || format == wgpu::TextureFormat::BGRA8Unorm)
 						{
 							matchingFormat = format;
+							break;
 						}
 					}
 					if (matchingFormat != wgpu::TextureFormat::Undefined)

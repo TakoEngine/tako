@@ -15,11 +15,11 @@ module;
 
 #ifdef TAKO_IMGUI
 #include "imgui.h"
-#ifdef TAKO_WIN32
-#include "imgui_impl_win32.h"
-#endif
-#ifdef TAKO_GLFW
+
+#if defined(TAKO_GLFW)
 #include "imgui_impl_glfw.h"
+#elif defined(TAKO_WIN32)
+#include "imgui_impl_win32.h"
 #endif
 #ifdef TAKO_OPENGL
 #include "imgui_impl_opengl3.h"
@@ -114,11 +114,11 @@ namespace tako
 					break;
 				#endif
 			}
-#ifdef TAKO_WIN32
-			ImGui_ImplWin32_NewFrame();
-#endif
-#ifdef TAKO_GLFW
+
+#if defined(TAKO_GLFW)
 			ImGui_ImplGlfw_NewFrame();
+#elif defined(TAKO_WIN32)
+			ImGui_ImplWin32_NewFrame();
 #endif
 			ImGui::NewFrame();
 #endif
@@ -288,9 +288,8 @@ namespace tako
 			io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 			io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 			io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-			#if defined(TAKO_WIN32)
-				ImGui_ImplWin32_Init(window.GetHandle());
-			#elif defined(TAKO_GLFW)
+
+			#if defined(TAKO_GLFW)
 				#ifdef TAKO_OPENGL
 					ImGui_ImplGlfw_InitForOpenGL(window.GetHandle(), true);
 				#else
@@ -299,6 +298,8 @@ namespace tako
 				#ifdef TAKO_EMSCRIPTEN
 					ImGui_ImplGlfw_InstallEmscriptenCallbacks(window.GetHandle(), "#canvas");
 				#endif
+			#elif defined(TAKO_WIN32)
+				ImGui_ImplWin32_Init(window.GetHandle());
 			#endif
 			switch (api)
 			{

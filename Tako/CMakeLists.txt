@@ -75,7 +75,8 @@ function(set_feature define val)
 endfunction()
 
 if (WIN32)
-set_feature(TAKO_WIN32 true)
+set_feature(TAKO_WINDOWS true)
+set_feature(TAKO_WIN32 false)
 set_feature(TAKO_OPENGL false)
 set_feature(TAKO_WEBGPU true)
 set_feature(TAKO_VULKAN false)
@@ -144,7 +145,7 @@ target_sources(${TAKO_DLL} PRIVATE
 		PUBLIC FILE_SET CXX_MODULES FILES
 		"src/platform/default/FileSystem.cppm"
 		)
-elseif (UNIX AND NOT APPLE)
+else()
 target_sources(${TAKO_DLL} PRIVATE
 		"src/platform/default/Main.cpp"
 		"src/platform/default/Log.cpp"
@@ -286,15 +287,16 @@ if (TAKO_IMGUI)
 	)
 	target_compile_definitions(imgui PUBLIC IMGUI_IMPL_WEBGPU_BACKEND_DAWN)
 
-	if (TAKO_WIN32)
-		target_sources(imgui PUBLIC
-			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_win32.h"
-			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_win32.cpp"
-		)
-	elseif (TAKO_GLFW)
+
+	if (TAKO_GLFW)
 		target_sources(imgui PUBLIC
 			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_glfw.h"
 			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_glfw.cpp"
+		)
+	elseif (TAKO_WIN32)
+		target_sources(imgui PUBLIC
+			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_win32.h"
+			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_win32.cpp"
 		)
 	endif()
 
