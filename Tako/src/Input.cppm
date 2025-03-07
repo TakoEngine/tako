@@ -21,7 +21,9 @@ namespace tako
 					tako::KeyPress& press = static_cast<tako::KeyPress &>(evt);
 					if (press.key != Key::Unknown)
 					{
-						activeKeys[static_cast<size_t>(press.key)] = press.status;
+						auto k = static_cast<size_t>(press.key);
+						m_activeChangedKeys[k] = m_activeChangedKeys[k] || activeKeys[k] != press.status;
+						activeKeys[k] = press.status;
 					}
 				} break;
 				case tako::EventType::MouseMove:
@@ -53,6 +55,8 @@ namespace tako
 		std::array<KeyStatus, static_cast<size_t>(Key::Unknown)> activeKeys = {KeyStatus::Up};
 		std::array<KeyStatus, static_cast<size_t>(Key::Unknown)> keys = {KeyStatus::Up};
 		std::array<KeyStatus, static_cast<size_t>(Key::Unknown)> prevKeys = {KeyStatus::Up};
+		std::array<bool, static_cast<size_t>(Key::Unknown)> m_activeChangedKeys = { false };
+		std::array<bool, static_cast<size_t>(Key::Unknown)> m_changedKeys = { false };
 		std::array<Vector2, static_cast<size_t>(Axis::Unknown)> m_axis = {Vector2()};
 	};
 }
@@ -68,12 +72,12 @@ namespace tako
 
 	bool Input::GetKeyDown(Key key)
 	{
-		return keys[static_cast<size_t>(key)] == KeyStatus::Down && prevKeys[static_cast<size_t>(key)] == KeyStatus::Up;
+		return m_changedKeys[static_cast<size_t>(key)] && prevKeys[static_cast<size_t>(key)] == KeyStatus::Up;
 	}
 
 	bool Input::GetKeyUp(Key key)
 	{
-		return keys[static_cast<size_t>(key)] == KeyStatus::Up && prevKeys[static_cast<size_t>(key)] == KeyStatus::Down;
+		return m_changedKeys[static_cast<size_t>(key)] && prevKeys[static_cast<size_t>(key)] == KeyStatus::Down;
 	}
 
 	bool Input::GetAnyDown()
@@ -108,6 +112,8 @@ namespace tako
 	{
 		prevKeys = keys;
 		keys = activeKeys;
+		m_changedKeys = m_activeChangedKeys;
+		m_activeChangedKeys = { false };
 		m_prevMousePosition = m_mousePosition;
 		m_mousePosition = m_curMousePosition;
 	}

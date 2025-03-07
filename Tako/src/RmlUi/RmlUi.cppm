@@ -171,7 +171,6 @@ public:
 private:
 	RmlUiRenderer m_renderer;
 	RmlUiSystem m_system;
-	//SystemInterface_GLFW m_system;
 	Rml::Context* m_context = nullptr;
 	Window* m_window = nullptr;
 	GraphicsContext* m_graphicsContext = nullptr;

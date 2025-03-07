@@ -121,13 +121,9 @@ namespace tako
 
 		void Poll()
 		{
-			//glClearColor(1, 0, 1, 1);
-			//glClear(GL_COLOR_BUFFER_BIT);
-			//glfwSwapBuffers(m_window);
 			glfwPollEvents();
 			if (glfwJoystickIsGamepad(GLFW_JOYSTICK_1))
 			{
-				LOG("Detected!");
 				GLFWgamepadstate state;
 				if (glfwGetGamepadState(GLFW_JOYSTICK_1, &state))
 				{
