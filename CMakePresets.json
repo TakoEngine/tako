@@ -21,6 +21,11 @@
       "generator": "Ninja",
       "cacheVariables": {
         "BUILD_SHARED_LIBS": "OFF"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
       }
     },
     {
@@ -32,6 +37,14 @@
       }
     },
     {
+      "name": "windows-release",
+      "displayName": "Windows Release",
+      "inherits": [ "windows-base" ],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
       "name": "linux-base",
       "hidden": true,
       "inherits": [ "native-base" ],
@@ -40,6 +53,11 @@
         "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
       }
     },
     {
