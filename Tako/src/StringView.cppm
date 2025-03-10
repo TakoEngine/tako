@@ -68,7 +68,7 @@ namespace tako
 			return ToStringView();
 		}
 
-		CStringView ToCStringView()
+		constexpr CStringView ToCStringView() const noexcept
 		{
 			ASSERT(m_isTerminated);
 			return CStringView(m_str, m_len);
@@ -92,32 +92,37 @@ namespace tako
 	export class CStringBuffer
 	{
 	public:
-		constexpr CStringBuffer() : m_cstr(nullptr) {}
+		constexpr CStringBuffer() : m_view(nullptr) {}
 		constexpr CStringBuffer(std::string_view view)
 		{
 			m_str = view;
-			m_cstr = m_str.c_str();
+			m_view = m_str;
 		}
 
 		constexpr CStringBuffer(const StringView& view)
 		{
 			if (view.IsCString())
 			{
-				m_cstr = view.data();
+				m_view = view.ToCStringView();
 			}
 			else
 			{
 				m_str = view;
-				m_cstr = m_str.c_str();
+				m_view = m_str;
 			}
 		}
 
 		constexpr const char* c_str() const noexcept
 		{
-			return m_cstr;
+			return m_view.c_str();
+		}
+
+		constexpr operator CStringView() const noexcept
+		{
+			return m_view;
 		}
 	protected:
-		const char* m_cstr;
+		CStringView m_view;
 		std::string m_str;
 	};
 }

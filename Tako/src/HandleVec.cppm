@@ -9,7 +9,7 @@ import Tako.NumberTypes;
 namespace tako
 {
 
-	template<typename H>
+	export template<typename H>
 	concept Handle = requires(H h)
 	{
 		{ h.value } -> std::same_as<U64&>;

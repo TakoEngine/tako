@@ -1,11 +1,11 @@
 #pragma once
-#include "Resources.hpp"
 #include "GraphicsAPI.hpp"
 
 import Tako.Input;
 import Tako.Audio;
 import Tako.RmlUi;
 import Tako.NumberTypes;
+import Tako.Resources;
 
 namespace tako
 {

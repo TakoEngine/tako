@@ -24,6 +24,7 @@ import Tako.StringView;
 import Tako.FileSystem;
 import Tako.GraphicsContext;
 import Tako.Math;
+import Tako.Resources;
 
 
 template <>
@@ -176,6 +177,18 @@ namespace tako
 			return m_context->CreateTexture(std::span(images));
 		}
 
+		void ReleaseTexture(Texture texture)
+		{
+			m_context->ReleaseTexture(texture);
+		}
+
+		Texture LoadTexture(const StringView path)
+		{
+			CStringBuffer p(path);
+			Bitmap tex = Bitmap::FromFile(p);
+			return CreateTexture(tex);
+		}
+
 		Material CreateMaterial(Texture texture, const MaterialDescriptor& materialDescriptor = {})
 		{
 			std::array<ShaderBindingEntryData, 2> bindingData
@@ -185,6 +198,11 @@ namespace tako
 			}};
 			auto binding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(m_pipeline, 2), bindingData);
 			return binding;
+		}
+
+		void RegisterLoaders(Resources* resources)
+		{
+			resources->RegisterLoader<Texture>(this, &Renderer3D::LoadTexture, &Renderer3D::ReleaseTexture);
 		}
 
 		Skybox CreateSkybox(Texture cubemap);

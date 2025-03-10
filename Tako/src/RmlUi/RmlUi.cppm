@@ -13,7 +13,7 @@ import Tako.RmlUi.System;
 import Tako.Event;
 import Tako.Window;
 import Tako.NumberTypes;
-
+import Tako.Resources;
 
 
 namespace tako
@@ -21,6 +21,11 @@ namespace tako
 
 Rml::Input::KeyIdentifier RmlConvertKey(Key key);
 int RmlConvertMouseButton(MouseButton button);
+
+export struct RmlDocument
+{
+	U64 value;
+};
 
 export class RmlUi : public IEventHandler
 {
@@ -91,15 +96,28 @@ public:
 		return constructor.GetModelHandle();
 	}
 
-	void LoadDocument(StringView filePath)
+	RmlDocument LoadDocument(StringView filePath)
 	{
 		Rml::String path(filePath);
-		m_doc = m_context->LoadDocument(path);
-		if (m_doc)
-		{
-			LOG("Show doc");
-			m_doc->Show();
-		}
+		auto doc = m_context->LoadDocument(path);
+		return std::bit_cast<RmlDocument>(doc);
+	}
+
+	void ReleaseDocument(RmlDocument document)
+	{
+		auto doc = std::bit_cast<Rml::ElementDocument*>(document);
+		m_context->UnloadDocument(doc);
+	}
+
+	void ShowDocument(RmlDocument document)
+	{
+		auto doc = std::bit_cast<Rml::ElementDocument*>(document);
+		doc->Show();
+	}
+
+	void RegisterLoaders(Resources* resources)
+	{
+		resources->RegisterLoader(this, &RmlUi::LoadDocument, &RmlUi::ReleaseDocument);
 	}
 
 	void HandleEvent(Event& evt) override
@@ -174,7 +192,6 @@ private:
 	Rml::Context* m_context = nullptr;
 	Window* m_window = nullptr;
 	GraphicsContext* m_graphicsContext = nullptr;
-	Rml::ElementDocument* m_doc = nullptr;
 	std::mutex m_mutex;
 };
 

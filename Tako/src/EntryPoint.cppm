@@ -1,7 +1,6 @@
 module;
 #include "Tako.hpp"
 #include "Timer.hpp"
-#include "Resources.hpp"
 #include <thread>
 #include <functional>
 //#include "OpenGLPixelArtDrawer.hpp"
@@ -35,6 +34,7 @@ import Tako.Audio;
 //import Tako.Renderer3D;
 import Tako.Application;
 //import Tako.Serialization;
+import Tako.Resources;
 import Tako.JobSystem;
 import Tako.RmlUi;
 import Tako.Allocators.CachePoolAllocator;
@@ -324,7 +324,7 @@ namespace tako
 		#endif
 		tako::Broadcaster broadcaster;
 
-		Resources resources(context.get());
+		Resources resources;
 		RmlUi ui;
 		ui.Init(&window, context.get());
 

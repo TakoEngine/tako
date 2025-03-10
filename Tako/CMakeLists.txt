@@ -2,7 +2,6 @@ include(tako)
 set(TAKO_DLL "tako")
 add_library(${TAKO_DLL}
 	#"src/PixelArtDrawer.cpp"
-	"src/Resources.cpp"
 	"src/Reflection.cpp"
 	"src/AudioImpl.cpp"
 )
@@ -19,7 +18,6 @@ target_sources(
 	"include/Sprite.hpp"
 	"include/Entity.hpp"
 	"include/Timer.hpp"
-	"include/Resources.hpp"
 	"include/GraphicsAPI.hpp"
 	"include/IGraphicsContext.hpp"
 	"include/VertexBuffer.hpp"
@@ -45,6 +43,7 @@ target_sources(
 	"src/SmallVec.cppm"
 	"src/Application.cppm"
 	"src/FileSystem.cppm"
+	"src/Resources.cppm"
 	"src/Serialization.cppm"
 	"src/Audio.cppm"
 	"src/Assets.cppm"
