@@ -50,9 +50,9 @@ namespace tako
 
 		void WatchFolder(std::string_view path)
 		{
-			std::unordered_map<std::string, std::filesystem::file_time_type> paths;
+			std::unordered_map<std::filesystem::path, std::filesystem::file_time_type> paths;
 			for (auto &file : std::filesystem::recursive_directory_iterator(path)) {
-				paths[file.path().string()] = std::filesystem::last_write_time(file);
+				paths[file.path()] = std::filesystem::last_write_time(file);
 			}
 
 			while (m_running)
@@ -81,7 +81,7 @@ namespace tako
 						else
 						{
 							//LOG("New file! {}", file.path());
-							paths[file.path().string()] = newWrite;
+							paths[file.path()] = newWrite;
 							m_changes.push_back({file.path()});
 							m_changed = true;
 						}

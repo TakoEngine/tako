@@ -14,6 +14,7 @@ import Tako.Event;
 import Tako.Window;
 import Tako.NumberTypes;
 import Tako.Resources;
+import Tako.HandleVec;
 
 
 namespace tako
@@ -99,25 +100,40 @@ public:
 	RmlDocument LoadDocument(StringView filePath)
 	{
 		Rml::String path(filePath);
-		auto doc = m_context->LoadDocument(path);
-		return std::bit_cast<RmlDocument>(doc);
+		DocumentEntry entry;
+		entry.doc = m_context->LoadDocument(path);
+		return m_documents.Insert(std::move(entry));
 	}
 
 	void ReleaseDocument(RmlDocument document)
 	{
-		auto doc = std::bit_cast<Rml::ElementDocument*>(document);
-		m_context->UnloadDocument(doc);
+		auto& entry = m_documents[document];
+		m_context->UnloadDocument(entry.doc);
+		m_documents.Remove(document);
+	}
+
+	void ReloadDocument(RmlDocument old, const StringView filePath)
+	{
+		auto& entry = m_documents[old];
+		m_context->UnloadDocument(entry.doc);
+		Rml::String path(filePath);
+		entry.doc = m_context->LoadDocument(path);
+		if (entry.shown)
+		{
+			entry.doc->Show();
+		}
 	}
 
 	void ShowDocument(RmlDocument document)
 	{
-		auto doc = std::bit_cast<Rml::ElementDocument*>(document);
-		doc->Show();
+		auto& entry = m_documents[document];
+		entry.shown = true;
+		entry.doc->Show();
 	}
 
 	void RegisterLoaders(Resources* resources)
 	{
-		resources->RegisterLoader(this, &RmlUi::LoadDocument, &RmlUi::ReleaseDocument);
+		resources->RegisterLoader(this, &RmlUi::LoadDocument, &RmlUi::ReleaseDocument, &RmlUi::ReloadDocument);
 	}
 
 	void HandleEvent(Event& evt) override
@@ -187,10 +203,17 @@ public:
 	}
 
 private:
+	struct DocumentEntry
+	{
+		Rml::ElementDocument* doc = nullptr;
+		bool shown = false;
+	};
+
 	RmlUiRenderer m_renderer;
 	RmlUiSystem m_system;
 	Rml::Context* m_context = nullptr;
 	Window* m_window = nullptr;
+	HandleVec<RmlDocument, DocumentEntry> m_documents;
 	GraphicsContext* m_graphicsContext = nullptr;
 	std::mutex m_mutex;
 };

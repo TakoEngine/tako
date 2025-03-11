@@ -55,17 +55,19 @@ namespace tako
 		std::atomic<bool>& keepRunning;
 		//Allocators::PoolAllocator frameDataPool;
 		Allocators::CachePoolAllocator frameDataAllocator;
+#ifdef TAKO_EDITOR
+		tako::FileWatcher& watcher;
+#endif
 #ifdef TAKO_EMSCRIPTEN
 		pthread_t mainThread;
 		emscripten::ProxyingQueue proxyQueue;
 #endif
+
 		std::atomic_flag frameDataPoolLock = ATOMIC_FLAG_INIT;
 		std::atomic<int> frame = 0;
 		int openFrames = 1;
 		std::atomic_flag frameCounterLock = ATOMIC_FLAG_INIT;
-#ifdef TAKO_EDITOR
-		tako::FileWatcher& watcher;
-#endif
+
 	};
 
 	void Tick(void* p)
@@ -79,23 +81,23 @@ namespace tako
 		static std::atomic<float> fps = 1;
 		fps = 0.01f * 1/dt + 0.99f * fps;
 		//LOG("frame {}: fps: {}", thisFrame, 1/dt);
-/*
 #ifdef TAKO_EDITOR
 		for (auto& change: data->watcher.Poll())
 		{
-			LOG("Change {}", change.path);
-			LOG("Change: {}", change.path.filename());
-#ifdef TAKO_OPENGL
-			if (change.path.extension() == ".png")
+			auto path = change.path.string();
+			//TODO: make more robust
+			for (auto& c : path)
 			{
-				auto file = "/" / change.path.filename();
-				auto bitmap = Bitmap::FromFile(file.c_str());
-				data->drawer->UpdateTexture(data->resources.Load<Texture>(file), bitmap);
+				if (c == '\\')
+				{
+					c = '/';
+				}
 			}
-#endif
+			LOG("Filechange detected {}", path);
+			data->resources.Reload(path);
 		}
 #endif
- */
+
 		data->jobSys.Schedule([=]()
 		{
 			data->window.Poll();
@@ -396,12 +398,11 @@ namespace tako
 			keepRunning,
 			//{ framePoolData, framePoolSize, config.frameDataSize },
 			{},
-#ifdef EMSCRIPTEN
-			pthread_self(),
-#endif
-
 #ifdef TAKO_EDITOR
 			watcher
+#endif
+#ifdef EMSCRIPTEN
+			pthread_self(),
 #endif
 		};
 
