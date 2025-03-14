@@ -11,6 +11,7 @@ export namespace tako
 	namespace mathf
 	{
 		constexpr float PI = 3.1415927f;
+		const float EPSILON = 1e-6f;
 
 		constexpr float sign(float x)
 		{
@@ -58,9 +59,36 @@ export namespace tako
 			return deg * PI / 180;
 		}
 
+		constexpr float ToDeg(float rad)
+		{
+			return rad * 180 / PI;
+		}
+
 		constexpr float Lerp(float a, float b, float t)
 		{
 			return a + (b - a) * t;
+		}
+
+		constexpr float MoveTowards(float current, float target, float maxDelta)
+		{
+			auto delta = target - current;
+			if (abs(delta) <= maxDelta)
+			{
+				return target;
+			}
+
+			return current * sign(delta) * maxDelta;
+		}
+
+		float MoveTowardsAngle(float current, float target, float maxDelta)
+		{
+			auto delta = std::fmod(target - current, 360.0f);
+			if (abs(delta) <= maxDelta)
+			{
+				return target;
+			}
+
+			return current * sign(delta) * maxDelta;
 		}
 	}
 
@@ -735,10 +763,10 @@ namespace Math
 			euler *= mathf::PI / 180;
 			return
 			{
-				std::sin(euler.z/2) * std::cos(euler.y/2) * std::cos(euler.x/2) - std::cos(euler.z/2) * std::sin(euler.y/2) * std::sin(euler.x/2),
-				std::cos(euler.z/2) * std::sin(euler.y/2) * std::cos(euler.x/2) + std::sin(euler.z/2) * std::cos(euler.y/2) * std::sin(euler.x/2),
-				std::cos(euler.z/2) * std::cos(euler.y/2) * std::sin(euler.x/2) - std::sin(euler.z/2) * std::sin(euler.y/2) * std::cos(euler.x/2),
-				std::cos(euler.z/2) * std::cos(euler.y/2) * std::cos(euler.x/2) + std::sin(euler.z/2) * std::sin(euler.y/2) * std::sin(euler.x/2),
+				std::sin(euler.x / 2) * std::cos(euler.y / 2) * std::cos(euler.z / 2) + std::cos(euler.x / 2) * std::sin(euler.y / 2) * std::sin(euler.z / 2),
+				std::cos(euler.x / 2) * std::sin(euler.y / 2) * std::cos(euler.z / 2) - std::sin(euler.x / 2) * std::cos(euler.y / 2) * std::sin(euler.z / 2),
+				std::cos(euler.x / 2) * std::cos(euler.y / 2) * std::sin(euler.z / 2) + std::sin(euler.x / 2) * std::sin(euler.y / 2) * std::cos(euler.z / 2),
+				std::cos(euler.x / 2) * std::cos(euler.y / 2) * std::cos(euler.z / 2) - std::sin(euler.x / 2) * std::sin(euler.y / 2) * std::sin(euler.z / 2),
 			};
 		}
 
@@ -771,7 +799,21 @@ namespace Math
 		static Quaternion Rotation(Vector3 start, Vector3 target)
 		{
 			auto dot = Vector3::dot(start, target);
-			//TODO: same and opposite edge cases
+
+			if (dot > 1.0f - mathf::EPSILON)
+			{
+				return Quaternion();
+			}
+
+			if (dot < -1.0f + mathf::EPSILON)
+			{
+				auto axis = Vector3::cross(start, Vector3(1, 0, 0));
+				if (axis.magnitude() < mathf::EPSILON)
+				{
+					axis = Vector3::cross(start, Vector3(0, 1, 0));
+				}
+				return Quaternion::AngleAxisRadians(180, axis);
+			}
 
 			auto rotAxis = Vector3::cross(start, target);
 			return Quaternion::AngleAxisRadians(std::acos(dot), rotAxis);
@@ -787,6 +829,20 @@ namespace Math
 			);
 		}
 
+		friend constexpr Quaternion operator+(const Quaternion& q, const Quaternion& r)
+		{
+			return Quaternion(q.x + r.x, q.y + r.y, q.z + r.z, q.w + r.w);
+		}
+
+		friend constexpr Quaternion operator-(const Quaternion& q, const Quaternion& r)
+		{
+			return Quaternion(q.x - r.x, q.y - r.y, q.z - r.z, q.w - r.w);
+		}
+
+		friend constexpr Quaternion operator*(const Quaternion& q, float f)
+		{
+			return Quaternion(q.x * f, q.y * f, q.z * f, q.w * f);
+		}
 
 		friend constexpr Vector3 operator*(const Quaternion& rotation, const Vector3& point)
 		{
@@ -849,8 +905,9 @@ namespace Math
 
 			if (dot > 0.999999f)
 			{
-				//TODO: linear interpolate
-				return b;
+				// Linear interpolation
+				auto result = from + (target - from) * t;
+				return Normalize(result);
 			}
 
 			float theta0 = std::acos(dot);
@@ -868,6 +925,18 @@ namespace Math
 				a.z * s0 + b.z * s1,
 				a.w * s0 + b.w * s1,
 			};
+		}
+
+		static constexpr Quaternion Inverse(Quaternion q)
+		{
+			float normSq = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
+
+			if (normSq < 1e-6f)
+			{
+				return Quaternion();
+			}
+
+			return Quaternion(-q.x / normSq, -q.y / normSq, -q.z / normSq, q.w / normSq);
 		}
 	};
 
