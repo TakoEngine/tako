@@ -77,7 +77,7 @@ export namespace tako
 				return target;
 			}
 
-			return current * sign(delta) * maxDelta;
+			return current + sign(delta) * maxDelta;
 		}
 
 		float MoveTowardsAngle(float current, float target, float maxDelta)
@@ -88,7 +88,7 @@ export namespace tako
 				return target;
 			}
 
-			return current * sign(delta) * maxDelta;
+			return current + sign(delta) * maxDelta;
 		}
 	}
 
@@ -159,6 +159,17 @@ namespace Math
 		float magnitude() const
 		{
 			return mathf::sqrt(x * x + y * y);
+		}
+
+		Vector2& LimitMagnitude(float max = 1)
+		{
+			float mag = magnitude();
+			if (mag < max)
+			{
+				return *this;
+			}
+
+			return operator/=(mag / max);
 		}
 
 		Vector2& normalize()
@@ -878,13 +889,13 @@ namespace Math
 		static Quaternion RotateTowards(const Quaternion& a, const Quaternion& b, float maxDelta)
 		{
 			float dot = Dot(a, b);
-			float angle = std::acos(std::min(std::abs(dot), 1.0f)) * 2;
+			float angle = mathf::abs(std::acos(std::min(std::abs(dot), 1.0f)) * 2);
 
-			if (angle == 0)
+			if (angle <= maxDelta)
 			{
 				return b;
 			}
-			return Slerp(a, b, maxDelta / angle);
+			return Slerp(a, b, angle / maxDelta);
 		}
 
 		static Quaternion Slerp(const Quaternion& from, const Quaternion& target, float t)
@@ -906,17 +917,14 @@ namespace Math
 			if (dot > 0.999999f)
 			{
 				// Linear interpolation
-				auto result = from + (target - from) * t;
+				auto result = a + (b - a) * t;
 				return Normalize(result);
 			}
 
 			float theta0 = std::acos(dot);
-			float theta = theta0 * t;
-			float sinTheta = std::sin(theta);
 			float sinTheta0 = std::sin(theta0);
-
-			float s0 = std::cos(theta) - dot * sinTheta / sinTheta0;
-			float s1 = sinTheta / sinTheta0;
+			float s0 = std::sin((1.0f - t) * theta0) / sinTheta0;
+			float s1 = std::sin(t * theta0) / sinTheta0;
 
 			return
 			{
@@ -931,7 +939,7 @@ namespace Math
 		{
 			float normSq = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
 
-			if (normSq < 1e-6f)
+			if (normSq == 0)
 			{
 				return Quaternion();
 			}
