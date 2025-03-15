@@ -658,12 +658,12 @@ namespace Math
 
 		friend constexpr Vector4 operator*(const Matrix4 m, const Vector4 v)
 		{
-			Vector4 r;
+			Vector4 r = {0, 0, 0, 0};
 			for (size_t i = 0; i < 4; i++)
 			{
 				for (size_t j = 0; j < 4; j++)
 				{
-					r[j] += m[j*4 + i] * v[i];
+					r[j] += m[i*4 + j] * v[i];
 				}
 			}
 
