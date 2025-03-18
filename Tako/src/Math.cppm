@@ -647,7 +647,7 @@ namespace Math
 					float sum = 0;
 					for (int x = 0; x < 4; x++)
 					{
-						sum += lhs[i * 4 + x] * rhs[j + x * 4];
+						sum += lhs[i + x * 4] * rhs[x + j * 4];
 					}
 
 					res[i + j * 4] = sum;
