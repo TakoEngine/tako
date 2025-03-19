@@ -34,7 +34,9 @@ namespace tako
 				case tako::EventType::AxisUpdate:
 				{
 					tako::AxisUpdate& update = static_cast<tako::AxisUpdate&>(evt);
-					m_axis[static_cast<size_t>(update.axis)] = update.value;
+					auto axis = update.value;
+					axis.y *= -1;
+					m_axis[static_cast<size_t>(update.axis)] = axis;
 				} break;
 			}
 		}
