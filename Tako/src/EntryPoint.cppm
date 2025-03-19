@@ -98,7 +98,11 @@ namespace tako
 		}
 #endif
 
+#ifdef TAKO_GLFW
+		data->jobSys.ScheduleForThread(0, [=]()
+#else
 		data->jobSys.Schedule([=]()
+#endif
 		{
 			data->window.Poll();
 			data->input.Update();
