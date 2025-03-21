@@ -6,11 +6,13 @@ namespace tako
 	enum class BufferType
 	{
 		Vertex,
-		Index
+		Index,
+		Uniform,
+		Storage
 	};
 
 	struct Buffer
 	{
-		U64 value;
+		U64 value = 0;
 	};
 }

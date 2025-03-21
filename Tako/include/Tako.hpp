@@ -3,7 +3,6 @@
 #include <iostream>
 //
 #include "Utility.hpp"
-#include "Resources.hpp"
 //#include <emscripten.h>
 #include "PixelArtDrawer.hpp"
 #include "GameConfig.hpp"

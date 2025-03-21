@@ -1,10 +1,13 @@
 module;
-#include "OpenGLPixelArtDrawer.hpp"
+//#include "OpenGLPixelArtDrawer.hpp"
 #include <string>
 #include <vector>
 #include <map>
 //#include <nlohmann/json.hpp>
 export module Tako.TileMap;
+
+import Tako.Math;
+import Tako.Bitmap;
 
 namespace tako::Jam
 {

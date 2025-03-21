@@ -4,14 +4,8 @@ import Tako.NumberTypes;
 
 namespace tako
 {
-	struct TextureHandle
-	{
-		U64 value;
-	};
 	struct Texture
 	{
-		TextureHandle handle;
-		int width;
-		int height;
+		U64 value = 0;
 	};
 }

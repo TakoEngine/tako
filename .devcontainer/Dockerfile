@@ -11,7 +11,7 @@ USER tako
 RUN sudo dnf install -y git python openssh-server xauth
 RUN sudo dnf install -y clang clang-tools-extra ninja-build
 RUN sudo dnf install -y libXcursor-devel libXi-devel libXinerama-devel libXrandr-devel wayland-devel libxkbcommon-devel
-RUN sudo dnf install -y vulkan-headers vulkan-loader vulkan-loader-devel mesa-vulkan-drivers mesa-libGL-devel glslang glx-utils gdb
+RUN sudo dnf install -y vulkan-headers vulkan-loader vulkan-loader-devel mesa-vulkan-drivers mesa-libGL-devel glslang glx-utils gdb freetype-devel
 RUN sudo dnf install -y vim
 
 COPY ./install-emscripten.sh /tmp/

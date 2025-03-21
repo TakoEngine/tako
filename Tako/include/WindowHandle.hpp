@@ -14,12 +14,12 @@ namespace tako
 #ifdef __EMSCRIPTEN__
 	using WindowHandle = const char*;
 #endif
-#ifdef _WIN32
+#if defined(TAKO_GLFW)
+	using WindowHandle = GLFWwindow*;
+#elif defined(_WIN32)
 	using WindowHandle = HWND;
 #endif
-#ifdef TAKO_GLFW
-	using WindowHandle = GLFWwindow*;
-#endif
+
 
 
 }

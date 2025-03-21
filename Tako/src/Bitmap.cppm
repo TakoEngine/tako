@@ -67,7 +67,22 @@ namespace tako
 		static Bitmap FromFile(CStringView filePath);
 		static Bitmap FromFileData(const U8* data, size_t size);
 
-		operator ImageView() const noexcept
+		operator const ImageView() const noexcept
+		{
+			return ToView();
+		}
+
+		operator ImageView() noexcept
+		{
+			return ToView();
+		}
+
+		ImageView ToView() noexcept
+		{
+			return ImageView(GetData(), m_width, m_height);
+		}
+
+		const ImageView ToView() const noexcept
 		{
 			return ImageView(GetData(), m_width, m_height);
 		}

@@ -156,11 +156,11 @@ namespace tako
 							AxisUpdate evt;
 							evt.axis = Axis::Left;
 							evt.value.x = padState.axis[0];
-							evt.value.y = -padState.axis[1];
+							evt.value.y = padState.axis[1];
 							m_callback(evt);
 							evt.axis = Axis::Right;
 							evt.value.x = padState.axis[2];
-							evt.value.y = -padState.axis[3];
+							evt.value.y = padState.axis[3];
 							m_callback(evt);
 						}
 
@@ -370,6 +370,11 @@ namespace tako
 	int Window::GetHeight()
 	{
 		return m_impl->m_height;
+	}
+
+	Point Window::GetFramebufferSize()
+	{
+		return {m_impl->m_width, m_impl->m_height};
 	}
 
 	WindowHandle Window::GetHandle() const

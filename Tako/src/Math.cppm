@@ -11,6 +11,7 @@ export namespace tako
 	namespace mathf
 	{
 		constexpr float PI = 3.1415927f;
+		const float EPSILON = 1e-6f;
 
 		constexpr float sign(float x)
 		{
@@ -57,8 +58,42 @@ export namespace tako
 		{
 			return deg * PI / 180;
 		}
+
+		constexpr float ToDeg(float rad)
+		{
+			return rad * 180 / PI;
+		}
+
+		constexpr float Lerp(float a, float b, float t)
+		{
+			return a + (b - a) * t;
+		}
+
+		constexpr float MoveTowards(float current, float target, float maxDelta)
+		{
+			auto delta = target - current;
+			if (abs(delta) <= maxDelta)
+			{
+				return target;
+			}
+
+			return current + sign(delta) * maxDelta;
+		}
+
+		float MoveTowardsAngle(float current, float target, float maxDelta)
+		{
+			auto delta = std::fmod(target - current, 360.0f);
+			if (abs(delta) <= maxDelta)
+			{
+				return target;
+			}
+
+			return current + sign(delta) * maxDelta;
+		}
 	}
 
+namespace Math
+{
 	struct Vector2
 	{
 		float x, y;
@@ -126,6 +161,17 @@ export namespace tako
 			return mathf::sqrt(x * x + y * y);
 		}
 
+		Vector2& LimitMagnitude(float max = 1)
+		{
+			float mag = magnitude();
+			if (mag < max)
+			{
+				return *this;
+			}
+
+			return operator/=(mag / max);
+		}
+
 		Vector2& normalize()
 		{
 			float mag = magnitude();
@@ -137,10 +183,17 @@ export namespace tako
 			return operator/=(mag);
 		}
 
-		static Vector2 Normalized(tako::Vector2 v)
+		static Vector2 Normalized(Vector2 v)
 		{
 			return v.normalize();
 		}
+	};
+
+	struct Point
+	{
+		constexpr Point() : x(0), y(0) {}
+		constexpr Point(int x, int y) : x(x), y(y) {}
+		int x, y;
 	};
 
 
@@ -287,6 +340,16 @@ export namespace tako
 			return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
 		}
 
+		constexpr static Vector3 Lerp(Vector3 a, Vector3 b, float t)
+		{
+			return a + (b - a) * t;
+		}
+
+		constexpr static Vector3 Reflect(Vector3 direction, Vector3 normal)
+		{
+			return -2 * dot(normal, direction) * normal + direction;
+		}
+
 		float& operator[](size_t i)
 		{
 			return (&x)[i];
@@ -306,6 +369,31 @@ export namespace tako
 		constexpr Vector4() : x(0), y(0), z(0), w(0) {}
 		constexpr Vector4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
 		constexpr Vector4(Vector3 v, float w = 1) : x(v.x), y(v.y), z(v.z), w(w) {}
+
+		float Magnitude() const
+		{
+			return mathf::sqrt(x * x + y * y + z * z);
+		}
+
+		Vector4& Normalize()
+		{
+			float mag = Magnitude();
+			if (mag < 0.0001f)
+			{
+				return *this = Vector4(0, 0, 0, 1);
+			}
+
+			return operator/=(mag);
+		}
+
+		constexpr Vector4& operator/=(const float factor)
+		{
+			x /= factor;
+			y /= factor;
+			z /= factor;
+            w /= factor;
+			return *this;
+		}
 
 		float& operator[](size_t i)
 		{
@@ -380,6 +468,11 @@ export namespace tako
 			m[5] *= y;
 			m[10] *= z;
 			return *this;
+		}
+
+		constexpr Matrix4& scale(Vector3 vec)
+		{
+			return this->scale(vec.x, vec.y, vec.z);
 		}
 
 		constexpr Matrix4& Transpose()
@@ -554,7 +647,7 @@ export namespace tako
 					float sum = 0;
 					for (int x = 0; x < 4; x++)
 					{
-						sum += lhs[i * 4 + x] * rhs[j + x * 4];
+						sum += lhs[i + x * 4] * rhs[x + j * 4];
 					}
 
 					res[i + j * 4] = sum;
@@ -565,12 +658,12 @@ export namespace tako
 
 		friend constexpr Vector4 operator*(const Matrix4 m, const Vector4 v)
 		{
-			Vector4 r;
+			Vector4 r = {0, 0, 0, 0};
 			for (size_t i = 0; i < 4; i++)
 			{
 				for (size_t j = 0; j < 4; j++)
 				{
-					r[j] += m[j*4 + i] * v[i];
+					r[j] += m[i*4 + j] * v[i];
 				}
 			}
 
@@ -681,10 +774,10 @@ export namespace tako
 			euler *= mathf::PI / 180;
 			return
 			{
-				std::sin(euler.z/2) * std::cos(euler.y/2) * std::cos(euler.x/2) - std::cos(euler.z/2) * std::sin(euler.y/2) * std::sin(euler.x/2),
-				std::cos(euler.z/2) * std::sin(euler.y/2) * std::cos(euler.x/2) + std::sin(euler.z/2) * std::cos(euler.y/2) * std::sin(euler.x/2),
-				std::cos(euler.z/2) * std::cos(euler.y/2) * std::sin(euler.x/2) - std::sin(euler.z/2) * std::sin(euler.y/2) * std::cos(euler.x/2),
-				std::cos(euler.z/2) * std::cos(euler.y/2) * std::cos(euler.x/2) + std::sin(euler.z/2) * std::sin(euler.y/2) * std::sin(euler.x/2),
+				std::sin(euler.x / 2) * std::cos(euler.y / 2) * std::cos(euler.z / 2) + std::cos(euler.x / 2) * std::sin(euler.y / 2) * std::sin(euler.z / 2),
+				std::cos(euler.x / 2) * std::sin(euler.y / 2) * std::cos(euler.z / 2) - std::sin(euler.x / 2) * std::cos(euler.y / 2) * std::sin(euler.z / 2),
+				std::cos(euler.x / 2) * std::cos(euler.y / 2) * std::sin(euler.z / 2) + std::sin(euler.x / 2) * std::sin(euler.y / 2) * std::cos(euler.z / 2),
+				std::cos(euler.x / 2) * std::cos(euler.y / 2) * std::cos(euler.z / 2) - std::sin(euler.x / 2) * std::sin(euler.y / 2) * std::sin(euler.z / 2),
 			};
 		}
 
@@ -714,6 +807,29 @@ export namespace tako
 			return { std::cos(deg), axis.x * sd , axis.y * sd, axis.z * sd };
 		}
 
+		static Quaternion Rotation(Vector3 start, Vector3 target)
+		{
+			auto dot = Vector3::dot(start, target);
+
+			if (dot > 1.0f - mathf::EPSILON)
+			{
+				return Quaternion();
+			}
+
+			if (dot < -1.0f + mathf::EPSILON)
+			{
+				auto axis = Vector3::cross(start, Vector3(1, 0, 0));
+				if (axis.magnitude() < mathf::EPSILON)
+				{
+					axis = Vector3::cross(start, Vector3(0, 1, 0));
+				}
+				return Quaternion::AngleAxisRadians(180, axis);
+			}
+
+			auto rotAxis = Vector3::cross(start, target);
+			return Quaternion::AngleAxisRadians(std::acos(dot), rotAxis);
+		}
+
 		friend constexpr Quaternion operator*(const Quaternion& q, const Quaternion& r)
 		{
 			return Quaternion(
@@ -724,6 +840,20 @@ export namespace tako
 			);
 		}
 
+		friend constexpr Quaternion operator+(const Quaternion& q, const Quaternion& r)
+		{
+			return Quaternion(q.x + r.x, q.y + r.y, q.z + r.z, q.w + r.w);
+		}
+
+		friend constexpr Quaternion operator-(const Quaternion& q, const Quaternion& r)
+		{
+			return Quaternion(q.x - r.x, q.y - r.y, q.z - r.z, q.w - r.w);
+		}
+
+		friend constexpr Quaternion operator*(const Quaternion& q, float f)
+		{
+			return Quaternion(q.x * f, q.y * f, q.z * f, q.w * f);
+		}
 
 		friend constexpr Vector3 operator*(const Quaternion& rotation, const Vector3& point)
 		{
@@ -759,13 +889,13 @@ export namespace tako
 		static Quaternion RotateTowards(const Quaternion& a, const Quaternion& b, float maxDelta)
 		{
 			float dot = Dot(a, b);
-			float angle = std::acos(std::min(std::abs(dot), 1.0f)) * 2;
+			float angle = mathf::abs(std::acos(std::min(std::abs(dot), 1.0f)) * 2);
 
-			if (angle == 0)
+			if (angle <= maxDelta)
 			{
 				return b;
 			}
-			return Slerp(a, b, maxDelta / angle);
+			return Slerp(a, b, angle / maxDelta);
 		}
 
 		static Quaternion Slerp(const Quaternion& from, const Quaternion& target, float t)
@@ -786,17 +916,15 @@ export namespace tako
 
 			if (dot > 0.999999f)
 			{
-				//TODO: linear interpolate
-				return b;
+				// Linear interpolation
+				auto result = a + (b - a) * t;
+				return Normalize(result);
 			}
 
 			float theta0 = std::acos(dot);
-			float theta = theta0 * t;
-			float sinTheta = std::sin(theta);
 			float sinTheta0 = std::sin(theta0);
-
-			float s0 = std::cos(theta) - dot * sinTheta / sinTheta0;
-			float s1 = sinTheta / sinTheta0;
+			float s0 = std::sin((1.0f - t) * theta0) / sinTheta0;
+			float s1 = std::sin(t * theta0) / sinTheta0;
 
 			return
 			{
@@ -805,6 +933,18 @@ export namespace tako
 				a.z * s0 + b.z * s1,
 				a.w * s0 + b.w * s1,
 			};
+		}
+
+		static constexpr Quaternion Inverse(Quaternion q)
+		{
+			float normSq = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
+
+			if (normSq == 0)
+			{
+				return Quaternion();
+			}
+
+			return Quaternion(-q.x / normSq, -q.y / normSq, -q.z / normSq, q.w / normSq);
 		}
 	};
 
@@ -854,6 +994,11 @@ export namespace tako
 		friend bool operator==(const Color& a, const Color& b)
 		{
 			return a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a;
+		}
+
+		operator Vector4() const
+		{
+			return Vector4(r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f);
 		}
 
 	private:
@@ -908,6 +1053,14 @@ export namespace tako
 			return p;
 		}
 	};
+}
+	using Vector2 = Math::Vector2;
+	using Point = Math::Point;
+	using Vector3 = Math::Vector3;
+	using Vector4 = Math::Vector4;
+	using Color = Math::Color;
+	using Matrix4 = Math::Matrix4;
+	using Quaternion = Math::Quaternion;
 
 	namespace literals
 	{
@@ -977,6 +1130,16 @@ namespace tako
 
 }
 
+template<>
+struct std::hash<tako::Vector3>
+{
+	std::size_t operator()(const tako::Vector3& vec) const
+	{
+		std::hash<float> fhash;
+
+		return fhash(vec.x) ^ (fhash(vec.y) << 1) ^ (fhash(vec.z) << 2);
+	}
+};
 
 export template <>
 class fmt::formatter<tako::Vector2>

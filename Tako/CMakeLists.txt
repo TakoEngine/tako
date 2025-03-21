@@ -1,8 +1,7 @@
 include(tako)
 set(TAKO_DLL "tako")
 add_library(${TAKO_DLL}
-	"src/PixelArtDrawer.cpp"
-	"src/Resources.cpp"
+	#"src/PixelArtDrawer.cpp"
 	"src/Reflection.cpp"
 	"src/AudioImpl.cpp"
 )
@@ -14,16 +13,14 @@ target_sources(
 	"include/Utility.hpp"
 	"include/NumberTypes.hpp"
 	"include/Texture.hpp"
-	"include/PixelArtDrawer.hpp"
+	#"include/PixelArtDrawer.hpp"
 	"include/Tako.hpp"
 	"include/Sprite.hpp"
 	"include/Entity.hpp"
 	"include/Timer.hpp"
-	"include/Resources.hpp"
 	"include/GraphicsAPI.hpp"
 	"include/IGraphicsContext.hpp"
 	"include/VertexBuffer.hpp"
-	"include/Material.hpp"
 	"include/Pipeline.hpp"
 	"include/GameConfig.hpp"
 	"include/Reflection.hpp"
@@ -46,6 +43,7 @@ target_sources(
 	"src/SmallVec.cppm"
 	"src/Application.cppm"
 	"src/FileSystem.cppm"
+	"src/Resources.cppm"
 	"src/Serialization.cppm"
 	"src/Audio.cppm"
 	"src/Assets.cppm"
@@ -53,6 +51,7 @@ target_sources(
 	"src/Renderer3D.cppm"
 	"src/JobSystem.cppm"
 	"src/StringView.cppm"
+	"src/HandleVec.cppm"
 	"src/Allocators/Allocator.cppm"
 	"src/Allocators/FreeListAllocator.cppm"
 	"src/Allocators/LinearAllocator.cppm"
@@ -75,13 +74,16 @@ function(set_feature define val)
 endfunction()
 
 if (WIN32)
-set_feature(TAKO_WIN32 true)
-set_feature(TAKO_OPENGL true)
-set_feature(TAKO_VULKAN true)
-set_feature(TAKO_GLAD true)
+set_feature(TAKO_WINDOWS true)
+set_feature(TAKO_WIN32 false)
+set_feature(TAKO_OPENGL false)
+set_feature(TAKO_WEBGPU true)
+set_feature(TAKO_VULKAN false)
+set_feature(TAKO_GLAD false)
+set_feature(TAKO_GLFW true)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-	set_feature(TAKO_EDITOR false)
-	set_feature(TAKO_IMGUI false)
+	set_feature(TAKO_EDITOR true)
+	set_feature(TAKO_IMGUI true)
 else()
 	set_feature(TAKO_EDITOR false)
 endif()
@@ -89,7 +91,7 @@ endif(WIN32)
 
 if (EMSCRIPTEN)
 set_feature(TAKO_EMSCRIPTEN true)
-set_feature(TAKO_OPENGL true)
+set_feature(TAKO_OPENGL false)
 set_feature(TAKO_WEBGPU true)
 set_feature(TAKO_VULKAN false)
 set_feature(TAKO_EDITOR false)
@@ -101,7 +103,7 @@ set_feature(TAKO_LINUX true)
 endif()
 
 if (TAKO_MAC OR TAKO_LINUX)
-set_feature(TAKO_OPENGL true)
+set_feature(TAKO_OPENGL false)
 set_feature(TAKO_VULKAN false)
 set_feature(TAKO_WEBGPU true)
 set_feature(TAKO_GLFW true)
@@ -117,11 +119,11 @@ endif()
 if (WIN32)
 target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/win32/Main.cppm"
-	"src/platform/win32/Window.cpp"
+	#"src/platform/win32/Window.cpp"
 	"src/platform/win32/Log.cpp"
 	"include/WinUtility.hpp"
 	"src/platform/win32/WinUtility.cpp"
-	"src/platform/default/Timer.cpp"
+	#"src/platform/default/Timer.cpp"
 	PUBLIC FILE_SET CXX_MODULES FILES
 	"src/platform/default/FileSystem.cppm"
 )
@@ -142,7 +144,7 @@ target_sources(${TAKO_DLL} PRIVATE
 		PUBLIC FILE_SET CXX_MODULES FILES
 		"src/platform/default/FileSystem.cppm"
 		)
-elseif (UNIX AND NOT APPLE)
+else()
 target_sources(${TAKO_DLL} PRIVATE
 		"src/platform/default/Main.cpp"
 		"src/platform/default/Log.cpp"
@@ -284,15 +286,16 @@ if (TAKO_IMGUI)
 	)
 	target_compile_definitions(imgui PUBLIC IMGUI_IMPL_WEBGPU_BACKEND_DAWN)
 
-	if (TAKO_WIN32)
-		target_sources(imgui PUBLIC
-			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_win32.h"
-			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_win32.cpp"
-		)
-	elseif (TAKO_GLFW)
+
+	if (TAKO_GLFW)
 		target_sources(imgui PUBLIC
 			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_glfw.h"
 			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_glfw.cpp"
+		)
+	elseif (TAKO_WIN32)
+		target_sources(imgui PUBLIC
+			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_win32.h"
+			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_win32.cpp"
 		)
 	endif()
 

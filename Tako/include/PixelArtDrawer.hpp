@@ -3,7 +3,6 @@
 #include "Texture.hpp"
 #include "Sprite.hpp"
 #include "VertexBuffer.hpp"
-#include "Material.hpp"
 #include "Pipeline.hpp"
 #include <unordered_map>
 #include <string>
@@ -32,7 +31,7 @@ namespace tako
 
 		void Clear();
 		void DrawRectangle(float x, float y, float w, float h, Color c);
-		void DrawImage(float x, float y, float w, float h, const TextureHandle img, Color color = {255, 255, 255, 255});
+		void DrawImage(float x, float y, float w, float h, const Texture img, Color color = {255, 255, 255, 255});
 		void DrawSprite(float x, float y, float w, float h, const Sprite* sprite, Color color = {255, 255, 255, 255});
 
 		Texture CreateTexture(const Bitmap& bitmap);
@@ -44,10 +43,10 @@ namespace tako
 	protected:
 		GraphicsContext* m_context;
 	private:
-		void DrawTextureQuad(float x, float y, float w, float h, const TextureHandle texture, Buffer buffer, Color color);
+		void DrawTextureQuad(float x, float y, float w, float h, const Texture texture, Buffer buffer, Color color);
 		void GetDrawOffset(float& x, float& y, float& w, float& h);
 		void CalculateScale();
-		std::unordered_map<U64, Material> m_texMatMap;
+		std::unordered_map<U64, Texture> m_texMatMap;
 
 		Vector2 m_cameraPosition;
 		U32 m_width;

@@ -16,12 +16,15 @@ module;
 #include <vector>
 #include <array>
 #include <algorithm>
+#include <unordered_map>
 export module Tako.Renderer3D;
 
 //import fastgltf;
 import Tako.StringView;
 import Tako.FileSystem;
 import Tako.GraphicsContext;
+import Tako.Math;
+import Tako.Resources;
 
 
 template <>
@@ -29,6 +32,30 @@ struct fastgltf::ElementTraits<tako::Vector2> : fastgltf::ElementTraitsBase<tako
 
 template <>
 struct fastgltf::ElementTraits<tako::Vector3> : fastgltf::ElementTraitsBase<tako::Vector3, AccessorType::Vec3, float> {};
+
+struct SphereCubeGenerationParams
+{
+	float radius;
+	int resolution;
+
+	bool operator==(const SphereCubeGenerationParams& b) const
+	{
+		return radius == b.radius && resolution == b.resolution;
+	}
+};
+
+
+template<>
+struct std::hash<SphereCubeGenerationParams>
+{
+	std::size_t operator()(const SphereCubeGenerationParams& params) const
+	{
+		std::hash<float> fhash;
+		std::hash<int> ihash;
+
+		return fhash(params.radius) ^ (ihash(params.resolution) << 1);
+	}
+};
 
 namespace tako
 {
@@ -47,6 +74,20 @@ namespace tako
 				color == other.color &&
 				uv == other.uv;
 		}
+	};
+
+	struct CameraUniformData
+	{
+		Matrix4 view;
+		Matrix4 proj;
+		//Matrix4 viewProj;
+	};
+
+	export using Material = ShaderBinding;
+
+	struct MaterialDescriptor
+	{
+		TextureType textureType = TextureType::E2D;
 	};
 
 	export struct Mesh
@@ -70,6 +111,25 @@ namespace tako
 		std::vector<Node> nodes;
 	};
 
+	export struct PointLight
+	{
+		Vector3 position{};
+		Color color = Color(1.0f, 1.0f, 1.0f, 1.0f);
+	};
+
+	export struct DirectionalLight
+	{
+		Vector3 direction{};
+		Color color = Color(1.0f, 1.0f, 1.0f, 1.0f);
+	};
+
+	export using Light = std::variant<PointLight, DirectionalLight>;
+
+	template<typename T>
+	concept LightRange = std::ranges::range<T> && (std::is_same_v<Light&, std::ranges::range_reference_t<T>> || std::is_convertible_v<Light&, std::ranges::range_value_t<T>>);
+
+	export using Skybox = ShaderBinding;
+
 	export class Renderer3D
 	{
 	public:
@@ -80,14 +140,19 @@ namespace tako
 
 		void DrawMesh(const Mesh& mesh, const Material& material, const Matrix4& model);
 		void DrawMeshInstanced(const Mesh& mesh, const Material& material, size_t instanceCount, const Matrix4* transforms);
+		Mesh CreateMesh(std::span<const Vertex> vertices, std::span<const uint16_t> indices);
+
 		void DrawCube(const Matrix4& model, const Material& material);
+		void DrawCube(Vector3 size, const Matrix4& model, const Material& material);
 		void DrawCubeInstanced(const Material& material, size_t instanceCount, const Matrix4* transforms);
+
+		void DrawSphereCube(float radius, int resolution, const Matrix4& model, const Material& material);
+
 		void DrawModel(const Model& model, const Matrix4& transform);
 		void DrawModelInstanced(const Model& model, size_t instanceCount, const Matrix4* transforms);
-		Mesh CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices);
 
 		void SetCameraView(const Matrix4& view);
-		void SetLightPosition(Vector3 lightPos);
+		void SetLights(LightRange auto lights);
 
 		Model LoadModel(StringView file);
 		Mesh LoadMesh(const char* file);
@@ -97,66 +162,241 @@ namespace tako
 			return m_context->CreateTexture(image);
 		}
 
-		Texture CreateTexture(const std::span<const ImageView> images)
+		Texture CreateTexture(std::span<const ImageView> images)
 		{
 			return m_context->CreateTexture(images);
 		}
 
-		Texture CreateTexture(const std::span<const Bitmap, 6> bitmaps)
+		Texture CreateTexture(const std::array<Bitmap, 6>& bitmaps)
 		{
 			std::array<ImageView, 6> images;
 			for (int i = 0; i < bitmaps.size(); i++)
 			{
-				images[i] = bitmaps[i];
+				images[i] = bitmaps[i].ToView();
 			}
-			return m_context->CreateTexture(images);
+			return m_context->CreateTexture(std::span(images));
 		}
 
-		Material CreateSkybox(Texture cubemap);
-		void RenderSkybox(Material skybox);
+		void ReleaseTexture(Texture texture)
+		{
+			m_context->ReleaseTexture(texture);
+		}
+
+		Texture LoadTexture(const StringView path)
+		{
+			CStringBuffer p(path);
+			Bitmap tex = Bitmap::FromFile(p);
+			return CreateTexture(tex);
+		}
+
+		Material CreateMaterial(Texture texture, const MaterialDescriptor& materialDescriptor = {})
+		{
+			std::array<ShaderBindingEntryData, 2> bindingData
+			{{
+				texture,
+				m_sampler,
+			}};
+			auto binding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(m_pipeline, 2), bindingData);
+			return binding;
+		}
+
+		void RegisterLoaders(Resources* resources)
+		{
+			resources->RegisterLoader<Texture>(this, &Renderer3D::LoadTexture, &Renderer3D::ReleaseTexture);
+		}
+
+		Skybox CreateSkybox(Texture cubemap);
+		void RenderSkybox(Skybox skybox);
 	protected:
 		GraphicsContext* m_context;
+		Sampler m_sampler;
 		Mesh m_cubeMesh;
+		std::unordered_map<Vector3, Mesh> m_cubeMeshCache;
+		std::unordered_map<SphereCubeGenerationParams, Mesh> m_sphereMeshCache;
 		Pipeline m_pipeline;
+		Buffer m_cameraBuffer;
+		ShaderBinding m_cameraBinding;
+		Buffer m_lightSettingsBuffer;
+		Buffer m_lightBuffer;
+		size_t m_lightBufferSize = 0;
+		ShaderBinding m_lightBinding;
 		Pipeline m_skyPipeline;
 		Texture m_skyTexture;
 		Material m_skyMaterial;
+		Buffer m_skyCameraBuffer;
+		ShaderBinding m_skyCameraBinding;
 
 	private:
 		CameraUniformData m_cameraData;
 		void CreatePipeline();
+		void CreateLightBuffer(size_t size);
 		void CreateSkyboxPipeline();
+		Mesh CreateCubeMesh(Vector3 size);
 	};
 }
 
 
 namespace tako
 {
-	const std::vector<Vertex> cubeVertices =
+	const std::array<Vertex, 24> GenerateCubeVertices(Vector3 size)
 	{
-		{{-1, -1, -1}, {}, {1.0f, 0.0f, 0.0f}, {}},
-		{{ 1, -1, -1}, {}, {0.0f, 1.0f, 0.0f}, {}},
-		{{ 1,  1, -1}, {}, {0.0f, 0.0f, 1.0f}, {}},
-		{{-1,  1, -1}, {}, {1.0f, 1.0f, 0.0f}, {}},
-		{{-1, -1,  1}, {}, {0.0f, 1.0f, 1.0f}, {}},
-		{{ 1, -1,  1}, {}, {1.0f, 0.0f, 1.0f}, {}},
-		{{ 1,  1,  1}, {}, {0.0f, 0.0f, 0.0f}, {}},
-		{{-1,  1,  1}, {}, {1.0f, 1.0f, 1.0f}, {}},
+		float x = size.x * 0.5f;
+		float y = size.y * 0.5f;
+		float z = size.z * 0.5f;
+
+		return
+		{
+			// Front
+			Vertex{{-x, -y, -z}, {0, 0, -1}, {1.0f, 0.0f, 0.0f}, {0, 0}},
+			Vertex{{ x, -y, -z}, {0, 0, -1}, {0.0f, 1.0f, 0.0f}, {1, 0}},
+			Vertex{{ x,  y, -z}, {0, 0, -1}, {0.0f, 0.0f, 1.0f}, {1, 1}},
+			Vertex{{-x,  y, -z}, {0, 0, -1}, {1.0f, 1.0f, 0.0f}, {0, 1}},
+
+			// Back
+			Vertex{{-x, -y,  z}, {0, 0, 1}, {0.0f, 1.0f, 1.0f}, {0, 0}},
+			Vertex{{ x, -y,  z}, {0, 0, 1}, {1.0f, 0.0f, 1.0f}, {1, 0}},
+			Vertex{{ x,  y,  z}, {0, 0, 1}, {0.0f, 0.0f, 0.0f}, {1, 1}},
+			Vertex{{-x,  y,  z}, {0, 0, 1}, {1.0f, 1.0f, 1.0f}, {0, 1}},
+
+			// Left
+			Vertex{{-x, -y, -z}, {-1, 0, 0}, {1.0f, 0.0f, 0.0f}, {0, 0}},
+			Vertex{{-x,  y, -z}, {-1, 0, 0}, {1.0f, 1.0f, 0.0f}, {0, 1}},
+			Vertex{{-x,  y,  z}, {-1, 0, 0}, {1.0f, 1.0f, 1.0f}, {1, 1}},
+			Vertex{{-x, -y,  z}, {-1, 0, 0}, {0.0f, 1.0f, 1.0f}, {1, 0}},
+
+			// Right
+			Vertex{{ x, -y, -z}, {1, 0, 0}, {0.0f, 1.0f, 0.0f}, {0, 0}},
+			Vertex{{ x,  y, -z}, {1, 0, 0}, {0.0f, 0.0f, 1.0f}, {0, 1}},
+			Vertex{{ x,  y,  z}, {1, 0, 0}, {0.0f, 0.0f, 0.0f}, {1, 1}},
+			Vertex{{ x, -y,  z}, {1, 0, 0}, {1.0f, 0.0f, 1.0f}, {1, 0}},
+
+			// Top
+			Vertex{{-x,  y, -z}, {0, 1, 0}, {1.0f, 1.0f, 0.0f}, {0, 0}},
+			Vertex{{ x,  y, -z}, {0, 1, 0}, {0.0f, 0.0f, 1.0f}, {1, 0}},
+			Vertex{{ x,  y,  z}, {0, 1, 0}, {0.0f, 0.0f, 0.0f}, {1, 1}},
+			Vertex{{-x,  y,  z}, {0, 1, 0}, {1.0f, 1.0f, 1.0f}, {0, 1}},
+
+			// Bottom
+			Vertex{{-x, -y, -z}, {0, -1, 0}, {1.0f, 0.0f, 0.0f}, {0, 0}},
+			Vertex{{ x, -y, -z}, {0, -1, 0}, {0.0f, 1.0f, 0.0f}, {1, 0}},
+			Vertex{{ x, -y,  z}, {0, -1, 0}, {1.0f, 0.0f, 1.0f}, {1, 1}},
+			Vertex{{-x, -y,  z}, {0, -1, 0}, {0.0f, 1.0f, 1.0f}, {0, 1}},
+		};
+	}
+
+	const std::array<U16, 36> cubeIndices =
+	{
+		0, 1, 2,  2, 3, 0,  // Front
+		4, 5, 6,  6, 7, 4,  // Back
+		8, 9, 10, 10, 11, 8, // Left
+		12, 13, 14, 14, 15, 12, // Right
+		16, 17, 18, 18, 19, 16, // Top
+		20, 21, 22, 22, 23, 20  // Bottom
 	};
 
-	const std::vector<uint16_t> cubeIndices =
+	Mesh Renderer3D::CreateCubeMesh(Vector3 size)
 	{
-		0, 1, 3, 3, 1, 2,
-		1, 5, 2, 2, 5, 6,
-		5, 4, 6, 6, 4, 7,
-		4, 0, 7, 7, 0, 3,
-		3, 2, 7, 7, 2, 6,
-		4, 5, 0, 0, 5, 1
+		auto vertices = GenerateCubeVertices(size);
+		return CreateMesh(vertices, cubeIndices);
+	}
+
+	struct MeshData
+	{
+		std::vector<Vertex> vertices;
+		std::vector<U16> indices;
+	};
+
+	Vector3 ProjectToSphere(Vector3 cubePoint)
+	{
+		float xx = cubePoint.x * cubePoint.x;
+		float yy = cubePoint.y * cubePoint.y;
+		float zz = cubePoint.z * cubePoint.z;
+		return Vector3
+		(
+			cubePoint.x * std::sqrt(1.0f - (yy + zz) / 2.0f + (yy * zz) / 3.0f),
+			cubePoint.y * std::sqrt(1.0f - (xx + zz) / 2.0f + (xx * zz) / 3.0f),
+			cubePoint.z * std::sqrt(1.0f - (xx + yy) / 2.0f + (xx * yy) / 3.0f)
+		).normalized();
+	}
+
+	MeshData GenerateSphereCubeData(float radius, int resolution)
+	{
+		std::vector<Vertex> vertices;
+		std::vector<U16> indices;
+
+		size_t verticesPerFace = (resolution + 1) * (resolution + 1);
+		vertices.reserve(verticesPerFace * 6);
+		indices.reserve(resolution * resolution * 6 * 6);
+
+		float step = 2.0f / resolution;
+		int start = 0;
+		auto GenFace = [&](auto callback)
+		{
+			for (int y = 0; y <= resolution; y++)
+			{
+				for (int x = 0; x <= resolution; x++)
+				{
+					float sx = x * step - 1.0f;
+					float sy = y * step - 1.0f;
+
+					Vector3 cubePoint = callback(sx, sy);
+					Vector3 point = ProjectToSphere(cubePoint);
+					Vertex vert;
+					vert.pos = point * radius;
+					vert.normal = point;
+					vert.uv = Vector2(x, y) / resolution; //TODO: Proper UV
+					vertices.push_back(vert);
+
+					if (x < resolution && y < resolution)
+					{
+						int i0 = start + y * (resolution + 1) + x;
+						int i1 = i0 + 1;
+						int i2 = i0 + (resolution + 1);
+						int i3 = i2 + 1;
+
+						indices.push_back(i0);
+						indices.push_back(i2);
+						indices.push_back(i1);
+
+						indices.push_back(i1);
+						indices.push_back(i2);
+						indices.push_back(i3);
+					}
+				}
+			}
+			start += verticesPerFace;
+		};
+
+		GenFace([](float sx, float sy) { return Vector3(1.0f, sy, -sx); } );
+		GenFace([](float sx, float sy) { return Vector3(-1.0f, sy, sx); } );
+		GenFace([](float sx, float sy) { return Vector3(sx, 1.0f, -sy); } );
+		GenFace([](float sx, float sy) { return Vector3(sx, -1.0f, sy); } );
+		GenFace([](float sx, float sy) { return Vector3(sx, sy, 1.0f); } );
+		GenFace([](float sx, float sy) { return Vector3(-sx, sy, -1.0f); } );
+
+		return {vertices, indices};
+	}
+
+	enum class GPULightType
+	{
+		None = 0,
+		Point = 1,
+		Directional = 2
+	};
+
+	struct GPULight
+	{
+		Vector4 positionVS;
+		Vector4 color;
+		GPULightType type;
+		U32 padding[3];
 	};
 
 	struct LightSettings
 	{
-		Vector4 lightPos;
+		Vector4 ambient;
+		U32 lightCount;
+		U32 padding[3];
 	};
 
 	std::vector<U8> LoadShaderCode(const char* codePath)
@@ -174,9 +414,26 @@ namespace tako
 	Renderer3D::Renderer3D(GraphicsContext* context) : m_context(context)
 	{
 		CreatePipeline();
-		CreateSkyboxPipeline();
+		m_sampler = m_context->CreateSampler();
+		m_cameraBuffer = m_context->CreateBuffer(BufferType::Uniform, sizeof(CameraUniformData));
+		std::array<ShaderBindingEntryData, 1> cameraBindingData
+		{{
+				m_cameraBuffer,
+		}};
+		m_cameraBinding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(m_pipeline, 0), cameraBindingData);
 
-		m_cubeMesh = CreateMesh(cubeVertices, cubeIndices);
+		m_lightSettingsBuffer = m_context->CreateBuffer(BufferType::Uniform, sizeof(LightSettings));
+		CreateLightBuffer(1);
+
+		CreateSkyboxPipeline();
+		m_skyCameraBuffer = m_context->CreateBuffer(BufferType::Uniform, sizeof(Matrix4));
+		std::array<ShaderBindingEntryData, 1> skyCameraBindingData
+		{{
+			m_skyCameraBuffer,
+		}};
+		m_skyCameraBinding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(m_skyPipeline, 0), skyCameraBindingData);
+
+		m_cubeMesh = CreateCubeMesh({1, 1, 1});
 	}
 
 	void Renderer3D::CreatePipeline()
@@ -188,14 +445,23 @@ namespace tako
 				projection: mat4x4f,
 			};
 
+			struct Light
+			{
+				positionVS: vec4f,
+				color: vec4f,
+				lightType: u32
+			};
+
 			struct Lighting
 			{
-				lightPos: vec4f,
+				ambient: vec4f,
+				lightCount: u32,
 			};
 
 			@group(0) @binding(0) var<uniform> camera: Camera;
 
 			@group(1) @binding(0) var<uniform> lighting: Lighting;
+			@group(1) @binding(1) var<storage, read> lights: array<Light>;
 
 			@group(2) @binding(0) var baseColorTexture: texture_2d<f32>;
 			@group(2) @binding(1) var baseColorSampler: sampler;
@@ -212,61 +478,72 @@ namespace tako
 			struct VertexOutput {
 				@builtin(position) position: vec4f,
 				@location(0) color: vec3f,
-				@location(1) normal: vec3f,
-				@location(2) uv: vec2f,
-				@location(3) positionWorld: vec3f,
-				@location(4) normalCamera: vec3f,
-				@location(5) eyeDirection: vec3f,
-				@location(6) lightDirection: vec3f,
+				@location(1) uv: vec2f,
+				@location(2) positionVS: vec3f,
+				@location(3) normalVS: vec3f,
 			}
 
 			@vertex
 			fn vs_main(in: VertexInput, @builtin(instance_index) instanceIndex: u32) -> VertexOutput {
 				let model = models[instanceIndex];
+				let modelView = camera.view * model;
 				var out: VertexOutput;
-				out.position = camera.projection * camera.view * model * vec4f(in.position, 1.0);
+				out.position = camera.projection * modelView * vec4f(in.position, 1.0);
 				out.color = in.color;
-				out.normal = (model * vec4f(in.normal, 0.0)).xyz;
 				out.uv = in.uv;
 
-				out.positionWorld = (model * vec4f(in.position, 1)).xyz;
-
-				let vertexPosCamera = (camera.view * model * vec4f(in.position,1)).xyz;
-				out.eyeDirection = vec3f(0,0,0) - vertexPosCamera;
-
-				let lightPosCamera = (camera.view * lighting.lightPos).xyz;
-				out.lightDirection = lightPosCamera + out.eyeDirection;
-
-				out.normalCamera = ( camera.view * model * vec4f(in.normal, 0)).xyz;
+				out.positionVS = (modelView * vec4f(in.position, 1.0)).xyz;
+				out.normalVS = (modelView * vec4f(in.normal, 0)).xyz;
 
 				return out;
 			}
 
+			fn CalculatePointLight(light: Light, P: vec4f, N: vec4f) -> f32 {
+				var L = light.positionVS - P;
+				let distance = length(L);
+				L = L / distance;
+				return max(dot(N, L), 0);
+			}
+
+			fn CalculateDirectionalLight(light: Light, P: vec4f, N: vec4f) -> f32 {
+				var L = normalize(-light.positionVS);
+				return max(dot(N, L), 0);
+			}
+
 			@fragment
 			fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-				let normal = normalize(in.normal);
-				let dist = length(lighting.lightPos.xyz - in.positionWorld);
-				let n = normalize(in.normalCamera);
-				let l = normalize(in.lightDirection);
-				let cosTheta = clamp(dot(n,l), 0, 1);
+				let eyePos = vec4f(0, 0, 0, 1);
+				let baseColor = textureSample(baseColorTexture, baseColorSampler, in.uv);
+				let N = normalize(vec4f(in.normalVS, 1));
+				let P = vec4f(in.positionVS, 1);
 
-				let E = normalize(in.eyeDirection);
-				let R = reflect(-l, n);
-				let cosAlpha = clamp( dot(E,R), 0, 1);
+				let V = normalize(eyePos - P);
+				var shading = lighting.ambient;
+				for (var i : u32 = 0; i < lighting.lightCount; i += 1) {
+					let light = lights[i];
+					var l: f32;
+					switch light.lightType {
+						case 1: {
+							l = CalculatePointLight(light, P, N);
+						}
+						case 2: {
+							l = CalculateDirectionalLight(light, P, N);
+						}
+						default: {
+							continue;
+						}
+					}
 
-				let baseColor = textureSample(baseColorTexture, baseColorSampler, in.uv).rgb;
-				let color =
-					baseColor * vec3f(0.1,0.1,0.1) +
-					baseColor * vec3f(1,1,1) * 200 * cosTheta / (dist*dist) +
-					vec3f(0.3,0.3,0.3) * vec3f(1,1,1) * 200 * pow(cosAlpha, 5) / (dist*dist);
+					shading += l * light.color;
+				}
 
-				//let color = baseColor * shading;
+				let color = baseColor * shading;
 
-				return vec4f(color, 1.0);
+				return vec4f(pow(color.rgb, vec3f(1/2.2)), color.a);
 			}
 		)";
 
-		std::array<PipelineVectorAttribute, 4> vertexAttributes = { PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec2 };
+		std::array vertexAttributes = { PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec2 };
 
 		PipelineDescriptor pipelineDescriptor;
 		pipelineDescriptor.shaderCode = shaderSource;
@@ -275,9 +552,50 @@ namespace tako
 		pipelineDescriptor.vertexAttributes = vertexAttributes.data();
 		pipelineDescriptor.vertexAttributeSize = vertexAttributes.size();
 
-		pipelineDescriptor.pipelineUniformSize = sizeof(LightSettings);
+		std::array<ShaderEntry, 1> cameraBinding
+		{
+			{ShaderBindingType::Uniform, sizeof(CameraUniformData)}
+		};
+		std::array<ShaderEntry, 2> lightingBinding
+		{{
+			ShaderBindingType::Uniform, sizeof(LightSettings),
+			ShaderBindingType::Storage, sizeof(GPULight)
+		}};
+		std::array<ShaderEntry, 2> materialBinding
+		{{
+			ShaderBindingType::Texture2D, 0,
+			ShaderBindingType::Sampler, 0
+		}};
+		std::array<ShaderBindingDescriptor, 3> shaderBindings
+		{{
+			cameraBinding,
+			lightingBinding,
+			materialBinding
+		}};
+		pipelineDescriptor.shaderBindings = shaderBindings;
 
 		m_pipeline = m_context->CreatePipeline(pipelineDescriptor);
+		LOG("Created pipeline");
+	}
+
+	void Renderer3D::CreateLightBuffer(size_t size)
+	{
+		if (m_lightBuffer.value)
+		{
+			m_context->ReleaseBuffer(m_lightBuffer);
+		}
+		m_lightBuffer = m_context->CreateBuffer(BufferType::Storage, size * sizeof(GPULight));
+		m_lightBufferSize = size;
+		std::array<ShaderBindingEntryData, 2> lightingBindingData
+		{{
+			m_lightSettingsBuffer,
+			m_lightBuffer,
+		}};
+		if (m_lightBinding.value)
+		{
+			m_context->ReleaseShaderBinding(m_lightBinding);
+		}
+		m_lightBinding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(m_pipeline, 1), lightingBindingData);
 	}
 
 	void Renderer3D::CreateSkyboxPipeline()
@@ -286,13 +604,12 @@ namespace tako
 			struct Camera
 			{
 				viewDirectionProjectionInverse: mat4x4f,
-				projection: mat4x4f,
 			};
 
 			@group(0) @binding(0) var<uniform> camera: Camera;
 
-			@group(2) @binding(0) var skyTex: texture_cube<f32>;
-			@group(2) @binding(1) var skySampler: sampler;
+			@group(1) @binding(0) var skyTex: texture_cube<f32>;
+			@group(1) @binding(1) var skySampler: sampler;
 
 			struct VertexOutput {
 				@builtin(position) position: vec4f,
@@ -324,26 +641,45 @@ namespace tako
 		pipelineDescriptor.vertEntry = "vs_main";
 		pipelineDescriptor.fragEntry = "fs_main";
 
-		pipelineDescriptor.pipelineUniformSize = sizeof(LightSettings);
-		pipelineDescriptor.samplerTextureType = TextureType::Cube;
+		std::array<ShaderEntry, 1> cameraBinding
+		{
+			{ShaderBindingType::Uniform, sizeof(Matrix4)}
+		};
+		std::array<ShaderEntry, 2> materialBinding
+		{{
+			ShaderBindingType::TextureCube, 0,
+			ShaderBindingType::Sampler, 0
+		}};
+		std::array<ShaderBindingDescriptor, 2> shaderBindings
+		{{
+			cameraBinding,
+			materialBinding
+		}};
+		pipelineDescriptor.shaderBindings = shaderBindings;
 
 		pipelineDescriptor.usePerDrawModel = false;
 
 		m_skyPipeline = m_context->CreatePipeline(pipelineDescriptor);
 	}
 
-	Material Renderer3D::CreateSkybox(Texture cubemap)
+	Skybox Renderer3D::CreateSkybox(Texture cubemap)
 	{
-		return m_context->CreateMaterial(cubemap, { TextureType::Cube });
+		std::array<ShaderBindingEntryData, 2> bindingData
+		{{
+			cubemap,
+			m_sampler,
+		}};
+		auto binding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(m_skyPipeline, 1), bindingData);
+		return binding;
 	}
 
-	void Renderer3D::RenderSkybox(Material skybox)
+	void Renderer3D::RenderSkybox(const Skybox skybox)
 	{
 		m_context->BindPipeline(&m_skyPipeline);
-		CameraUniformData cam;
-		cam.view = Matrix4::inverse(m_cameraData.proj * m_cameraData.view);
-		m_context->UpdateCamera(cam);
-		m_context->BindMaterial(&skybox);
+		Matrix4 viewProjectionInverse = Matrix4::inverse(m_cameraData.proj * m_cameraData.view);
+		m_context->UpdateBuffer(m_skyCameraBuffer, &viewProjectionInverse, sizeof(viewProjectionInverse));
+		m_context->Bind(m_skyCameraBinding, 0);
+		m_context->Bind(skybox, 1);
 
 		m_context->Draw(3);
 	}
@@ -351,6 +687,8 @@ namespace tako
 	void Renderer3D::Begin()
 	{
 		m_context->BindPipeline(&m_pipeline);
+		m_context->Bind(m_cameraBinding, 0);
+		m_context->Bind(m_lightBinding, 1);
 	}
 
 	void Renderer3D::End()
@@ -361,7 +699,7 @@ namespace tako
 	{
 		m_context->BindVertexBuffer(&mesh.vertexBuffer);
 		m_context->BindIndexBuffer(&mesh.indexBuffer);
-		m_context->BindMaterial(&material);
+		m_context->Bind(material, 2);
 		m_context->DrawIndexed(mesh.indexCount, model);
 	}
 
@@ -369,7 +707,7 @@ namespace tako
 	{
 		m_context->BindVertexBuffer(&mesh.vertexBuffer);
 		m_context->BindIndexBuffer(&mesh.indexBuffer);
-		m_context->BindMaterial(&material);
+		m_context->Bind(material, 2);
 		m_context->DrawIndexed(mesh.indexCount, instanceCount, transforms);
 	}
 
@@ -378,9 +716,44 @@ namespace tako
 		DrawMesh(m_cubeMesh, material, model);
 	}
 
+	void Renderer3D::DrawCube(Vector3 size, const Matrix4& model, const Material& material)
+	{
+		auto it = m_cubeMeshCache.find(size);
+		Mesh cubeMesh;
+		if (it != m_cubeMeshCache.end())
+		{
+			cubeMesh = it->second;
+		}
+		else
+		{
+			cubeMesh = CreateCubeMesh(size);
+			m_cubeMeshCache.emplace(size, cubeMesh);
+		}
+		DrawMesh(cubeMesh, material, model);
+	}
+
 	void Renderer3D::DrawCubeInstanced(const Material& material, size_t instanceCount, const Matrix4* transforms)
 	{
 		DrawMeshInstanced(m_cubeMesh, material, instanceCount, transforms);
+	}
+
+
+	void Renderer3D::DrawSphereCube(float radius, int resolution, const Matrix4& model, const Material& material)
+	{
+		SphereCubeGenerationParams key{radius, resolution};
+		auto it = m_sphereMeshCache.find(key);
+		Mesh sphereMesh;
+		if (it != m_sphereMeshCache.end())
+		{
+			sphereMesh = it->second;
+		}
+		else
+		{
+			auto data = GenerateSphereCubeData(radius, resolution);
+			sphereMesh = CreateMesh(data.vertices, data.indices);
+			m_sphereMeshCache.emplace(key, sphereMesh);
+		}
+		DrawMesh(sphereMesh, material, model);
 	}
 
 	void Renderer3D::DrawModel(const Model& model, const Matrix4& transform)
@@ -399,7 +772,7 @@ namespace tako
 		}
 	}
 
-	Mesh Renderer3D::CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices)
+	Mesh Renderer3D::CreateMesh(std::span<const Vertex> vertices,std::span<const uint16_t> indices)
 	{
 		Mesh mesh;
 		mesh.vertexBuffer = m_context->CreateBuffer(BufferType::Vertex, vertices.data(), sizeof(vertices[0]) * vertices.size());
@@ -413,14 +786,55 @@ namespace tako
 		m_cameraData.view = view;
 		m_cameraData.proj = Matrix4::perspective(45, m_context->GetWidth() / (float) m_context->GetHeight(), 0.1, 1000);
 		//cam.viewProj = cam.proj * cam.view;
-		m_context->UpdateCamera(m_cameraData);
+		m_context->UpdateBuffer(m_cameraBuffer, &m_cameraData, sizeof(m_cameraData));
 	}
 
-	void Renderer3D::SetLightPosition(Vector3 lightPos)
+	void Renderer3D::SetLights(LightRange auto lights)
 	{
-		LightSettings lights;
-		lights.lightPos = Vector4(lightPos);
-		m_context->UpdateUniform(&lights, sizeof(LightSettings));
+		std::vector<GPULight> gpuLights;
+		if constexpr (std::ranges::sized_range<decltype(lights)>)
+		{
+			gpuLights.reserve(lights.size());
+		}
+
+		for (auto lightVariant : lights)
+		{
+			std::visit([&](auto& light)
+			{
+				using T = std::decay_t<decltype(light)>;
+				GPULight& gpuLight = gpuLights.emplace_back();
+				if constexpr (std::is_same_v<T, PointLight>)
+				{
+					gpuLight.positionVS = m_cameraData.view * Vector4(light.position);
+					gpuLight.type = GPULightType::Point;
+				}
+				else if constexpr (std::is_same_v<T, DirectionalLight>)
+				{
+					gpuLight.positionVS = (m_cameraData.view * Vector4(light.direction, 0)).Normalize();
+					gpuLight.type = GPULightType::Directional;
+				}
+				else
+				{
+					static_assert(false, "non exhaustive light variant");
+				}
+
+				gpuLight.color = light.color;
+			}, lightVariant);
+		}
+
+		if (gpuLights.size() > 0)
+		{
+			if (gpuLights.size() > m_lightBufferSize)
+			{
+				CreateLightBuffer(gpuLights.size());
+			}
+			m_context->UpdateBuffer(m_lightBuffer, gpuLights.data(), gpuLights.size() * sizeof(GPULight));
+		}
+
+		LightSettings settings;
+		settings.ambient = Vector4(0.1f, 0.1f, 0.1f, 1.0f);
+		settings.lightCount = gpuLights.size();
+		m_context->UpdateBuffer(m_lightSettingsBuffer, &settings, sizeof(settings));
 	}
 
 	Model Renderer3D::LoadModel(StringView file)
@@ -494,7 +908,7 @@ namespace tako
 			ASSERT(mat.pbrData.baseColorTexture.has_value());
 			size_t texIndex = mat.pbrData.baseColorTexture.value().textureIndex;
 			size_t imageIndex = asset.textures[texIndex].imageIndex.value();
-			model.materials[i] = m_context->CreateMaterial(model.textures[imageIndex]);
+			model.materials[i] = CreateMaterial(model.textures[imageIndex]);
 		}
 
 		fastgltf::iterateSceneNodes(asset, 0, fastgltf::math::fmat4x4(), [&](fastgltf::Node& node, fastgltf::math::fmat4x4 matrix)
@@ -522,7 +936,7 @@ namespace tako
 					{
 						Vertex v;
 						v.pos = pos;
-						v.pos.y *= -1;
+						//v.pos.y *= -1;
 						v.color = Vector3(1, 1, 1);
 						vertices[index] = v;
 					});

@@ -6,6 +6,7 @@ module;
 export module Tako.Window;
 
 export import Tako.Event;
+import Tako.Math;
 
 namespace tako
 {
@@ -18,6 +19,7 @@ namespace tako
 		bool ShouldExit();
 		int GetWidth();
 		int GetHeight();
+		Point GetFramebufferSize();
 		WindowHandle GetHandle() const;
 		void SetEventCallback(const std::function<void(Event&)>& callback);
 	private:

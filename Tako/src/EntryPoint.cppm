@@ -1,7 +1,6 @@
 module;
 #include "Tako.hpp"
 #include "Timer.hpp"
-#include "Resources.hpp"
 #include <thread>
 #include <functional>
 //#include "OpenGLPixelArtDrawer.hpp"
@@ -15,11 +14,11 @@ module;
 
 #ifdef TAKO_IMGUI
 #include "imgui.h"
-#ifdef TAKO_WIN32
-#include "imgui_impl_win32.h"
-#endif
-#ifdef TAKO_GLFW
+
+#if defined(TAKO_GLFW)
 #include "imgui_impl_glfw.h"
+#elif defined(TAKO_WIN32)
+#include "imgui_impl_win32.h"
 #endif
 #ifdef TAKO_OPENGL
 #include "imgui_impl_opengl3.h"
@@ -35,6 +34,7 @@ import Tako.Audio;
 //import Tako.Renderer3D;
 import Tako.Application;
 //import Tako.Serialization;
+import Tako.Resources;
 import Tako.JobSystem;
 import Tako.RmlUi;
 import Tako.Allocators.CachePoolAllocator;
@@ -55,17 +55,19 @@ namespace tako
 		std::atomic<bool>& keepRunning;
 		//Allocators::PoolAllocator frameDataPool;
 		Allocators::CachePoolAllocator frameDataAllocator;
+#ifdef TAKO_EDITOR
+		tako::FileWatcher& watcher;
+#endif
 #ifdef TAKO_EMSCRIPTEN
 		pthread_t mainThread;
 		emscripten::ProxyingQueue proxyQueue;
 #endif
+
 		std::atomic_flag frameDataPoolLock = ATOMIC_FLAG_INIT;
 		std::atomic<int> frame = 0;
 		int openFrames = 1;
 		std::atomic_flag frameCounterLock = ATOMIC_FLAG_INIT;
-#ifdef TAKO_EDITOR
-		tako::FileWatcher& watcher;
-#endif
+
 	};
 
 	void Tick(void* p)
@@ -79,26 +81,31 @@ namespace tako
 		static std::atomic<float> fps = 1;
 		fps = 0.01f * 1/dt + 0.99f * fps;
 		//LOG("frame {}: fps: {}", thisFrame, 1/dt);
-/*
 #ifdef TAKO_EDITOR
 		for (auto& change: data->watcher.Poll())
 		{
-			LOG("Change {}", change.path);
-			LOG("Change: {}", change.path.filename());
-#ifdef TAKO_OPENGL
-			if (change.path.extension() == ".png")
+			auto path = change.path.string();
+			//TODO: make more robust
+			for (auto& c : path)
 			{
-				auto file = "/" / change.path.filename();
-				auto bitmap = Bitmap::FromFile(file.c_str());
-				data->drawer->UpdateTexture(data->resources.Load<Texture>(file), bitmap);
+				if (c == '\\')
+				{
+					c = '/';
+				}
 			}
-#endif
+			LOG("Filechange detected {}", path);
+			data->resources.Reload(path);
 		}
 #endif
- */
+
+#ifdef TAKO_GLFW
+		data->jobSys.ScheduleForThread(0, [=]()
+#else
 		data->jobSys.Schedule([=]()
+#endif
 		{
 			data->window.Poll();
+			data->input.Update();
 #ifdef TAKO_IMGUI
 			switch (data->context.GetAPI())
 			{
@@ -113,15 +120,14 @@ namespace tako
 					break;
 				#endif
 			}
-#ifdef TAKO_WIN32
-			ImGui_ImplWin32_NewFrame();
-#endif
-#ifdef TAKO_GLFW
+
+#if defined(TAKO_GLFW)
 			ImGui_ImplGlfw_NewFrame();
+#elif defined(TAKO_WIN32)
+			ImGui_ImplWin32_NewFrame();
 #endif
 			ImGui::NewFrame();
 #endif
-			data->input.Update();
 		});
 
 
@@ -180,8 +186,8 @@ namespace tako
 						};
 						data->config.Draw(stageData);
 					}
+					data->ui.Draw();
 					#ifdef TAKO_IMGUI
-					ImGui::EndFrame();
 					ImGui::Render();
 					switch (data->context.GetAPI())
 					{
@@ -198,7 +204,6 @@ namespace tako
 						#endif
 					}
 					#endif
-					data->ui.Draw();
 					data->context.End();
 
 					#ifdef TAKO_IMGUI
@@ -289,9 +294,8 @@ namespace tako
 			io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 			io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 			io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-			#if defined(TAKO_WIN32)
-				ImGui_ImplWin32_Init(window.GetHandle());
-			#elif defined(TAKO_GLFW)
+
+			#if defined(TAKO_GLFW)
 				#ifdef TAKO_OPENGL
 					ImGui_ImplGlfw_InitForOpenGL(window.GetHandle(), true);
 				#else
@@ -300,6 +304,8 @@ namespace tako
 				#ifdef TAKO_EMSCRIPTEN
 					ImGui_ImplGlfw_InstallEmscriptenCallbacks(window.GetHandle(), "#canvas");
 				#endif
+			#elif defined(TAKO_WIN32)
+				ImGui_ImplWin32_Init(window.GetHandle());
 			#endif
 			switch (api)
 			{
@@ -324,7 +330,7 @@ namespace tako
 		#endif
 		tako::Broadcaster broadcaster;
 
-		Resources resources(context.get());
+		Resources resources;
 		RmlUi ui;
 		ui.Init(&window, context.get());
 
@@ -346,9 +352,9 @@ namespace tako
 			//LOG("Event: {}", ev);
 			switch (ev.GetType())
 			{
-				case tako::EventType::WindowResize:
+				case tako::EventType::FramebufferResize:
 				{
-					tako::WindowResize& res = static_cast<tako::WindowResize&>(ev);
+					tako::FramebufferResize& res = static_cast<tako::FramebufferResize&>(ev);
 					LOG("Resize {} {}", res.width, res.height);
 					context->Resize(res.width, res.height);
 				} break;
@@ -396,12 +402,11 @@ namespace tako
 			keepRunning,
 			//{ framePoolData, framePoolSize, config.frameDataSize },
 			{},
-#ifdef EMSCRIPTEN
-			pthread_self(),
-#endif
-
 #ifdef TAKO_EDITOR
 			watcher
+#endif
+#ifdef EMSCRIPTEN
+			pthread_self(),
 #endif
 		};
 

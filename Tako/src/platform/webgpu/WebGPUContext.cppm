@@ -1,16 +1,18 @@
 module;
 #include "Utility.hpp"
 #include <IGraphicsContext.hpp>
+#include <webgpu/webgpu_cpp.h>
 #if defined(TAKO_EMSCRIPTEN)
 #include <emscripten.h>
 #elif defined(TAKO_GLFW)
 #include <webgpu/webgpu_glfw.h>
 #endif
-#include <webgpu/webgpu_cpp.h>
+#include <bit>
 export module Tako.WebGPU;
 
 import Tako.JobSystem;
 import Tako.StringView;
+import Tako.HandleVec;
 import Tako.SmallVec;
 
 class WStringView : public tako::CStringView
@@ -111,34 +113,60 @@ namespace tako
 		size_t usedCameraBuffers = 0;
 	};
 
+	struct TextureEntry
+	{
+		wgpu::Texture texture;
+		wgpu::TextureView view;
+	};
+
+	struct PipelineEntry
+	{
+		wgpu::RenderPipeline pipeline;
+		std::vector<ShaderBindingLayout> layouts;
+		U16 modelBinding;
+	};
+
 	wgpu::TextureViewDimension ConvertToWGPU(TextureType type);
 
 	export class WebGPUContext final : public IGraphicsContext
 	{
 	public:
-		WebGPUContext(Window* window) : m_width(window->GetWidth()), m_height(window->GetHeight())
+		WebGPUContext(Window* window)
 		{
+			auto frameBufferSize = window->GetFramebufferSize();
+			m_width = frameBufferSize.x;
+			m_height = frameBufferSize.y;
 			wgpu::InstanceDescriptor desc;
 
 			wgpu::Instance instance;
-			#ifdef EMSCRIPTEN
-				instance = wgpu::CreateInstance(nullptr);
-			#else
-				wgpu::DawnTogglesDescriptor toggles;
-				toggles.sType = wgpu::SType::DawnTogglesDescriptor;
-				toggles.disabledToggleCount = 0;
-				toggles.enabledToggleCount = 1;
-				const char* toggleName = "enable_immediate_error_handling";
-				toggles.enabledToggles = &toggleName;
 
-				desc.nextInChain = &toggles;
-				instance = wgpu::CreateInstance(&desc);
-			#endif
+
+#ifdef EMSCRIPTEN
+			instance = wgpu::CreateInstance(nullptr);
+#else
+			wgpu::DawnTogglesDescriptor toggles;
+			toggles.sType = wgpu::SType::DawnTogglesDescriptor;
+			toggles.disabledToggleCount = 0;
+			toggles.enabledToggleCount = 1;
+			const char* toggleName = "enable_immediate_error_handling";
+			toggles.enabledToggles = &toggleName;
+
+			desc.nextInChain = &toggles;
+#ifndef TAKO_WINDOWS
+			instance = wgpu::CreateInstance(&desc);
+#else
+			// Workaround required to compile under windows
+			{
+				auto result = wgpuCreateInstance(reinterpret_cast<WGPUInstanceDescriptor const*>(&desc));
+				instance = wgpu::Instance::Acquire(result);
+			}
+#endif
+#endif
 			ASSERT(instance);
 			m_instance = instance;
 
 			// Surface
-			#if defined(TAKO_EMSCRIPTEN)
+#if defined(TAKO_EMSCRIPTEN)
 			wgpu::SurfaceDescriptorFromCanvasHTMLSelector fromCanvasHTMLSelector;
 			fromCanvasHTMLSelector.sType = wgpu::SType::SurfaceDescriptorFromCanvasHTMLSelector;
 			fromCanvasHTMLSelector.selector = window->GetHandle();
@@ -148,9 +176,9 @@ namespace tako
 			surfaceDescriptor.label = nullptr;
 
 			m_surface = m_instance.CreateSurface(&surfaceDescriptor);
-			#elif defined(TAKO_GLFW)
+#elif defined(TAKO_GLFW)
 			m_surface = wgpu::glfw::CreateSurfaceForWindow(m_instance, window->GetHandle());
-			#endif
+#endif
 			ASSERT(m_surface);
 
 			wgpu::RequestAdapterOptions adapterOpts;
@@ -167,9 +195,9 @@ namespace tako
 
 			while (!m_initComplete)
 			{
-				#ifdef TAKO_EMSCRIPTEN
+#ifdef TAKO_EMSCRIPTEN
 				emscripten_sleep(100);
-				#endif
+#endif
 			}
 		}
 
@@ -275,9 +303,9 @@ namespace tako
 
 		virtual void Present() override
 		{
-			#ifndef EMSCRIPTEN
+#ifndef EMSCRIPTEN
 			m_surface.Present();
-			#endif
+#endif
 		}
 
 		virtual void Resize(int width, int height) override
@@ -310,8 +338,9 @@ namespace tako
 
 		virtual void BindPipeline(const Pipeline* pipeline) override
 		{
-			WGPURenderPipeline wPipeline = reinterpret_cast<WGPURenderPipeline>(pipeline->value);
-			wgpuRenderPassEncoderSetPipeline(m_renderPass, wPipeline);
+			auto& entry = m_pipelines[*pipeline];
+			wgpuRenderPassEncoderSetPipeline(m_renderPass, entry.pipeline.Get());
+			m_currentModelBinding = entry.modelBinding;
 		}
 
 		virtual void BindVertexBuffer(const Buffer* buffer) override
@@ -326,27 +355,16 @@ namespace tako
 			wgpuRenderPassEncoderSetIndexBuffer(m_renderPass, wBuffer, WGPUIndexFormat_Uint16, 0, wgpuBufferGetSize(wBuffer));
 		}
 
-		virtual void BindMaterial(const Material* material) override
+		void Bind(const ShaderBinding binding, const U32 slot) override
 		{
-			WGPUBindGroup bindGroup = reinterpret_cast<WGPUBindGroup>(material->value);
-			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 2, bindGroup, 0, nullptr);
+			auto& bindGroup = m_shaderBindings[binding];
+			wgpuRenderPassEncoderSetBindGroup(m_renderPass, slot, bindGroup.Get(), 0, nullptr);
 		}
 
-		virtual void UpdateCamera(const CameraUniformData& cameraData) override
+		virtual void UpdateBuffer(Buffer buffer, const void* data, size_t writeSize, size_t offset = 0) override
 		{
-			if (m_currentFrame.usedCameraBuffers >= m_cameraBuffers.size())
-			{
-				CreateCameraBuffer();
-			}
-			auto& buffer = m_cameraBuffers[m_currentFrame.usedCameraBuffers++];
-			m_queue.WriteBuffer(buffer.buffer, 0, &cameraData, sizeof(CameraUniformData));
-			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 0, buffer.group.Get(), 0, nullptr);
-		}
-
-		virtual void UpdateUniform(const void* uniformData, size_t uniformSize, size_t offset = 0) override
-		{
-			m_queue.WriteBuffer(m_pipelineUniformBuffer, offset, uniformData, uniformSize);
-			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 1, m_pipelineBindGroup.Get(), 0, nullptr);
+			auto buf = reinterpret_cast<WGPUBuffer>(buffer.value);
+			m_queue.WriteBuffer(buf, offset, data, writeSize);
 		}
 
 		virtual void Draw(U32 vertexCount) override
@@ -367,7 +385,7 @@ namespace tako
 			}
 			uint64_t bufferOffset = m_instanceBuffer.currentIndex * sizeof(Matrix4);
 			m_queue.WriteBuffer(m_instanceBuffer.buffer, bufferOffset, renderMatrix, matrixCount * sizeof(Matrix4));
-			wgpuRenderPassEncoderSetBindGroup(m_renderPass, 3, m_instanceBuffer.group.Get(), 0, nullptr);
+			wgpuRenderPassEncoderSetBindGroup(m_renderPass, m_currentModelBinding, m_instanceBuffer.group.Get(), 0, nullptr);
 			wgpuRenderPassEncoderDrawIndexed(m_renderPass, indexCount, matrixCount, 0, 0, m_instanceBuffer.currentIndex);
 			m_instanceBuffer.currentIndex += matrixCount;
 		}
@@ -379,11 +397,11 @@ namespace tako
 
 			WGPUShaderModuleWGSLDescriptor shaderCodeDesc{};
 			shaderCodeDesc.chain.next = nullptr;
-			#ifdef TAKO_EMSCRIPTEN
+#ifdef TAKO_EMSCRIPTEN
 			shaderCodeDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
-			#else
+#else
 			shaderCodeDesc.chain.sType = WGPUSType_ShaderSourceWGSL;
-			#endif
+#endif
 			shaderCodeDesc.code = WStringView(pipelineDescriptor.shaderCode);
 
 			shaderDesc.nextInChain = &shaderCodeDesc.chain;
@@ -489,25 +507,19 @@ namespace tako
 			pipelineDesc.multisample.mask = ~0u;
 			pipelineDesc.multisample.alphaToCoverageEnabled = false;
 
-			CreatePipelineUniformLayout(pipelineDescriptor.pipelineUniformSize);
-
+			PipelineEntry pipelineEntry;
 			std::vector<wgpu::BindGroupLayout> layouts; //TODO: Use SmallVec
-			layouts.push_back(m_cameraLayout);
-			layouts.push_back(m_pipelineBindLayout);
-			switch (pipelineDescriptor.samplerTextureType)
+			for (auto& binding : pipelineDescriptor.shaderBindings)
 			{
-				case TextureType::E2D:
-					layouts.push_back(m_materialLayout);
-					break;
-				case TextureType::Cube:
-					layouts.push_back(m_cubeMaterialLayout);
-					break;
+				wgpu::BindGroupLayout layout = CreateBindingLayout(binding);
+				layouts.push_back(layout);
+				pipelineEntry.layouts.push_back(m_shaderBindingLayouts.Insert(std::move(layout)));
 			}
+
 			if (pipelineDescriptor.usePerDrawModel)
 			{
 				layouts.push_back(m_modelLayout);
 			}
-
 
 			wgpu::PipelineLayoutDescriptor layoutDesc;
 			layoutDesc.nextInChain = nullptr;
@@ -521,41 +533,34 @@ namespace tako
 
 			wgpuShaderModuleRelease(shaderModule);
 
-			//TODO: manage pipeline lifetime
-			return {reinterpret_cast<U64>(pipeline)};
+			pipelineEntry.pipeline = wgpu::RenderPipeline::Acquire(pipeline);
+			pipelineEntry.modelBinding = layouts.size() - 1;
+			return m_pipelines.Insert(std::move(pipelineEntry));
 		}
 
-		virtual Material CreateMaterial(const Texture texture, const MaterialDescriptor& materialDescriptor = {}) override
+		ShaderBindingLayout GetPipelineShaderBindingLayout(const Pipeline pipeline, const size_t slot) override
 		{
-			wgpu::Texture tex = wgpu::Texture(reinterpret_cast<WGPUTexture>(texture.handle.value));
+			auto& entry = m_pipelines[pipeline];
+			return entry.layouts[slot];
+		}
 
-			wgpu::TextureViewDescriptor textureViewDesc {};
-			textureViewDesc.nextInChain = nullptr;
-			textureViewDesc.aspect = wgpu::TextureAspect::All;
-			textureViewDesc.baseArrayLayer = 0;
-			switch (materialDescriptor.textureType)
-			{
-				case TextureType::E2D:
-					textureViewDesc.arrayLayerCount = 1;
-					break;
-				case TextureType::Cube:
-					textureViewDesc.arrayLayerCount = 6;
-					break;
-			}
-			textureViewDesc.baseMipLevel = 0;
-			textureViewDesc.mipLevelCount = 1;
-			textureViewDesc.dimension = ConvertToWGPU(materialDescriptor.textureType);
-			textureViewDesc.format = m_textureFormat; //TODO: Get from texture?
-			wgpu::TextureView textureView = tex.CreateView(&textureViewDesc);
-			ASSERT(textureView);
+		virtual Texture CreateTexture(const ImageView image, TextureType type = TextureType::E2D) override
+		{
+			return CreateWGPUTexture(std::span<const ImageView>{&image, 1}, wgpu::TextureDimension::e2D, ConvertToWGPU(type));
+		}
 
-			std::array<wgpu::BindGroupEntry, 2> bindings;
+		virtual Texture CreateTexture(std::span<const ImageView> images, TextureType type = TextureType::Cube) override
+		{
+			return CreateWGPUTexture(images, wgpu::TextureDimension::e2D, ConvertToWGPU(type));
+		}
 
-			auto& textureBinding = bindings[0];
-			textureBinding.nextInChain = nullptr;
-			textureBinding.binding = 0;
-			textureBinding.textureView = textureView;
+		void ReleaseTexture(const Texture texture) override
+		{
+			m_textures.Remove(texture);
+		}
 
+		Sampler CreateSampler() override
+		{
 			wgpu::SamplerDescriptor samplerDesc;
 			samplerDesc.nextInChain = nullptr;
 			samplerDesc.addressModeU = wgpu::AddressMode::ClampToEdge;
@@ -568,38 +573,7 @@ namespace tako
 			samplerDesc.lodMaxClamp = 1.0f;
 			samplerDesc.compare = wgpu::CompareFunction::Undefined;
 			samplerDesc.maxAnisotropy = 1;
-			wgpu::Sampler sampler = m_device.CreateSampler(&samplerDesc);
-
-			auto& samplerBinding = bindings[1];
-			samplerBinding.binding = 1;
-			samplerBinding.sampler = sampler;
-
-			wgpu::BindGroupDescriptor bindGroupDesc{};
-			bindGroupDesc.nextInChain = nullptr;
-			switch (materialDescriptor.textureType)
-			{
-				case TextureType::E2D:
-					bindGroupDesc.layout = m_materialLayout;
-					break;
-				case TextureType::Cube:
-					bindGroupDesc.layout = m_cubeMaterialLayout;
-					break;
-			}
-
-			bindGroupDesc.entryCount = bindings.size();
-			bindGroupDesc.entries = bindings.data();
-			wgpu::BindGroup bindGroup = m_device.CreateBindGroup(&bindGroupDesc);
-			return { reinterpret_cast<U64>(bindGroup.MoveToCHandle()) };
-		}
-
-		virtual Texture CreateTexture(const ImageView image) override
-		{
-			return CreateWGPUTexture(std::span<const ImageView>{&image, 1}, wgpu::TextureDimension::e2D);
-		}
-
-		virtual Texture CreateTexture(const std::span<const ImageView> images) override
-		{
-			return CreateWGPUTexture(images, wgpu::TextureDimension::e2D);
+			return m_samplers.Insert(m_device.CreateSampler(&samplerDesc));
 		}
 
 		virtual Buffer CreateBuffer(BufferType bufferType, const void* bufferData, size_t bufferSize) override
@@ -613,6 +587,12 @@ namespace tako
 				case BufferType::Index:
 					usage = WGPUBufferUsage_Index;
 					break;
+				case BufferType::Uniform:
+					usage = WGPUBufferUsage_Uniform;
+					break;
+				case BufferType::Storage:
+					usage = WGPUBufferUsage_Storage;
+					break;
 			}
 
 			WGPUBuffer buffer = CreateWGPUBuffer(usage, bufferData, bufferSize);
@@ -620,9 +600,78 @@ namespace tako
 			return {reinterpret_cast<U64>(buffer)};
 		}
 
+		Buffer CreateBuffer(BufferType bufferType, size_t bufferSize) override
+		{
+			WGPUBufferUsage usage;
+			switch (bufferType)
+			{
+			case BufferType::Vertex:
+				usage = WGPUBufferUsage_Vertex;
+				break;
+			case BufferType::Index:
+				usage = WGPUBufferUsage_Index;
+				break;
+			case BufferType::Uniform:
+				usage = WGPUBufferUsage_Uniform;
+				break;
+			case BufferType::Storage:
+				usage = WGPUBufferUsage_Storage;
+				break;
+			}
+
+			WGPUBuffer buffer = CreateWGPUBuffer(usage, bufferSize);
+
+			return {reinterpret_cast<U64>(buffer)};
+		}
+
 		virtual void ReleaseBuffer(Buffer buffer) override
 		{
 			wgpuBufferRelease(reinterpret_cast<WGPUBuffer>(buffer.value));
+		}
+
+		ShaderBinding CreateShaderBinding(ShaderBindingLayout layout, std::span<ShaderBindingEntryData> entries) override
+		{
+			std::vector<wgpu::BindGroupEntry> bindings;
+			for (size_t i = 0; i < entries.size(); i++)
+			{
+				auto& binding = bindings.emplace_back();
+				binding.nextInChain = nullptr;
+				binding.binding = i;
+
+				std::visit(overloaded
+				{
+					[&](const Buffer buffer)
+					{
+						binding.buffer = wgpu::Buffer(reinterpret_cast<WGPUBuffer>(buffer.value));
+						binding.offset = 0;
+						//TODO: size?
+					},
+					[&](const Texture texture)
+					{
+						auto& textures = m_textures;
+						auto& entry = m_textures[texture];
+						binding.textureView = entry.view;
+					},
+					[&](const Sampler sampler)
+					{
+						binding.sampler = m_samplers[sampler];
+					}
+				}, entries[i]);
+			}
+
+			wgpu::BindGroupDescriptor bindGroupDesc{};
+			bindGroupDesc.nextInChain = nullptr;
+			bindGroupDesc.layout = m_shaderBindingLayouts[layout];
+
+			bindGroupDesc.entryCount = bindings.size();;
+			bindGroupDesc.entries = bindings.data();
+			auto shaderBinding = m_device.CreateBindGroup(&bindGroupDesc);
+			return m_shaderBindings.Insert(std::move(shaderBinding));
+		}
+
+		void ReleaseShaderBinding(ShaderBinding binding) override
+		{
+			m_shaderBindings.Remove(binding);
 		}
 
 		//Hacks to get IMGUI working
@@ -653,18 +702,16 @@ namespace tako
 		wgpu::TextureFormat m_textureFormat = wgpu::TextureFormat::RGBA8Unorm;
 
 		FrameState m_currentFrame;
-		std::vector<CameraBuffer> m_cameraBuffers;
-		wgpu::BindGroupLayout m_cameraLayout;
 
-		wgpu::Buffer m_pipelineUniformBuffer;
-		wgpu::BindGroupLayout m_pipelineBindLayout;
-		wgpu::BindGroup m_pipelineBindGroup;
+		HandleVec<Texture, TextureEntry> m_textures;
+		HandleVec<Sampler, wgpu::Sampler> m_samplers;
+		HandleVec<Pipeline, PipelineEntry> m_pipelines;
+		HandleVec<ShaderBindingLayout, wgpu::BindGroupLayout> m_shaderBindingLayouts;
+		HandleVec<ShaderBinding, wgpu::BindGroup> m_shaderBindings;
 
-		wgpu::BindGroupLayout m_materialLayout;
-		wgpu::BindGroupLayout m_cubeMaterialLayout;
 		wgpu::BindGroupLayout m_modelLayout;
-
 		InstanceBuffer m_instanceBuffer;
+		size_t m_currentModelBinding = 0;
 
 		WGPURenderPassEncoder m_renderPass;
 		WGPUTextureView m_targetView;
@@ -686,11 +733,40 @@ namespace tako
 
 				#ifdef TAKO_EMSCRIPTEN
 				m_surfaceFormat = m_surface.GetPreferredFormat(adapter);
+				//TODO: check if format is sRGB or not
 				#else
-				wgpu::SurfaceCapabilities capabilities;
-				m_surface.GetCapabilities(adapter, &capabilities);
-				m_surfaceFormat = capabilities.formats[0]; //Dawn workaround
+				{
+					wgpu::SurfaceCapabilities capabilities;
+					m_surface.GetCapabilities(adapter, &capabilities);
+					for (int i = 0; i < capabilities.formatCount; i++)
+					{
+						LOG("Supported Surface Format: {}", (uint32_t) capabilities.formats[i]);
+					}
+					wgpu::TextureFormat matchingFormat = wgpu::TextureFormat::Undefined;
+					for (int i = 0; i < capabilities.formatCount; i++)
+					{
+						auto format = capabilities.formats[i];
+						if (format == wgpu::TextureFormat::RGBA8Unorm || format == wgpu::TextureFormat::BGRA8Unorm)
+						{
+							matchingFormat = format;
+							break;
+						}
+					}
+					if (matchingFormat != wgpu::TextureFormat::Undefined)
+					{
+						m_surfaceFormat = matchingFormat;
+					}
+					else
+					{
+						ASSERT(capabilities.formatCount > 0);
+						LOG_ERR("TODO: none of expected surface formats are supported");
+						m_surfaceFormat = capabilities.formats[0];
+					}
+
+				}
 				#endif
+
+				LOG("Surface Format: {}", (uint32_t) m_surfaceFormat);
 
 				wgpu::DeviceDescriptor deviceDesc;
 				deviceDesc.nextInChain = nullptr;
@@ -737,9 +813,6 @@ namespace tako
 
 				ConfigureSurface();
 				CreateDepthTexture();
-				CreateCameraUniformLayout();
-				m_materialLayout = CreateMaterialLayout(wgpu::TextureViewDimension::e2D);
-				m_cubeMaterialLayout = CreateMaterialLayout(wgpu::TextureViewDimension::Cube);
 				CreateModelLayout();
 				CreateInstanceBuffer(1024);
 
@@ -810,7 +883,7 @@ namespace tako
 			return targetView;
 		}
 
-		Texture CreateWGPUTexture(const std::span<const ImageView> images, wgpu::TextureDimension dimension)
+		Texture CreateWGPUTexture(const std::span<const ImageView> images, wgpu::TextureDimension dimension, wgpu::TextureViewDimension viewDimension)
 		{
 			ASSERT(images.size() > 0);
 			// Assume all images are the same dimensions
@@ -827,7 +900,9 @@ namespace tako
 			textureDesc.viewFormatCount = 0;
 			textureDesc.viewFormats = nullptr;
 
-			wgpu::Texture texture = m_device.CreateTexture(&textureDesc);
+			TextureEntry entry;
+			entry.texture = m_device.CreateTexture(&textureDesc);
+			ASSERT(entry.texture);
 
 			for (U32 i = 0; i < images.size(); i++)
 			{
@@ -835,7 +910,7 @@ namespace tako
 				#ifdef TAKO_EMSCRIPTEN
 				destination.nextInChain = nullptr;
 				#endif
-				destination.texture = texture;
+				destination.texture = entry.texture;
 				destination.mipLevel = 0;
 				destination.origin = { 0, 0, i };
 				destination.aspect = wgpu::TextureAspect::All;
@@ -849,14 +924,22 @@ namespace tako
 				size_t imageSize = sizeof(Color) * width * height;
 				auto writeSize = textureDesc.size;
 				writeSize.depthOrArrayLayers = 1;
-				m_queue.WriteTexture(&destination, images[i].GetData(), imageSize, &source, &writeSize); //TODO: Write all layers at once
+				m_queue.WriteTexture(&destination, images[i].GetData(), imageSize, &source, &writeSize);
 			}
 
-			Texture tex;
-			tex.handle.value = reinterpret_cast<U64>(texture.MoveToCHandle());
-			tex.width = width;
-			tex.height = height;
-			return tex;
+			wgpu::TextureViewDescriptor textureViewDesc {};
+			textureViewDesc.nextInChain = nullptr;
+			textureViewDesc.aspect = wgpu::TextureAspect::All;
+			textureViewDesc.baseArrayLayer = 0;
+			textureViewDesc.arrayLayerCount = images.size();
+			textureViewDesc.baseMipLevel = 0;
+			textureViewDesc.mipLevelCount = 1;
+			textureViewDesc.dimension = viewDimension;
+			textureViewDesc.format = m_textureFormat; //TODO: Get from texture?
+			entry.view = entry.texture.CreateView(&textureViewDesc);
+			ASSERT(entry.view);
+
+			return m_textures.Insert(std::move(entry));
 		}
 
 		WGPUBuffer CreateWGPUBuffer(WGPUBufferUsage bufferType, const void* bufferData, size_t dataSize)
@@ -934,96 +1017,48 @@ namespace tako
 			m_depthTexture = nullptr;
 		}
 
-		void CreateCameraUniformLayout()
+		wgpu::BindGroupLayout CreateBindingLayout(const ShaderBindingDescriptor& shaderBinding)
 		{
-			wgpu::BindGroupLayoutEntry bindingLayout;
-			bindingLayout.binding = 0;
-			bindingLayout.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
-			bindingLayout.buffer.type = wgpu::BufferBindingType::Uniform;
-			bindingLayout.buffer.minBindingSize = sizeof(CameraUniformData);
+			std::vector<wgpu::BindGroupLayoutEntry> bindingLayouts;
+			for (int i = 0; i < shaderBinding.entries.size(); i++)
+			{
+				auto& binding = shaderBinding.entries[i];
+				wgpu::BindGroupLayoutEntry bindingLayout;
+				bindingLayout.binding = i;
+				switch (binding.type)
+				{
+					case ShaderBindingType::Uniform:
+					case ShaderBindingType::Storage:
+						bindingLayout.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
+						bindingLayout.buffer.type = binding.type == ShaderBindingType::Uniform ? wgpu::BufferBindingType::Uniform : wgpu::BufferBindingType::ReadOnlyStorage;
+						bindingLayout.buffer.minBindingSize = binding.size;
+						break;
+					case ShaderBindingType::Texture2D:
+					case ShaderBindingType::TextureCube:
+						bindingLayout.visibility = wgpu::ShaderStage::Fragment;
+						bindingLayout.texture.sampleType = wgpu::TextureSampleType::Float;
+						switch (binding.type)
+						{
+						case ShaderBindingType::Texture2D:
+								bindingLayout.texture.viewDimension = wgpu::TextureViewDimension::e2D;
+								break;
+						case ShaderBindingType::TextureCube:
+								bindingLayout.texture.viewDimension = wgpu::TextureViewDimension::Cube;
+								break;
+						}
+						break;
+					case ShaderBindingType::Sampler:
+						bindingLayout.visibility = wgpu::ShaderStage::Fragment;
+						bindingLayout.sampler.type = wgpu::SamplerBindingType::Filtering;
+						break;
+				}
 
+				bindingLayouts.push_back(bindingLayout);
+			}
 			wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc;
 			bindGroupLayoutDesc.nextInChain = nullptr;
-			bindGroupLayoutDesc.entryCount = 1;
-			bindGroupLayoutDesc.entries = &bindingLayout;
-			m_cameraLayout = m_device.CreateBindGroupLayout(&bindGroupLayoutDesc);
-		}
-
-		void CreateCameraBuffer()
-		{
-			CameraBuffer camBuf;
-			CameraUniformData uniform;
-			uniform.view = Matrix4::cameraViewMatrix(Vector3(0, 0, 0), {});
-			uniform.proj = Matrix4::perspective(45, GetWidth() / (float) GetHeight(), 1, 1000);
-			camBuf.buffer = wgpu::Buffer::Acquire(CreateWGPUBuffer(WGPUBufferUsage_Uniform, &uniform, sizeof(CameraUniformData)));
-
-			wgpu::BindGroupEntry binding;
-			binding.nextInChain = nullptr;
-			binding.binding = 0;
-			binding.buffer = camBuf.buffer;
-			binding.offset = 0;
-			binding.size = sizeof(CameraUniformData);
-
-			wgpu::BindGroupDescriptor bindGroupDesc{};
-			bindGroupDesc.nextInChain = nullptr;
-			bindGroupDesc.layout = m_cameraLayout;
-
-			bindGroupDesc.entryCount = 1;
-			bindGroupDesc.entries = &binding;
-			camBuf.group = m_device.CreateBindGroup(&bindGroupDesc);
-			m_cameraBuffers.push_back(camBuf);
-		}
-
-		void CreatePipelineUniformLayout(size_t size)
-		{
-			wgpu::BindGroupLayoutEntry bindingLayout;
-			bindingLayout.binding = 0;
-			bindingLayout.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
-			bindingLayout.buffer.type = wgpu::BufferBindingType::Uniform;
-			bindingLayout.buffer.minBindingSize = size;
-
-			wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc;
-			bindGroupLayoutDesc.nextInChain = nullptr;
-			bindGroupLayoutDesc.entryCount = 1;
-			bindGroupLayoutDesc.entries = &bindingLayout;
-			m_pipelineBindLayout = m_device.CreateBindGroupLayout(&bindGroupLayoutDesc);
-
-			m_pipelineUniformBuffer = wgpu::Buffer::Acquire(CreateWGPUBuffer(WGPUBufferUsage_Uniform, size));
-
-			wgpu::BindGroupEntry binding;
-			binding.nextInChain = nullptr;
-			binding.binding = 0;
-			binding.buffer = m_pipelineUniformBuffer;
-			binding.offset = 0;
-			binding.size = size;
-
-			wgpu::BindGroupDescriptor bindGroupDesc{};
-			bindGroupDesc.nextInChain = nullptr;
-			bindGroupDesc.layout = m_pipelineBindLayout;
-
-			bindGroupDesc.entryCount = 1;
-			bindGroupDesc.entries = &binding;
-			m_pipelineBindGroup = m_device.CreateBindGroup(&bindGroupDesc);
-		}
-
-		wgpu::BindGroupLayout CreateMaterialLayout(wgpu::TextureViewDimension viewDimension)
-		{
-			std::array<wgpu::BindGroupLayoutEntry, 2> bindingLayoutEntries;
-			auto& textureBindingLayout = bindingLayoutEntries[0];
-			textureBindingLayout.binding = 0;
-			textureBindingLayout.visibility = wgpu::ShaderStage::Fragment;
-			textureBindingLayout.texture.sampleType = wgpu::TextureSampleType::Float;
-			textureBindingLayout.texture.viewDimension = viewDimension;
-
-			auto& samplerBindingLayout = bindingLayoutEntries[1];
-			samplerBindingLayout.binding = 1;
-			samplerBindingLayout.visibility = wgpu::ShaderStage::Fragment;
-			samplerBindingLayout.sampler.type = wgpu::SamplerBindingType::Filtering;
-
-			wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc;
-			bindGroupLayoutDesc.nextInChain = nullptr;
-			bindGroupLayoutDesc.entryCount = bindingLayoutEntries.size();
-			bindGroupLayoutDesc.entries = bindingLayoutEntries.data();
+			bindGroupLayoutDesc.entryCount = bindingLayouts.size();
+			bindGroupLayoutDesc.entries = bindingLayouts.data();
 			return m_device.CreateBindGroupLayout(&bindGroupLayoutDesc);
 		}
 
@@ -1123,6 +1158,7 @@ namespace tako
 			case TextureType::E2D: return wgpu::TextureViewDimension::e2D;
 			case TextureType::Cube: return wgpu::TextureViewDimension::Cube;
 		}
+		ASSERT(false);
 	}
 
 }

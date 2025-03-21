@@ -3,6 +3,7 @@ module;
 #include "Reflection.hpp"
 #include <RmlUi/Core.h>
 #include <variant>
+#include <mutex>
 export module Tako.RmlUi;
 
 import Tako.StringView;
@@ -12,15 +13,20 @@ import Tako.RmlUi.System;
 import Tako.Event;
 import Tako.Window;
 import Tako.NumberTypes;
+import Tako.Resources;
+import Tako.HandleVec;
 
-template<class... Ts>
-struct overloaded : Ts... { using Ts::operator()...; };
 
 namespace tako
 {
 
 Rml::Input::KeyIdentifier RmlConvertKey(Key key);
 int RmlConvertMouseButton(MouseButton button);
+
+export struct RmlDocument
+{
+	U64 value;
+};
 
 export class RmlUi : public IEventHandler
 {
@@ -30,6 +36,7 @@ public:
 
 	void Init(Window* window, GraphicsContext* graphicsContext)
 	{
+		m_window = window;
 		m_graphicsContext = graphicsContext;
 		m_renderer.Init(graphicsContext);
 
@@ -90,15 +97,43 @@ public:
 		return constructor.GetModelHandle();
 	}
 
-	void LoadDocument(StringView filePath)
+	RmlDocument LoadDocument(StringView filePath)
 	{
 		Rml::String path(filePath);
-		m_doc = m_context->LoadDocument(path);
-		if (m_doc)
+		DocumentEntry entry;
+		entry.doc = m_context->LoadDocument(path);
+		return m_documents.Insert(std::move(entry));
+	}
+
+	void ReleaseDocument(RmlDocument document)
+	{
+		auto& entry = m_documents[document];
+		m_context->UnloadDocument(entry.doc);
+		m_documents.Remove(document);
+	}
+
+	void ReloadDocument(RmlDocument old, const StringView filePath)
+	{
+		auto& entry = m_documents[old];
+		m_context->UnloadDocument(entry.doc);
+		Rml::String path(filePath);
+		entry.doc = m_context->LoadDocument(path);
+		if (entry.shown)
 		{
-			LOG("Show doc");
-			m_doc->Show();
+			entry.doc->Show();
 		}
+	}
+
+	void ShowDocument(RmlDocument document)
+	{
+		auto& entry = m_documents[document];
+		entry.shown = true;
+		entry.doc->Show();
+	}
+
+	void RegisterLoaders(Resources* resources)
+	{
+		resources->RegisterLoader(this, &RmlUi::LoadDocument, &RmlUi::ReleaseDocument, &RmlUi::ReloadDocument);
 	}
 
 	void HandleEvent(Event& evt) override
@@ -168,12 +203,18 @@ public:
 	}
 
 private:
+	struct DocumentEntry
+	{
+		Rml::ElementDocument* doc = nullptr;
+		bool shown = false;
+	};
+
 	RmlUiRenderer m_renderer;
 	RmlUiSystem m_system;
-	//SystemInterface_GLFW m_system;
 	Rml::Context* m_context = nullptr;
+	Window* m_window = nullptr;
+	HandleVec<RmlDocument, DocumentEntry> m_documents;
 	GraphicsContext* m_graphicsContext = nullptr;
-	Rml::ElementDocument* m_doc = nullptr;
 	std::mutex m_mutex;
 };
 
