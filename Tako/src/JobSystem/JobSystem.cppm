@@ -31,7 +31,6 @@ namespace tako
 	{
 		void return_value(R&& value) noexcept
 		{
-			LOG("Coroutine returned {}", value);
 			result = std::move(value);
 		}
 
@@ -48,8 +47,7 @@ namespace tako
 		template<typename Promise>
 		constexpr void await_suspend(std::coroutine_handle<Promise> handle) const noexcept
 		{
-			//LOG("Schedule it! {}");
-			JobSystem::Schedule(handle.promise().task);
+			JobSystem::ScheduleJob(handle.promise().task);
 		}
 
 		constexpr void await_resume() const noexcept {}
@@ -58,20 +56,19 @@ namespace tako
 	template<typename R = void>
 	struct Promise : public PromiseBase<R>
 	{
-		InitialTaskAwaiter initial_suspend() noexcept { LOG("initial suspend {}", (void*) task); return {}; }
+		InitialTaskAwaiter initial_suspend() noexcept { return {}; }
 		std::suspend_always final_suspend() noexcept
 		{
-			LOG("final suspend {}", (void*)task);
-			if (task->m_isAwaitedOn && task->m_parent)
+			task->m_done = true;
+			if (task->m_parent)
 			{
-				JobSystem::Schedule(task->m_parent);
+				task->m_parent->OnChildFinished(task);
 			}
 			return {};
 		}
 
 		Task<R> get_return_object()
 		{
-			LOG("get return");
 			return Task<R>(std::coroutine_handle<Promise<R>>::from_promise(*this));
 		}
 
@@ -82,9 +79,46 @@ namespace tako
 
 	class Job
 	{
+		friend JobSystem;
+		template<typename R>
+		friend struct TaskAwaiter;
+		template<typename R = void>
+		friend struct Promise;
 	public:
 		virtual bool Done() = 0;
-		virtual void Resume() = 0;
+	protected:
+		virtual void Run() = 0;
+		virtual void OnChildAwait(Job* child) = 0;
+		virtual void OnChildFinished(Job* child) = 0;
+
+		Job* m_parent = nullptr;
+	};
+
+	template<typename R = void>
+	struct TaskAwaiter
+	{
+		Task<R>* task;
+
+		TaskAwaiter(Task<R>* task) : task(task) {}
+
+		bool await_ready() const noexcept
+		{
+			//return false;
+
+			//TODO: Investigate spuriously double free of task,
+			// when the coroutine is allowed to continue when the task is done
+			return task->Done();
+		}
+		void await_suspend(std::coroutine_handle<> handle) const noexcept
+		{
+			ASSERT(task->m_parent);
+			task->m_parent->OnChildAwait(task);
+		}
+
+		auto await_resume() const noexcept
+		{
+			return task->GetResult();
+		}
 	};
 
 	export template<typename R = void>
@@ -94,16 +128,22 @@ namespace tako
 		using promise_type = Promise<R>;
 		friend promise_type;
 
+
 		constexpr explicit Task(std::coroutine_handle<promise_type> handle) noexcept : m_handle(handle)
 		{
-			LOG("This! {}", (void*) this);
-			m_parent = JobSystem::m_runningJob;
 			handle.promise().task = this;
 		}
 
+		Task(const Task&) = delete;
+		Task& operator= (const Task&) = delete;
+
 		constexpr ~Task() noexcept
 		{
-			m_handle.destroy();
+			if (m_handle)
+			{
+				m_handle.destroy();
+				m_handle = {};
+			}
 		}
 
 		bool Done() override
@@ -111,53 +151,61 @@ namespace tako
 			return m_done;
 		}
 
-		void Resume() override
+		auto GetResult()
 		{
-			if (!m_done)
+			if constexpr (!std::is_void_v<R>)
 			{
-				m_handle.resume();
-				m_done = m_handle.done();
+				return m_handle.promise().result.value();
 			}
 		}
 
 		auto operator co_await()
 		{
-			struct Awaiter
+			return TaskAwaiter<R>(this);
+		}
+	protected:
+		void Run() override
+		{
+			if (!m_done)
 			{
-				Task* task;
+				m_handle.resume();
+			}
+		}
 
-				bool await_ready() const noexcept { return task->m_done; }
-				void await_suspend(std::coroutine_handle<> handle) const noexcept
-				{
-					// ...
-					LOG("awaiter suspend {}", (void*) task);
-					task->m_isAwaitedOn = true;
-					//return task->m_done;
-				}
+		void OnChildAwait(Job* child) override
+		{
+			m_waitingFor = child;
+			if (child->Done())
+			{
+				// In case the child completed before waitingFor was assigned,
+				// check if reschedule is required
+				CheckRescheduleAfterAwait(child);
+			}
+		}
 
-				auto await_resume() const noexcept
-				{
-					LOG("awaiter resume {}", (void*)task);
-					if constexpr (!std::is_void_v<R>)
-					{
-						return task->m_handle.promise().result.value();
-					}
-				}
-			};
-
-			return Awaiter{ this };
+		void OnChildFinished(Job* child) override
+		{
+			CheckRescheduleAfterAwait(child);
 		}
 	private:
-		bool m_done = false;
-		Job* m_parent = nullptr;
-		std::atomic<bool> m_isAwaitedOn = false;
+		std::atomic<bool> m_done = false;
+		std::atomic<Job*> m_waitingFor = nullptr;
 		std::coroutine_handle<promise_type> m_handle;
+
+		void CheckRescheduleAfterAwait(Job* child)
+		{
+			if (m_waitingFor.compare_exchange_strong(child, nullptr))
+			{
+				JobSystem::ReScheduleJob(this);
+			}
+		}
 	};
 
 	export class JobSystem
 	{
 		template<typename R>
 		friend class Task;
+		friend struct InitialTaskAwaiter;
 	public:
 		JobSystem()
 		{
@@ -187,54 +235,152 @@ namespace tako
 		void Stop()
 		{
 			m_stop = true;
-			m_cv.notify_all();
+			m_globalCV.notify_all();
 		}
 
-		static void Schedule(Job* job)
+		template<typename R>
+		R Start(Task<R>&& mainTask)
 		{
+			auto mainJob = JobSystem::m_runningJob = GetJob(); // Assume it's scheduled already
+			ASSERT(mainJob == &mainTask);
+			m_started = true;
+			m_started.notify_all();
+			mainJob->Run();
+			m_runningJob = nullptr;
+			while (!m_stop && !mainJob->Done())
 			{
-				std::lock_guard<std::mutex> lock(m_queueMutex);
-				m_queue.push(job);
+				{
+					Job* job = nullptr;
+					bool moreMainThreadJobs = false;
+					{
+						std::lock_guard<std::mutex> lock(m_mainThreadQueueMutex);
+						if (!m_mainThreadQueue.empty())
+						{
+							job = m_mainThreadQueue.front();
+							m_mainThreadQueue.pop_front();
+						}
+					}
+					RunJob(job);
+					if (job)
+					{
+						continue;
+					}
+				}
+
+				Job* job  = nullptr;
+				{
+					std::lock_guard<std::mutex> lock(m_globalQueueMutex);
+					if (!m_globalQueue.empty())
+					{
+						job = m_globalQueue.front();
+						m_globalQueue.pop_front();
+					}
+				}
+				RunJob(job);
 			}
-			m_cv.notify_one();
+
+			return mainTask.GetResult();
 		}
 
+		template<typename Cb, typename... Args>
+			requires std::invocable<Cb, Args...>
+		static Task<std::invoke_result_t<Cb, Args...>> Taskify(Cb func, Args&&... args)
+		{
+			co_return func(std::forward<Args>(args)...);
+		}
 
+		static void ScheduleNextTaskOnMain()
+		{
+			m_scheduleNextTaskOnMain = true;
+		}
 	private:
 		std::vector<std::thread> m_workers;
+		std::atomic<bool> m_started = false;
 		std::atomic<bool> m_stop = false;
 
 		static inline thread_local unsigned int m_threadIndex;
 		static inline unsigned int m_threadCount;
-		static inline std::queue<Job*> m_queue;
-		static inline std::mutex m_queueMutex;
-		static inline std::condition_variable m_cv;
+		static inline std::deque<Job*> m_globalQueue;
+		static inline std::mutex m_globalQueueMutex;
+		static inline std::condition_variable m_globalCV;
+		static inline std::deque<Job*> m_mainThreadQueue;
+		static inline std::mutex m_mainThreadQueueMutex;
 		static inline thread_local Job* m_runningJob = nullptr;
+		static inline thread_local bool m_scheduleNextTaskOnMain = false;
+
+		static void ScheduleJob(Job* job)
+		{
+			job->m_parent = JobSystem::m_runningJob;
+			ReScheduleJob(job);
+		}
+
+		static void ReScheduleJob(Job* job)
+		{
+			ASSERT(!job->Done());
+			if (m_scheduleNextTaskOnMain)
+			{
+				m_scheduleNextTaskOnMain = false;
+				PushMainThreadJob(job);
+			}
+			else
+			{
+				PushGlobalJob(job);
+			}
+		}
+
+		static void PushGlobalJob(Job* job)
+		{
+			{
+				std::lock_guard<std::mutex> lock(m_globalQueueMutex);
+				m_globalQueue.push_back(job);
+			}
+			m_globalCV.notify_one();
+		}
+
+		static void PushMainThreadJob(Job* job)
+		{
+			std::lock_guard<std::mutex> lock(m_mainThreadQueueMutex);
+			m_mainThreadQueue.push_back(job);
+		}
 
 		void WorkerThread(unsigned int threadIndex)
 		{
 			m_threadIndex = threadIndex;
+			m_started.wait(false);
 			while (!m_stop)
 			{
-				Job* job = nullptr;
-				{
-					std::unique_lock<std::mutex> lock(m_queueMutex);
-					m_cv.wait(lock, [this] { return m_stop || (!m_queue.empty()); });
-					if (m_stop)
-					{
-						return;
-					}
-
-					job = m_queue.front();
-					m_queue.pop();
-				}
-				m_runningJob = job;
-				if (job)
-				{
-					job->Resume();
-				}
-				m_runningJob = nullptr;
+				Job* job = GetJob();
+				RunJob(job);
 			}
+		}
+
+		void RunJob(Job* job)
+		{
+			if (job == nullptr)
+			{
+				return;
+			}
+			m_runningJob = job;
+			ASSERT(!job->Done());
+			if (job)
+			{
+				job->Run();
+			}
+			m_runningJob = nullptr;
+		}
+
+		Job* GetJob()
+		{
+			std::unique_lock<std::mutex> lock(m_globalQueueMutex);
+			m_globalCV.wait(lock, [this] { return m_stop || (!m_globalQueue.empty()); });
+			if (m_stop)
+			{
+				return nullptr;
+			}
+
+			auto job = m_globalQueue.front();
+			m_globalQueue.pop_front();
+			return job;
 		}
 	};
 }
