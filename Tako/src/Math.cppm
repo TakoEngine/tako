@@ -762,10 +762,10 @@ namespace Math
 		{
 			return Matrix4
 			(
-				1-2*z*z-2*w*w, 2*y*z-2*x*w,   2*y*w+2*x*z,   0,
-				2*y*z+2*x*w,   1-2*y*y-2*w*w, 2*z*w-2*x*y,   0,
-				2*y*w-2*x*z,   2*z*w+2*x*y,   1-2*y*y-2*z*z, 0,
-				0,0,0,1
+				1 - 2 * (y * y + z * z), 2 * (x * y - w * z), 2 * (x * z + w * y), 0,
+				2 * (x * y + w * z), 1 - 2 * (x * x + z * z), 2 * (y * z - w * x), 0,
+				2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y), 0,
+				0, 0, 0, 1
 			);
 		}
 
@@ -946,6 +946,56 @@ namespace Math
 
 			return Quaternion(-q.x / normSq, -q.y / normSq, -q.z / normSq, q.w / normSq);
 		}
+
+		static Quaternion LookAtRotation(const Vector3& eye, const Vector3& target, const Vector3& upDir)
+		{
+			Vector3 forward = (target - eye).normalized();
+			Vector3 right = Vector3::cross(forward, upDir).normalized();
+			Vector3 up = Vector3::cross(right, forward);
+
+			return Quaternion::FromBasis(right, up, forward * -1);
+		}
+
+		static Quaternion FromBasis(const Vector3& right, const Vector3& up, const Vector3& forward)
+		{
+			float trace = right.x + up.y + forward.z;
+			Quaternion q;
+
+			if (trace > 0.0f)
+			{
+				float s = std::sqrt(trace + 1.0f) * 2.0f;
+				q.w = 0.25f * s;
+				q.x = (up.z - forward.y) / s;
+				q.y = (forward.x - right.z) / s;
+				q.z = (right.y - up.x) / s;
+			}
+			else if (right.x > up.y && right.x > forward.z)
+			{
+				float s = std::sqrt(1.0f + right.x - up.y - forward.z) * 2.0f;
+				q.w = (up.z - forward.y) / s;
+				q.x = 0.25f * s;
+				q.y = (up.x + right.y) / s;
+				q.z = (forward.x + right.z) / s;
+			}
+			else if (up.y > forward.z)
+			{
+				float s = std::sqrt(1.0f + up.y - right.x - forward.z) * 2.0f;
+				q.w = (forward.x - right.z) / s;
+				q.x = (up.x + right.y) / s;
+				q.y = 0.25f * s;
+				q.z = (forward.y + up.z) / s;
+			}
+			else
+			{
+				float s = std::sqrt(1.0f + forward.z - right.x - up.y) * 2.0f;
+				q.w = (right.y - up.x) / s;
+				q.x = (forward.x + right.z) / s;
+				q.y = (forward.y + up.z) / s;
+				q.z = 0.25f * s;
+			}
+
+			return Quaternion::Normalize(q);
+		}
 	};
 
 
@@ -1095,11 +1145,8 @@ namespace tako
 	Matrix4 Matrix4::cameraViewMatrix(const Vector3 position, const Quaternion& rotation)
 	{
 		auto mat = rotation.ToRotationMatrix();
-		mat[12] = -position.x;
-		mat[13] = -position.y;
-		mat[14] = -position.z;
 
-		return Matrix4::inverse(mat);
+		return mat * Matrix4::translation(position * -1);
 	}
 
 	Matrix4 Matrix4::DirectionToRotation(const Vector3& direction, const Vector3& up)
