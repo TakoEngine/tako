@@ -1,16 +1,25 @@
 #pragma once
+#include "fmt/format.h"
 #include <vector>
 #include <cstddef>
+#include <string>
 
 namespace tako::Reflection
 {
+	enum class TypeKind
+	{
+		Primitive,
+		Struct,
+		Array
+	};
+
 	struct TypeInformation
 	{
 		const char* name;
 		size_t size;
+		TypeKind kind;
 
 		constexpr TypeInformation() {}
-		//virtual ~TypeInformation() {}
 	};
 
 	struct PrimitiveInformation : public TypeInformation
@@ -19,6 +28,7 @@ namespace tako::Reflection
 		{
 			this->name = name;
 			this->size = size;
+			this->kind = TypeKind::Primitive;
 		}
 	};
 
@@ -30,6 +40,7 @@ namespace tako::Reflection
 		constexpr StructInformation(void (*init)(StructInformation*))
 		{
 			init(this);
+			this->kind = TypeKind::Struct;
 		}
 
 		struct Field
@@ -41,6 +52,14 @@ namespace tako::Reflection
 
 		std::vector<Field> fields;
 		void (*constr)(void*);
+	};
+
+	struct ArrayInformation : public TypeInformation
+	{
+		const TypeInformation* elementType;
+		const void* (*GetData)(const void*);
+		size_t (*GetSize)(const void*);
+		void* (*Push)(void*);
 	};
 
 	struct Resolver
@@ -57,11 +76,46 @@ namespace tako::Reflection
 		};
 
 		template<typename T>
+		struct IsVector : std::false_type {};
+
+		template<typename U>
+		struct IsVector<std::vector<U>> : std::true_type {};
+
+		template<typename T>
 		static constexpr auto Get()
 		{
 			if constexpr (IsReflected<T>::value)
 			{
 				return &T::Reflection;
+			}
+			else if constexpr (IsVector<T>::value)
+			{
+				static ArrayInformation info = []()
+				{
+					ArrayInformation info;
+					auto elementType = Get<typename T::value_type>();
+					static std::string typeName = fmt::format("vector<{}>", elementType->name);
+					info.name = typeName.c_str();
+					info.size = sizeof(T);
+					info.kind = TypeKind::Array;
+					info.elementType = elementType;
+					info.GetData = [](const void* data) -> const void*
+					{
+						return reinterpret_cast<const T*>(data)->data();
+					};
+					info.GetSize = [](const void* data) -> size_t
+					{
+						return reinterpret_cast<const T*>(data)->size();
+					};
+					info.Push = [](void* data) -> void*
+					{
+						auto& vec = *reinterpret_cast<T*>(data);
+						return &vec.emplace_back();
+					};
+
+					return info;
+				}();
+				return &info;
 			}
 			else
 			{

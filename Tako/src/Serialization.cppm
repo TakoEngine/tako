@@ -27,16 +27,26 @@ namespace tako::Serialization
 		return Encode(&t, Reflection::Resolver::Get<T>());
 	}
 
-	void EmitPrimitive(const void* data, const Reflection::StructInformation::Field* info, ::YAML::Emitter& out)
+	void Emit(const void* data, const Reflection::TypeInformation* info, ::YAML::Emitter& out);
+
+	void EmitPrimitive(const void* data, const Reflection::PrimitiveInformation* info, ::YAML::Emitter& out)
 	{
 		out << ::YAML::Value;
-		if (Reflection::GetPrimitiveInformation<int>() == info->type)
+		if (Reflection::GetPrimitiveInformation<int>() == info)
 		{
-			out << *reinterpret_cast<const int*>(reinterpret_cast<const U8*>(data) + info->offset);
+			out << *reinterpret_cast<const int*>(data);
 		}
-		else if (Reflection::GetPrimitiveInformation<bool>() == info->type)
+		else if (Reflection::GetPrimitiveInformation<float>() == info)
 		{
-			out << *reinterpret_cast<const bool*>(reinterpret_cast<const U8*>(data) + info->offset);
+			out << *reinterpret_cast<const float*>(data);
+		}
+		else if (Reflection::GetPrimitiveInformation<bool>() == info)
+		{
+			out << *reinterpret_cast<const bool*>(data);
+		}
+		else if (Reflection::GetPrimitiveInformation<std::string>() == info)
+		{
+			out << *reinterpret_cast<const std::string*>(data);
 		}
 	}
 
@@ -46,18 +56,46 @@ namespace tako::Serialization
 		for (auto& descriptor : info->fields)
 		{
 			out << ::YAML::Key << descriptor.name;
-			//TODO
-			if (auto strInfo = reinterpret_cast<const Reflection::StructInformation*>(descriptor.type))
-			{
-				EmitMap(reinterpret_cast<const U8*>(data) + descriptor.offset, strInfo, out);
-			}
-			else
-			{
-				EmitPrimitive(data, &descriptor, out);
-			}
-
+			auto fieldData = reinterpret_cast<const void*>(reinterpret_cast<const U8*>(data) + descriptor.offset);
+			Emit(fieldData, descriptor.type, out);
 		}
 		out << YAML::EndMap;
+	}
+
+	void EmitArray(const void* data, const Reflection::ArrayInformation* info, ::YAML::Emitter& out)
+	{
+		auto size = info->GetSize(data);
+		auto arrData = info->GetData(data);
+		size_t elementSize = info->elementType->size;
+		out << YAML::BeginSeq;
+		for (size_t i = 0; i < size; ++i)
+		{
+			auto elementPtr = reinterpret_cast<const U8*>(arrData) + (i * elementSize);
+			Emit(elementPtr, info->elementType, out);
+		}
+		out << YAML::EndSeq;
+	}
+
+	void Emit(const void* data, const Reflection::TypeInformation* info, ::YAML::Emitter & out)
+	{
+		switch (info->kind)
+		{
+			case Reflection::TypeKind::Struct:
+			{
+				auto strInfo = reinterpret_cast<const Reflection::StructInformation*>(info);
+				EmitMap(data, strInfo, out);
+			} break;
+			case Reflection::TypeKind::Array:
+			{
+				auto arrInfo = reinterpret_cast<const Reflection::ArrayInformation*>(info);
+				EmitArray(data, arrInfo, out);
+			} break;
+			case Reflection::TypeKind::Primitive:
+			{
+				auto primInfo = reinterpret_cast<const Reflection::PrimitiveInformation*>(info);
+				EmitPrimitive(data, primInfo, out);
+			} break;
+		}
 	}
 
 	std::string Encode(const void* data, const Reflection::StructInformation* info)
@@ -67,15 +105,25 @@ namespace tako::Serialization
 		return { out.c_str() };
 	}
 
-	void AssignPrimitive(void* data, const Reflection::StructInformation::Field* info, const ::YAML::Node& node)
+	void Assign(void* data, const Reflection::TypeInformation* info, const ::YAML::Node& node);
+
+	void AssignPrimitive(void* data, const Reflection::PrimitiveInformation* info, const ::YAML::Node& node)
 	{
-		if (Reflection::GetPrimitiveInformation<int>() == info->type)
+		if (Reflection::GetPrimitiveInformation<int>() == info)
 		{
-			*reinterpret_cast<int*>(reinterpret_cast<U8*>(data) + info->offset) = node[info->name].as<int>();
+			*reinterpret_cast<int*>(data) = node.as<int>();
 		}
-		else if (Reflection::GetPrimitiveInformation<bool>() == info->type)
+		else if (Reflection::GetPrimitiveInformation<float>() == info)
 		{
-			*reinterpret_cast<bool*>(reinterpret_cast<U8*>(data) + info->offset) = node[info->name].as<bool>();
+			*reinterpret_cast<float*>(data) = node.as<float>();
+		}
+		else if (Reflection::GetPrimitiveInformation<bool>() == info)
+		{
+			*reinterpret_cast<bool*>(data) = node.as<bool>();
+		}
+		else if (Reflection::GetPrimitiveInformation<std::string>() == info)
+		{
+			*reinterpret_cast<std::string*>(data) = node.as<std::string>();
 		}
 	}
 
@@ -83,17 +131,40 @@ namespace tako::Serialization
 	{
 		for (auto& descriptor : info->fields)
 		{
-			//TODO:
-			if (auto strInfo = reinterpret_cast<const Reflection::StructInformation*>(descriptor.type))
-			{
-				auto strData = reinterpret_cast<U8*>(data) + descriptor.offset;
-				strInfo->constr(strData);
-				AssignMap(strData, strInfo, node[descriptor.name]);
-			}
-			else
-			{
-				AssignPrimitive(data, &descriptor, node);
-			}
+			auto fieldData = reinterpret_cast<U8*>(data) + descriptor.offset;
+			Assign(fieldData, descriptor.type, node[descriptor.name]);
+		}
+	}
+
+	void AssignArray(void* data, const Reflection::ArrayInformation* info, const ::YAML::Node& node)
+	{
+		auto size = node.size();
+		for (size_t i = 0; i < size; ++i)
+		{
+			auto newElement = info->Push(data);
+			Assign(newElement, info->elementType, node[i]);
+		}
+	}
+
+	void Assign(void* data, const Reflection::TypeInformation* info, const ::YAML::Node& node)
+	{
+		switch (info->kind)
+		{
+		case Reflection::TypeKind::Struct:
+		{
+			auto strInfo = reinterpret_cast<const Reflection::StructInformation*>(info);
+			AssignMap(data, strInfo, node);
+		} break;
+		case Reflection::TypeKind::Array:
+		{
+			auto arrInfo = reinterpret_cast<const Reflection::ArrayInformation*>(info);
+			AssignArray(data, arrInfo, node);
+		} break;
+		case Reflection::TypeKind::Primitive:
+		{
+			auto primInfo = reinterpret_cast<const Reflection::PrimitiveInformation*>(info);
+			AssignPrimitive(data, primInfo, node);
+		} break;
 		}
 	}
 
