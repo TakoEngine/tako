@@ -197,6 +197,7 @@ namespace Math
 	};
 
 
+	struct Vector3;
 
 	struct Vector3
 	{
@@ -360,7 +361,20 @@ namespace Math
 			return (&x)[i];
 		}
 
+		static const Vector3 left;
+		static const Vector3 right;
+		static const Vector3 up;
+		static const Vector3 down;
+		static const Vector3 forward;
+		static const Vector3 back;
 	};
+
+	const Vector3 Vector3::left    { -1, 0,  0 };
+	const Vector3 Vector3::right   { 1,  0,  0 };
+	const Vector3 Vector3::up      { 0,  1,  0 };
+	const Vector3 Vector3::down    { 0, -1,  0 };
+	const Vector3 Vector3::forward { 0,  0,  1 };
+	const Vector3 Vector3::back    { 0,  0, -1 };
 
 	struct Vector4
 	{

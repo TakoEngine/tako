@@ -76,7 +76,7 @@ namespace tako::Serialization
 		out << YAML::EndSeq;
 	}
 
-	void Emit(const void* data, const Reflection::TypeInformation* info, ::YAML::Emitter & out)
+	void Emit(const void* data, const Reflection::TypeInformation* info, ::YAML::Emitter& out)
 	{
 		switch (info->kind)
 		{
@@ -109,19 +109,19 @@ namespace tako::Serialization
 
 	void AssignPrimitive(void* data, const Reflection::PrimitiveInformation* info, const ::YAML::Node& node)
 	{
-		if (Reflection::GetPrimitiveInformation<int>() == info)
+		if (info->IsType<int>())
 		{
 			*reinterpret_cast<int*>(data) = node.as<int>();
 		}
-		else if (Reflection::GetPrimitiveInformation<float>() == info)
+		else if (info->IsType<float>())
 		{
 			*reinterpret_cast<float*>(data) = node.as<float>();
 		}
-		else if (Reflection::GetPrimitiveInformation<bool>() == info)
+		else if (info->IsType<bool>())
 		{
 			*reinterpret_cast<bool*>(data) = node.as<bool>();
 		}
-		else if (Reflection::GetPrimitiveInformation<std::string>() == info)
+		else if (info->IsType<std::string>())
 		{
 			*reinterpret_cast<std::string*>(data) = node.as<std::string>();
 		}

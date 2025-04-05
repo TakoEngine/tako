@@ -20,6 +20,9 @@ namespace tako::Reflection
 		TypeKind kind;
 
 		constexpr TypeInformation() {}
+
+		template<typename T>
+		constexpr bool IsType() const;
 	};
 
 	struct PrimitiveInformation : public TypeInformation
@@ -129,6 +132,12 @@ namespace tako::Reflection
 			return Get<T>()->name;
 		}
 	};
+
+	template<typename T>
+	constexpr bool TypeInformation::IsType() const
+	{
+		return this == Resolver::Get<T>();
+	}
 
 	template<typename T>
 	static void InitDefault(void* data)

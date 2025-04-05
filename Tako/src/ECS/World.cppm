@@ -622,6 +622,13 @@ namespace tako
 		}
 
 		template<typename T>
+		void AddComponent(Entity entity, const T& component)
+		{
+			AddComponent<T>(entity);
+			GetComponent<T>(entity) = component;
+		}
+
+		template<typename T>
 		void RemoveComponent(Entity entity)
 		{
 			auto compID = ComponentIDGenerator::GetID<T>();
