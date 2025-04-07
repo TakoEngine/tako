@@ -13,7 +13,6 @@ module;
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 */
-#include <vector>
 #include <array>
 #include <algorithm>
 #include <unordered_map>

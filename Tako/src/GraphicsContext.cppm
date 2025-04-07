@@ -7,9 +7,9 @@ module;
 #if TAKO_VULKAN
 #include "VulkanContext.hpp"
 #endif
-#include <memory>
 #include <type_traits>
 export module Tako.GraphicsContext;
+
 
 #ifdef TAKO_WEBGPU
 export import Tako.WebGPU;
@@ -82,7 +82,7 @@ namespace tako
 			case GraphicsAPI::Vulkan:
 				return std::make_unique<VulkanContext>(window);
 #endif
-			default: return nullptr;
+			//default: return nullptr;
 		}
 	}
 

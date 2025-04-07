@@ -1,10 +1,7 @@
 #pragma once
 
-#include <iostream>
 //
 #include "Utility.hpp"
-//#include <emscripten.h>
-#include "PixelArtDrawer.hpp"
 #include "GameConfig.hpp"
 
 import Tako.Input;

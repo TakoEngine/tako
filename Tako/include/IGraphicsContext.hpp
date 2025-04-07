@@ -6,6 +6,8 @@
 #include <cstddef>
 #include <variant>
 #include <span>
+#include <memory>
+#include <vector>
 
 import Tako.Math;
 import Tako.Bitmap;

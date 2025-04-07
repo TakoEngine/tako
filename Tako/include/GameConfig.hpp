@@ -1,4 +1,5 @@
 #pragma once
+
 #include "GraphicsAPI.hpp"
 
 import Tako.Input;
@@ -6,6 +7,7 @@ import Tako.Audio;
 import Tako.RmlUi;
 import Tako.NumberTypes;
 import Tako.Resources;
+import Tako.GraphicsContext;
 
 namespace tako
 {

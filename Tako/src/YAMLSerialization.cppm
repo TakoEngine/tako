@@ -1,30 +1,69 @@
 module;
-#include "Reflection.hpp"
 #include "Utility.hpp"
 #include <yaml-cpp/yaml.h>
 #include <type_traits>
 export module Tako.Serialization;
 
 import Tako.NumberTypes;
+import Tako.Reflection;
 
-namespace tako::Serialization
+namespace tako::Serialization::YAML
 {
-	export void Decode(const char* text, void* data, const Reflection::StructInformation* info);
-
-	export template<typename T, std::enable_if_t<Reflection::Resolver::IsReflected<T>::value, bool> = true>
-	T Deserialize(const char* text)
+	export template<typename T>
+		concept CustomYAMLSerializer = requires (T t)
 	{
+		{ t.Serialize(std::declval<::YAML::Emitter&>()) };
+		{ t.Deserialize(std::declval<const ::YAML::Node&>()) };
+	};
+
+	export template<typename T>
+		concept YAMLSerializable = CustomYAMLSerializer<T> || Reflection::ReflectedType<T>;
+
+	export void Decode(void* target, const Reflection::TypeInformation* info, const ::YAML::Node& node);
+
+	export template<Reflection::ReflectedType T>
+		requires (!CustomYAMLSerializer<T>)
+	void Decode(T& target, const ::YAML::Node& node)
+	{
+		Decode(&target, Reflection::Resolver::Get<T>(), node);
+	}
+
+	export template<CustomYAMLSerializer T>
+		void Decode(T& target, const ::YAML::Node& node)
+	{
+		target.Deserialize(node);
+	}
+
+	export template<YAMLSerializable T>
+		T Deserialize(const char* text)
+	{
+		auto node = ::YAML::Load(text);
 		T t = {};
-		Decode(text, &t, Reflection::Resolver::Get<T>());
+		Decode(t, node);
 		return t;
 	}
 
-	export std::string Encode(const void* data, const Reflection::StructInformation* info);
+	export void Encode(const void* data, const Reflection::TypeInformation* info, ::YAML::Emitter& out);
 
-	export template<typename T, std::enable_if_t<Reflection::Resolver::IsReflected<T>::value, bool> = true>
-	std::string Serialize(const T& t)
+	export template<Reflection::ReflectedType T>
+		requires (!CustomYAMLSerializer<T>)
+	void Encode(const T& source, ::YAML::Emitter& out)
 	{
-		return Encode(&t, Reflection::Resolver::Get<T>());
+		Encode(&source, Reflection::Resolver::Get<T>(), out);
+	}
+
+	export template<CustomYAMLSerializer T>
+		void Encode(const T& source, ::YAML::Emitter& out)
+	{
+		source.Serialize(out);
+	}
+
+	export template<YAMLSerializable T>
+		std::string Serialize(const T& t)
+	{
+		::YAML::Emitter out;
+		Encode(t, out);
+		return { out.c_str() };;
 	}
 
 	void Emit(const void* data, const Reflection::TypeInformation* info, ::YAML::Emitter& out);
@@ -44,6 +83,10 @@ namespace tako::Serialization
 		{
 			out << *reinterpret_cast<const bool*>(data);
 		}
+		else if (info->IsType<unsigned char>())
+		{
+			out << *reinterpret_cast<const unsigned char*>(data);
+		}
 		else if (Reflection::GetPrimitiveInformation<std::string>() == info)
 		{
 			out << *reinterpret_cast<const std::string*>(data);
@@ -52,14 +95,14 @@ namespace tako::Serialization
 
 	void EmitMap(const void* data, const Reflection::StructInformation* info, ::YAML::Emitter& out)
 	{
-		out << YAML::BeginMap;
+		out << ::YAML::BeginMap;
 		for (auto& descriptor : info->fields)
 		{
 			out << ::YAML::Key << descriptor.name;
 			auto fieldData = reinterpret_cast<const void*>(reinterpret_cast<const U8*>(data) + descriptor.offset);
 			Emit(fieldData, descriptor.type, out);
 		}
-		out << YAML::EndMap;
+		out << ::YAML::EndMap;
 	}
 
 	void EmitArray(const void* data, const Reflection::ArrayInformation* info, ::YAML::Emitter& out)
@@ -67,42 +110,40 @@ namespace tako::Serialization
 		auto size = info->GetSize(data);
 		auto arrData = info->GetData(data);
 		size_t elementSize = info->elementType->size;
-		out << YAML::BeginSeq;
+		out << ::YAML::BeginSeq;
 		for (size_t i = 0; i < size; ++i)
 		{
 			auto elementPtr = reinterpret_cast<const U8*>(arrData) + (i * elementSize);
 			Emit(elementPtr, info->elementType, out);
 		}
-		out << YAML::EndSeq;
+		out << ::YAML::EndSeq;
 	}
 
 	void Emit(const void* data, const Reflection::TypeInformation* info, ::YAML::Emitter& out)
 	{
 		switch (info->kind)
 		{
-			case Reflection::TypeKind::Struct:
-			{
-				auto strInfo = reinterpret_cast<const Reflection::StructInformation*>(info);
-				EmitMap(data, strInfo, out);
-			} break;
-			case Reflection::TypeKind::Array:
-			{
-				auto arrInfo = reinterpret_cast<const Reflection::ArrayInformation*>(info);
-				EmitArray(data, arrInfo, out);
-			} break;
-			case Reflection::TypeKind::Primitive:
-			{
-				auto primInfo = reinterpret_cast<const Reflection::PrimitiveInformation*>(info);
-				EmitPrimitive(data, primInfo, out);
-			} break;
+		case Reflection::TypeKind::Struct:
+		{
+			auto strInfo = reinterpret_cast<const Reflection::StructInformation*>(info);
+			EmitMap(data, strInfo, out);
+		} break;
+		case Reflection::TypeKind::Array:
+		{
+			auto arrInfo = reinterpret_cast<const Reflection::ArrayInformation*>(info);
+			EmitArray(data, arrInfo, out);
+		} break;
+		case Reflection::TypeKind::Primitive:
+		{
+			auto primInfo = reinterpret_cast<const Reflection::PrimitiveInformation*>(info);
+			EmitPrimitive(data, primInfo, out);
+		} break;
 		}
 	}
 
-	std::string Encode(const void* data, const Reflection::StructInformation* info)
+	void Encode(const void* data, const Reflection::TypeInformation* info, ::YAML::Emitter& out)
 	{
-		::YAML::Emitter out;
-		EmitMap(data, info, out);
-		return { out.c_str() };
+		Emit(data, info, out);
 	}
 
 	void Assign(void* data, const Reflection::TypeInformation* info, const ::YAML::Node& node);
@@ -120,6 +161,10 @@ namespace tako::Serialization
 		else if (info->IsType<bool>())
 		{
 			*reinterpret_cast<bool*>(data) = node.as<bool>();
+		}
+		else if (info->IsType<unsigned char>())
+		{
+			*reinterpret_cast<unsigned char*>(data) = node.as<unsigned char>();
 		}
 		else if (info->IsType<std::string>())
 		{
@@ -168,9 +213,8 @@ namespace tako::Serialization
 		}
 	}
 
-	void Decode(const char* text, void* data, const Reflection::StructInformation* info)
+	void Decode(void* target, const Reflection::TypeInformation* info, const ::YAML::Node& node)
 	{
-		auto node = YAML::Load(text);
-		AssignMap(data, info, node);
+		Assign(target, info, node);
 	}
 }

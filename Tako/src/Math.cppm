@@ -1,10 +1,11 @@
 module;
 #include "Utility.hpp"
-//#include "fmt/format.h"
 #include <string_view>
+#include "Reflection.hpp"
 export module Tako.Math;
 
 export import Tako.NumberTypes;
+import Tako.Reflection;
 
 export namespace tako
 {
@@ -187,6 +188,8 @@ namespace Math
 		{
 			return v.normalize();
 		}
+
+		REFLECT(Vector2, x, y)
 	};
 
 	struct Point
@@ -194,10 +197,10 @@ namespace Math
 		constexpr Point() : x(0), y(0) {}
 		constexpr Point(int x, int y) : x(x), y(y) {}
 		int x, y;
+
+		REFLECT(Point, x, y)
 	};
 
-
-	struct Vector3;
 
 	struct Vector3
 	{
@@ -367,6 +370,7 @@ namespace Math
 		static const Vector3 down;
 		static const Vector3 forward;
 		static const Vector3 back;
+		REFLECT(Vector3, x, y, z)
 	};
 
 	const Vector3 Vector3::left    { -1, 0,  0 };
@@ -418,6 +422,8 @@ namespace Math
 		{
 			return (&x)[i];
 		}
+
+		REFLECT(Vector4, x, y, z, w)
 	};
 
 	struct Quaternion;
@@ -1010,6 +1016,8 @@ namespace Math
 
 			return Quaternion::Normalize(q);
 		}
+
+		REFLECT(Quaternion, x, y, z, w)
 	};
 
 
@@ -1116,6 +1124,8 @@ namespace Math
 			if (t < 2.0f / 3) return p + (q - p) * (2.0f / 3 - t) * 6;
 			return p;
 		}
+
+		REFLECT(Color, r, g, b, a)
 	};
 }
 	using Vector2 = Math::Vector2;

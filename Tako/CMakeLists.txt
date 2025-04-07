@@ -2,7 +2,6 @@ include(tako)
 set(TAKO_DLL "tako")
 add_library(${TAKO_DLL}
 	#"src/PixelArtDrawer.cpp"
-	"src/Reflection.cpp"
 	"src/AudioImpl.cpp"
 )
 
@@ -14,6 +13,7 @@ target_sources(
 	"include/NumberTypes.hpp"
 	"include/Texture.hpp"
 	#"include/PixelArtDrawer.hpp"
+	"include/Reflection.hpp"
 	"include/Tako.hpp"
 	"include/Sprite.hpp"
 	"include/Entity.hpp"
@@ -23,7 +23,6 @@ target_sources(
 	"include/VertexBuffer.hpp"
 	"include/Pipeline.hpp"
 	"include/GameConfig.hpp"
-	"include/Reflection.hpp"
 )
 target_sources(
 	${TAKO_DLL} PUBLIC
@@ -44,7 +43,8 @@ target_sources(
 	"src/Application.cppm"
 	"src/FileSystem.cppm"
 	"src/Resources.cppm"
-	"src/Serialization.cppm"
+	"src/Reflection.cppm"
+	"src/YAMLSerialization.cppm"
 	"src/Audio.cppm"
 	"src/Assets.cppm"
 	"src/GraphicsContext.cppm"

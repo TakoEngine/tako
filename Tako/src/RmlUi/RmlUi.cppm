@@ -1,6 +1,5 @@
 module;
 #include "Utility.hpp"
-#include "Reflection.hpp"
 #include <RmlUi/Core.h>
 #include <variant>
 #include <mutex>
@@ -15,6 +14,7 @@ import Tako.Window;
 import Tako.NumberTypes;
 import Tako.Resources;
 import Tako.HandleVec;
+import Tako.Reflection;
 
 
 namespace tako
