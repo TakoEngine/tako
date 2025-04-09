@@ -41,4 +41,31 @@
 	} \
 	static inline const ::tako::Reflection::StructInformation Reflection = {InitReflection};
 
-import Tako.Reflection;
+#define REFLECT_CASE(name) ::tako::Reflection::EnumInformation::EnumCase{ #name, static_cast<std::size_t>(name) }
+
+#define REFLECT_ENUM(TYPE, NAME, ...) \
+	export template<> \
+	const ::tako::Reflection::EnumInformation* ::tako::Reflection::GetEnumInformation<TYPE>() \
+	{ \
+		static auto InitReflection = [](::tako::Reflection::EnumInformation* info) -> void \
+		{ \
+			info->name = #NAME; \
+			info->size = sizeof(TYPE); \
+			info->convertUnderlying = [](const void* data) \
+			{ \
+				return static_cast<std::size_t>(*reinterpret_cast<const TYPE*>(data)); \
+			}; \
+			info->assignUnderlying = [](size_t data, void* target) \
+			{ \
+				*reinterpret_cast<TYPE*>(target) = static_cast<TYPE>(data); \
+			}; \
+			using enum TYPE; \
+			static std::array cases = \
+			{ \
+				FOR_EACH(REFLECT_CASE, __VA_ARGS__) \
+			}; \
+			info->cases = cases; \
+		}; \
+		static ::tako::Reflection::EnumInformation info(InitReflection); \
+		return &info; \
+	}

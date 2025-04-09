@@ -3,8 +3,11 @@ module;
 #include <cstddef>
 #include <string>
 #include <unordered_map>
+#include <span>
 #include <format>
 export module Tako.Reflection;
+
+import Tako.StringView;
 
 namespace tako::Reflection
 {
@@ -12,6 +15,7 @@ namespace tako::Reflection
 	{
 		Primitive,
 		Struct,
+		Enum,
 		Array
 	};
 
@@ -38,7 +42,8 @@ namespace tako::Reflection
 	};
 
 	export template<typename T>
-		const PrimitiveInformation* GetPrimitiveInformation();
+	const PrimitiveInformation* GetPrimitiveInformation();
+ 
 
 	export struct StructInformation;
 
@@ -71,6 +76,29 @@ namespace tako::Reflection
 		void (*constr)(void*);
 	};
 
+	export struct EnumInformation : public TypeInformation
+	{
+		struct EnumCase
+		{
+			const char* name;
+			std::size_t value;
+		};
+
+		EnumInformation(void (*init)(EnumInformation*))
+		{
+			init(this);
+			this->kind = TypeKind::Enum;
+		}
+
+		std::span<EnumCase> cases;
+		size_t (*convertUnderlying)(const void*);
+		void (*assignUnderlying)(size_t, void*);
+		//const TypeInformation* underlying;
+	};
+
+	export template<typename T>
+	const EnumInformation* GetEnumInformation();
+
 	export struct ArrayInformation : public TypeInformation
 	{
 		const TypeInformation* elementType;
@@ -80,22 +108,28 @@ namespace tako::Reflection
 	};
 
 	export template<typename T>
-		concept ReflectedStruct = requires(T t)
+	concept ReflectedStruct = requires
 	{
 		{ &T::Reflection } -> std::convertible_to<const StructInformation*>;
 	};
 
 	export template<typename T>
-		concept ReflectedPrimitive = requires(T t)
+	concept ReflectedEnum = requires
 	{
-		{ GetPrimitiveInformation<T>() } -> std::same_as<const PrimitiveInformation*>;
-	};
-
-	template<typename T>
-	concept NonVectorReflected = ReflectedStruct<T> || ReflectedPrimitive<T>;
+		{ GetEnumInformation<T>() } -> std::same_as<const EnumInformation*>;
+	} && std::is_enum_v<T>;
 
 	export template<typename T>
-		concept ReflectedVector = requires(T t)
+	concept ReflectedPrimitive = requires
+	{
+		{ GetPrimitiveInformation<T>() } -> std::same_as<const PrimitiveInformation*>;
+	} && !std::is_enum_v<T>;
+
+	template<typename T>
+	concept NonVectorReflected = ReflectedStruct<T> || ReflectedEnum<T> || ReflectedPrimitive<T>;
+
+	export template<typename T>
+		concept ReflectedVector = requires
 	{
 		typename T::value_type;
 		requires std::same_as<T, std::vector<typename T::value_type>>;
@@ -104,7 +138,7 @@ namespace tako::Reflection
 	};
 
 	export template<typename T>
-		concept ReflectedType = NonVectorReflected<T> || ReflectedVector<T>;
+	concept ReflectedType = NonVectorReflected<T> || ReflectedVector<T>;
 
 	export struct Resolver
 	{
@@ -127,22 +161,26 @@ namespace tako::Reflection
 						info.kind = TypeKind::Array;
 						info.elementType = elementType;
 						info.GetData = [](const void* data) -> const void*
-							{
-								return reinterpret_cast<const T*>(data)->data();
-							};
+						{
+							return reinterpret_cast<const T*>(data)->data();
+						};
 						info.GetSize = [](const void* data) -> size_t
-							{
-								return reinterpret_cast<const T*>(data)->size();
-							};
+						{
+							return reinterpret_cast<const T*>(data)->size();
+						};
 						info.Push = [](void* data) -> void*
-							{
-								auto& vec = *reinterpret_cast<T*>(data);
-								return &vec.emplace_back();
-							};
+						{
+							auto& vec = *reinterpret_cast<T*>(data);
+							return &vec.emplace_back();
+						};
 
 						return info;
 					}();
 				return &info;
+			}
+			else if constexpr (ReflectedEnum<T>)
+			{
+				return GetEnumInformation<T>();
 			}
 			else if constexpr (ReflectedPrimitive<T>)
 			{
@@ -151,6 +189,7 @@ namespace tako::Reflection
 			else
 			{
 				// std::unreachable
+				static_assert(false, "Tried to reflect unsupported Type");
 			}
 		}
 
@@ -170,7 +209,7 @@ namespace tako::Reflection
 	};
 
 	export template<typename T>
-		constexpr bool TypeInformation::IsType() const
+	constexpr bool TypeInformation::IsType() const
 	{
 		return this == Resolver::Get<T>();
 	}
@@ -194,7 +233,7 @@ namespace tako::Reflection
 	template<> \
 	const ::tako::Reflection::PrimitiveInformation* ::tako::Reflection::GetPrimitiveInformation<type>() \
 	{ \
-		static ::tako::Reflection::PrimitiveInformation info(#type, sizeof(type)); \
+		static const ::tako::Reflection::PrimitiveInformation info(#type, sizeof(type)); \
 		return &info; \
 	}
 

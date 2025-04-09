@@ -93,6 +93,22 @@ namespace tako::Serialization::YAML
 		}
 	}
 
+	void EmitEnum(const void* data, const Reflection::EnumInformation* info, ::YAML::Emitter& out)
+	{
+		out << ::YAML::Value;
+		size_t enumValue = info->convertUnderlying(data);
+		for (auto& caseInfo : info->cases)
+		{
+			if (caseInfo.value == enumValue)
+			{
+				out << caseInfo.name;
+				return;
+			}
+		}
+
+		out << enumValue;
+	}
+
 	void EmitMap(const void* data, const Reflection::StructInformation* info, ::YAML::Emitter& out)
 	{
 		out << ::YAML::BeginMap;
@@ -138,6 +154,11 @@ namespace tako::Serialization::YAML
 			auto primInfo = reinterpret_cast<const Reflection::PrimitiveInformation*>(info);
 			EmitPrimitive(data, primInfo, out);
 		} break;
+		case Reflection::TypeKind::Enum:
+		{
+			auto enumInfo = reinterpret_cast<const Reflection::EnumInformation*>(info);
+			EmitEnum(data, enumInfo, out);
+		} break;
 		}
 	}
 
@@ -172,6 +193,19 @@ namespace tako::Serialization::YAML
 		}
 	}
 
+	void AssignEnum(void* data, const Reflection::EnumInformation* info, const ::YAML::Node& node)
+	{
+		//TODO: Handle number nodes
+		std::string caseName = node.as<std::string>();
+		for (auto& caseInfo : info->cases)
+		{
+			if (caseName == caseInfo.name)
+			{
+				info->assignUnderlying(caseInfo.value, data);
+			}
+		}
+	}
+
 	void AssignMap(void* data, const Reflection::StructInformation* info, const ::YAML::Node& node)
 	{
 		for (auto& descriptor : info->fields)
@@ -193,6 +227,10 @@ namespace tako::Serialization::YAML
 
 	void Assign(void* data, const Reflection::TypeInformation* info, const ::YAML::Node& node)
 	{
+		if (!node.IsDefined())
+		{
+			return;
+		}
 		switch (info->kind)
 		{
 		case Reflection::TypeKind::Struct:
@@ -209,6 +247,11 @@ namespace tako::Serialization::YAML
 		{
 			auto primInfo = reinterpret_cast<const Reflection::PrimitiveInformation*>(info);
 			AssignPrimitive(data, primInfo, node);
+		} break;
+		case Reflection::TypeKind::Enum:
+		{
+			auto enumInfo = reinterpret_cast<const Reflection::EnumInformation*>(info);
+			AssignEnum(data, enumInfo, node);
 		} break;
 		}
 	}
