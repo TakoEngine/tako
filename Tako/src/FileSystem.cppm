@@ -1,5 +1,6 @@
 module;
 #include <string>
+#include <vector>
 export module Tako.FileSystem;
 
 export import :OS; // Ideally the os implementation would just be implementation modules, but they are not supported yet
@@ -29,5 +30,14 @@ export namespace tako::FileSystem
 		size_t bytesRead = 0;
 		bool readSuccess = ReadFile(filePath, (U8*)str.data(), str.size(), bytesRead);
 		return str;
+	}
+
+	std::vector<U8> ReadFile(const char* filePath)
+	{
+		size_t fileSize = GetFileSize(filePath);
+		std::vector<U8> buffer(fileSize);
+		size_t bytesRead = 0;
+		bool readSuccess = ReadFile(filePath, buffer.data(), buffer.size(), bytesRead);
+		return buffer;
 	}
 }
