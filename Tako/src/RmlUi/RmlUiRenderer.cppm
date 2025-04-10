@@ -31,7 +31,6 @@ public:
 		tex.mat = CreateTextureBinding(tex.tex);
 		m_textures.push_back(tex);
 
-		m_sampler = m_context->CreateSampler();
 		m_cameraBuffer = m_context->CreateBuffer(BufferType::Uniform, sizeof(Matrix4));
 		std::array<ShaderBindingEntryData, 1> cameraBindingData
 		{{

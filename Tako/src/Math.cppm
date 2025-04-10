@@ -824,7 +824,7 @@ namespace Math
 			axis.normalize();
 			deg = mathf::toRad(deg / 2);
 			float sd = std::sin(deg);
-			return { std::cos(deg), axis.x * sd , axis.y * sd, axis.z * sd };
+			return { axis.x * sd , axis.y * sd, axis.z * sd, std::cos(deg) };
 		}
 
 		static Quaternion Rotation(Vector3 start, Vector3 target)

@@ -566,9 +566,9 @@ namespace tako
 			samplerDesc.addressModeU = wgpu::AddressMode::ClampToEdge;
 			samplerDesc.addressModeV = wgpu::AddressMode::ClampToEdge;
 			samplerDesc.addressModeW = wgpu::AddressMode::ClampToEdge;
-			samplerDesc.magFilter = wgpu::FilterMode::Linear;
-			samplerDesc.minFilter = wgpu::FilterMode::Linear;
-			samplerDesc.mipmapFilter = wgpu::MipmapFilterMode::Linear;
+			samplerDesc.magFilter = wgpu::FilterMode::Nearest;
+			samplerDesc.minFilter = wgpu::FilterMode::Nearest;
+			samplerDesc.mipmapFilter = wgpu::MipmapFilterMode::Nearest;
 			samplerDesc.lodMinClamp = 0.0f;
 			samplerDesc.lodMaxClamp = 1.0f;
 			samplerDesc.compare = wgpu::CompareFunction::Undefined;
