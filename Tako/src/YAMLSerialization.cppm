@@ -6,6 +6,7 @@ export module Tako.Serialization;
 
 import Tako.NumberTypes;
 import Tako.Reflection;
+import Tako.StringView;
 
 namespace tako::Serialization::YAML
 {
@@ -29,15 +30,16 @@ namespace tako::Serialization::YAML
 	}
 
 	export template<CustomYAMLSerializer T>
-		void Decode(T& target, const ::YAML::Node& node)
+	void Decode(T& target, const ::YAML::Node& node)
 	{
 		target.Deserialize(node);
 	}
 
 	export template<YAMLSerializable T>
-		T Deserialize(const char* text)
+	T Deserialize(StringView text)
 	{
-		auto node = ::YAML::Load(text);
+		auto textBuffer = tako::CStringBuffer(text);
+		auto node = ::YAML::Load(textBuffer.c_str());
 		T t = {};
 		Decode(t, node);
 		return t;
@@ -53,13 +55,13 @@ namespace tako::Serialization::YAML
 	}
 
 	export template<CustomYAMLSerializer T>
-		void Encode(const T& source, ::YAML::Emitter& out)
+	void Encode(const T& source, ::YAML::Emitter& out)
 	{
 		source.Serialize(out);
 	}
 
 	export template<YAMLSerializable T>
-		std::string Serialize(const T& t)
+	std::string Serialize(const T& t)
 	{
 		::YAML::Emitter out;
 		Encode(t, out);

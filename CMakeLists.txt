@@ -23,8 +23,13 @@ endif()
 
 add_subdirectory("Utils")
 add_subdirectory("dependencies/fmt" EXCLUDE_FROM_ALL)
-add_subdirectory("dependencies/yaml-cpp" EXCLUDE_FROM_ALL)
 add_subdirectory("dependencies/json" EXCLUDE_FROM_ALL)
+
+FetchContent_Declare(
+	yaml-cpp
+	GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+	GIT_TAG f7320141120f720aecc4c32be25586e7da9eb978 # 0.8.0
+)
 
 set(FASTGLTF_COMPILE_AS_CPP20 ON CACHE BOOL "" FORCE)
 #set(FASTGLTF_ENABLE_CPP_MODULES ON CACHE BOOL "" FORCE)
