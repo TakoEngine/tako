@@ -282,6 +282,11 @@ namespace Math
 			return *this;
 		}
 
+		constexpr Vector3 operator-() const
+		{
+			return { -x, -y, -z };
+		}
+
 		float magnitude() const
 		{
 			return mathf::sqrt(x * x + y * y + z * z);
