@@ -36,7 +36,7 @@ target_sources(
 	"src/Event.cppm"
 	"src/Input.cppm"
 	"src/EntryPoint.cppm"
-	"src/Jam/PlatformerPhysics2D.cppm"
+	#"src/Jam/PlatformerPhysics2D.cppm"
 	"src/Jam/TileMap.cppm"
 	"src/Jam/LDtkImporter.cppm"
 	"src/SmallVec.cppm"
@@ -58,6 +58,11 @@ target_sources(
 	"src/Allocators/PoolAllocator.cppm"
 	"src/Allocators/CachePoolAllocator.cppm"
 )
+
+# Workaround for some clang versions crashing when having debug info for JobSystem.cppm
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+	set_source_files_properties(src/JobSystem.cppm PROPERTIES COMPILE_FLAGS "-g0")
+endif()
 
 option (TAKO_FORCE_LOG "Log even in release builds" OFF)
 if (TAKO_FORCE_LOG)

@@ -1,4 +1,5 @@
 #pragma once
+#include <tuple>
 
 // foreach macro: https://stackoverflow.com/questions/1872220/is-it-possible-to-iterate-over-arguments-in-variadic-macros
 #define FE_0(WHAT)

@@ -4,7 +4,7 @@ module;
 #include <string>
 #include <unordered_map>
 #include <span>
-#include <format>
+#include "fmt/format.h"
 export module Tako.Reflection;
 
 import Tako.StringView;
@@ -43,7 +43,7 @@ namespace tako::Reflection
 
 	export template<typename T>
 	const PrimitiveInformation* GetPrimitiveInformation();
- 
+
 
 	export struct StructInformation;
 
@@ -155,7 +155,7 @@ namespace tako::Reflection
 					{
 						ArrayInformation info;
 						auto elementType = Get<typename T::value_type>();
-						static std::string typeName = std::format("vector<{}>", elementType->name);
+						static std::string typeName = fmt::format("vector<{}>", elementType->name ? elementType->name : "");
 						info.name = typeName.c_str();
 						info.size = sizeof(T);
 						info.kind = TypeKind::Array;
@@ -208,7 +208,7 @@ namespace tako::Reflection
 		}
 	};
 
-	export template<typename T>
+	template<typename T>
 	constexpr bool TypeInformation::IsType() const
 	{
 		return this == Resolver::Get<T>();
