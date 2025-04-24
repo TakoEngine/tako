@@ -149,7 +149,7 @@ namespace tako
 			L* loader,
 			Handle(L::*loadFunc)(const StringView),
 			void(L::*releaseFunc)(Handle),
-			void(L::* reloadFunc)(Handle, const StringView) = nullptr
+			void(L::*reloadFunc)(Handle, const StringView) = nullptr
 		)
 		{
 			ASSERT(loadFunc);
