@@ -15,7 +15,7 @@ git pull
 
 source ./emsdk_env.sh
 
-echo "source \"$EMSDK_PATH/emsdk/emsdk_env.sh\"" >> $HOME/.bash_profile
+echo "source \"$EMSDK_PATH/emsdk/emsdk_env.sh\"" > $HOME/.bash_profile
 
 embuilder build freetype
 
