@@ -431,6 +431,102 @@ namespace Math
 		REFLECT(Vector4, x, y, z, w)
 	};
 
+	struct Matrix3
+	{
+		float m[9];
+
+		constexpr Matrix3() : m() {}
+		constexpr Matrix3(
+			float m1, float m2, float m3,
+			float m4, float m5, float m6,
+			float m7, float m8, float m9) : m{ m1, m2, m3, m4, m5, m6, m7, m8, m9 } {}
+
+		constexpr float& operator[](int i)
+		{
+			return m[i];
+		}
+
+		constexpr const float& operator[](int i) const
+		{
+			return m[i];
+		}
+
+		friend constexpr Vector3 operator*(const Matrix3 m, const Vector3 v)
+		{
+			Vector3 r = { 0, 0, 0};
+			for (size_t i = 0; i < 3; i++)
+			{
+				for (size_t j = 0; j < 3; j++)
+				{
+					r[j] += m[i * 3 + j] * v[i];
+				}
+			}
+
+			return r;
+		}
+
+		friend constexpr Matrix3 operator*(const Matrix3 lhs, const Matrix3 rhs)
+		{
+			Matrix3 res;
+			for (int i = 0; i < 3; i++)
+			{
+				for (int j = 0; j < 3; j++)
+				{
+					float sum = 0;
+					for (int x = 0; x < 3; x++)
+					{
+						sum += lhs[i + x * 3] * rhs[x + j * 3];
+					}
+
+					res[i + j * 3] = sum;
+				}
+			}
+			return res;
+		}
+
+		constexpr static Matrix3 Transpose(const Matrix3& m)
+		{
+			return Matrix3
+			{
+				m[0], m[3], m[6],
+				m[1], m[4], m[7],
+				m[2], m[5], m[8]
+			};
+		}
+
+		constexpr static Matrix3 Inverse(const Matrix3& m)
+		{
+			Matrix3 inv;
+
+			inv[0] = m[4] * m[8] - m[5] * m[7];
+			inv[1] = -m[1] * m[8] + m[2] * m[7];
+			inv[2] = m[1] * m[5] - m[2] * m[4];
+
+			inv[3] = -m[3] * m[8] + m[5] * m[6];
+			inv[4] = m[0] * m[8] - m[2] * m[6];
+			inv[5] = -m[0] * m[5] + m[2] * m[3];
+
+			inv[6] = m[3] * m[7] - m[4] * m[6];
+			inv[7] = -m[0] * m[7] + m[1] * m[6];
+			inv[8] = m[0] * m[4] - m[1] * m[3];
+
+			float det = m[0] * inv[0] + m[1] * inv[3] + m[2] * inv[6];
+			if (det == 0.0f)
+			{
+				return {};
+			}
+
+			float invDet = 1.0f / det;
+			Matrix3 out;
+			for (int i = 0; i < 9; i++)
+			{
+				out[i] = inv[i] * invDet;
+			}
+
+			return out;
+		}
+	};
+
 	struct Quaternion;
 	struct Matrix4
 	{
@@ -441,7 +537,15 @@ namespace Math
 			float m5, float m6, float m7, float m8,
 			float m9, float m10, float m11, float m12,
 			float m13, float m14, float m15, float m16) : m{ m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16 } {}
+		constexpr explicit Matrix4(const Matrix3& m3) : m
+		{
+			m3[0], m3[1], m3[2], 0,
+			m3[3], m3[4], m3[5], 0,
+			m3[6], m3[7], m3[8], 0,
+			    0,     0,     0, 1
+		} {}
 		static const Matrix4 identity;
+
 
 		constexpr float& operator[](int i)
 		{
@@ -559,7 +663,7 @@ namespace Math
 				m[13] * m[2] * m[11] +
 				m[13] * m[3] * m[10];
 
-		    inv[5] =
+			inv[5] =
 				m[0]  * m[10] * m[15] -
 				m[0]  * m[11] * m[14] -
 				m[8]  * m[2] * m[15] +
@@ -567,7 +671,7 @@ namespace Math
 				m[12] * m[2] * m[11] -
 				m[12] * m[3] * m[10];
 
-		    inv[9] =
+			inv[9] =
 				-m[0]  * m[9] * m[15] +
 				m[0]  * m[11] * m[13] +
 				m[8]  * m[1] * m[15] -
@@ -774,6 +878,16 @@ namespace Math
 
 		static Matrix4 DirectionToRotation(const Vector3& direction, const Vector3& up = { 0, 1, 0 });
 
+		constexpr Matrix3 ExtractMatrix3() const
+		{
+			return Matrix3
+			(
+				m[0], m[1], m[2],
+				m[4], m[5], m[6],
+				m[8], m[9], m[10]
+			);
+		}
+
 		void Print();
 	};
 
@@ -783,15 +897,24 @@ namespace Math
 		constexpr Quaternion() : x(0), y(0), z(0), w(1) {}
 		constexpr Quaternion(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
 
+		constexpr Matrix3 ToRotationMatrix3() const
+		{
+			return Matrix3
+			(
+				1 - 2 * (y * y + z * z), 2 * (x * y - w * z), 2 * (x * z + w * y),
+				2 * (x * y + w * z), 1 - 2 * (x * x + z * z), 2 * (y * z - w * x),
+				2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y)
+			);
+		}
+
+		constexpr Matrix4 ToRotationMatrix4() const
+		{
+			return Matrix4(ToRotationMatrix3());
+		}
+
 		constexpr Matrix4 ToRotationMatrix() const
 		{
-			return Matrix4
-			(
-				1 - 2 * (y * y + z * z), 2 * (x * y - w * z), 2 * (x * z + w * y), 0,
-				2 * (x * y + w * z), 1 - 2 * (x * x + z * z), 2 * (y * z - w * x), 0,
-				2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y), 0,
-				0, 0, 0, 1
-			);
+			return ToRotationMatrix4();
 		}
 
 		static Quaternion FromEuler(Vector3 euler)
