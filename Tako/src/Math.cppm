@@ -525,6 +525,26 @@ namespace Math
 
 			return out;
 		}
+
+		constexpr static Matrix3 SkewSymmetric(const Vector3& v)
+		{
+			return Matrix3
+			{
+				0, -v.z, v.y,
+				v.z, 0, -v.x,
+				-v.y, v.x, 0
+			};
+		}
+
+		friend constexpr Matrix3 operator*(const Matrix3& m, float scalar)
+		{
+			Matrix3 res;
+			for (int i = 0; i < 9; i++)
+			{
+				res[i] = m[i] * scalar;
+			}
+			return res;
+		}
 	};
 
 	struct Quaternion;
