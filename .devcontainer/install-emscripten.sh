@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-EM_VERSION='3.1.64'
+EM_VERSION='4.0.10'
 
 EMSDK_PATH=$HOME
 
@@ -20,7 +20,7 @@ echo "source \"$EMSDK_PATH/emsdk/emsdk_env.sh\"" > $HOME/.bash_profile
 embuilder build freetype
 
 # Workaround for clang-scan-deps
-cd $EMSDK_PATH
-git clone https://github.com/eliemichel/cpp20-cmake-emscripten-template.git
-chmod +x $EMSDK_PATH/cpp20-cmake-emscripten-template/cmake/EmscriptenScanDepsFix/emscan-deps
-sed -i "20s%.*%args.append(\"-I$EMSDK_PATH/emsdk/upstream/emscripten/system/include\")%" $EMSDK_PATH/cpp20-cmake-emscripten-template/cmake/EmscriptenScanDepsFix/emscan-deps.py
+#cd $EMSDK_PATH
+#git clone https://github.com/eliemichel/cpp20-cmake-emscripten-template.git
+#chmod +x $EMSDK_PATH/cpp20-cmake-emscripten-template/cmake/EmscriptenScanDepsFix/emscan-deps
+#sed -i "20s%.*%args.append(\"-I$EMSDK_PATH/emsdk/upstream/emscripten/system/include\")%" $EMSDK_PATH/cpp20-cmake-emscripten-template/cmake/EmscriptenScanDepsFix/emscan-deps.py

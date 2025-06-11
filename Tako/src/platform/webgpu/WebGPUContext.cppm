@@ -32,14 +32,14 @@ public:
 };
 
 #ifndef TAKO_EMSCRIPTEN
-using WLabel = WGPUStringView;
+using WLabel = wgpu::StringView;
 
 template <>
-class fmt::formatter<WGPUStringView> {
+class fmt::formatter<wgpu::StringView> {
 public:
 	constexpr auto parse (format_parse_context& ctx) { return ctx.begin(); }
 	template <typename Context>
-	constexpr auto format (WGPUStringView const& str, Context& ctx) const {
+	constexpr auto format (wgpu::StringView const& str, Context& ctx) const {
 		std::string_view s(str.data, str.length);
 		return format_to(ctx.out(), "{}", s);
 	}
@@ -188,7 +188,7 @@ namespace tako
 				&adapterOpts,
 				[](WGPURequestAdapterStatus status, WGPUAdapter adapter, WLabel message, void* pUserData)
 				{
-					reinterpret_cast<WebGPUContext*>(pUserData)->RequestAdapterCallback(status, adapter, message);
+					static_cast<WebGPUContext*>(pUserData)->RequestAdapterCallback(static_cast<wgpu::RequestAdapterStatus>(status), adapter, message);
 				},
 				this
 			);
@@ -725,11 +725,11 @@ namespace tako
 		wgpu::Surface m_surface;
 		wgpu::Instance m_instance;
 
-		void RequestAdapterCallback(WGPURequestAdapterStatus status, WGPUAdapter adapterHandle, WLabel message)
+		void RequestAdapterCallback(wgpu::RequestAdapterStatus status, wgpu::Adapter adapterHandle, WLabel message)
 		{
-			if (status == WGPURequestAdapterStatus_Success)
+			if (status == wgpu::RequestAdapterStatus::Success)
 			{
-				auto adapter = wgpu::Adapter::Acquire(adapterHandle);
+				auto adapter = adapterHandle;
 
 				#ifdef TAKO_EMSCRIPTEN
 				m_surfaceFormat = m_surface.GetPreferredFormat(adapter);
@@ -772,7 +772,7 @@ namespace tako
 				deviceDesc.nextInChain = nullptr;
 				deviceDesc.label = "DefaultDevice";
 				deviceDesc.requiredFeatureCount = 0;
-				wgpu::RequiredLimits requiredLimits = GetRequiredLimits(adapter);
+				auto requiredLimits = GetRequiredLimits(adapter);
 				deviceDesc.requiredLimits = &requiredLimits;
 				deviceDesc.defaultQueue.nextInChain = nullptr;
 				deviceDesc.defaultQueue.label = "DefaultQueue";
@@ -787,7 +787,7 @@ namespace tako
 					&deviceDesc,
 					[](WGPURequestDeviceStatus status, WGPUDevice device, WLabel message, void* pUserData)
 					{
-						reinterpret_cast<WebGPUContext*>(pUserData)->RequestDeviceCallback(status, device, message);
+						static_cast<WebGPUContext*>(pUserData)->RequestDeviceCallback(static_cast<wgpu::RequestDeviceStatus>(status), device, message);
 					},
 					this
 				);
@@ -798,11 +798,11 @@ namespace tako
 			}
 		}
 
-		void RequestDeviceCallback(WGPURequestDeviceStatus status, WGPUDevice device, WLabel message)
+		void RequestDeviceCallback(wgpu::RequestDeviceStatus status, wgpu::Device device, WLabel message)
 		{
-			if (status == WGPURequestDeviceStatus_Success)
+			if (status == wgpu::RequestDeviceStatus::Success)
 			{
-				m_device = wgpu::Device::Acquire(device);
+				m_device = device;
 				#ifdef TAKO_EMSCRIPTEN
 				wgpuDeviceSetUncapturedErrorCallback(m_device.Get(), UncapturedErrorCallback, nullptr);
 				#endif
@@ -842,7 +842,7 @@ namespace tako
 #ifdef TAKO_EMSCRIPTEN
 		static void DeviceLostCallback(WGPUDeviceLostReason reason, char const* message, void* pUserData)
 #else
-		static void DeviceLostCallback(const wgpu::Device& device, wgpu::DeviceLostReason reason, const char* message)
+		static void DeviceLostCallback(const wgpu::Device& device, wgpu::DeviceLostReason reason, WLabel message)
 #endif
 		{
 			LOG_ERR("Device lost({}): {}", fmt::underlying(reason), message);
@@ -850,7 +850,7 @@ namespace tako
 #ifdef TAKO_EMSCRIPTEN
 		static void UncapturedErrorCallback(WGPUErrorType type, char const* message, void* pUserData)
 #else
-		static void UncapturedErrorCallback(const wgpu::Device& device, wgpu::ErrorType type, const char* message)
+		static void UncapturedErrorCallback(const wgpu::Device& device, wgpu::ErrorType type, WLabel message)
 #endif
 		{
 			LOG_ERR("Uncaptured device error({}): {}", fmt::underlying(type), message);
