@@ -1,5 +1,11 @@
 #pragma once
 
+// Workaround for (possibly) https://github.com/llvm/llvm-project/issues/136289
+#ifdef TAKO_EMSCRIPTEN
+#undef _LIBCPP_HIDE_FROM_ABI
+#define _LIBCPP_HIDE_FROM_ABI
+#endif
+
 #include "GraphicsAPI.hpp"
 
 import Tako.Input;
