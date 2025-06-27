@@ -40,12 +40,12 @@ FetchContent_Declare(
 	GIT_TAG 42608f77f20749dd6ddc9e0536788eaad70ea4b5 # 2.13.3
 	FIND_PACKAGE_ARGS NAMES Freetype
 )
-if (NOT EMSCRIPTEN)
+#if (NOT EMSCRIPTEN)
 	FetchContent_MakeAvailable(freetype)
 	if (NOT TARGET Freetype::Freetype)
 		add_library(Freetype::Freetype ALIAS freetype)
 	endif()
-endif()
+#endif()
 add_subdirectory("${PROJECT_SOURCE_DIR}/dependencies/RmlUi" EXCLUDE_FROM_ALL)
 
 if (NOT EMSCRIPTEN)

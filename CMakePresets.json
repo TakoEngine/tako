@@ -7,9 +7,14 @@
   },
   "configurePresets": [
     {
+      "name": "common-base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build-${presetName}"
+    },
+    {
       "name": "native-base",
       "hidden": true,
-      "binaryDir": "${sourceDir}/build-${presetName}",
+      "inherits": [ "common-base" ],
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
@@ -79,10 +84,11 @@
     {
       "name": "emscripten-base",
       "hidden": true,
+      "inherits": [ "common-base" ],
       "generator": "Ninja",
       "cacheVariables": {
         "BUILD_SHARED_LIBS": "OFF",
-        "CMAKE_TOOLCHAIN_FILE": "${env.EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+        "CMAKE_TOOLCHAIN_FILE": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
       },
       "condition": {
         "type": "matches",
