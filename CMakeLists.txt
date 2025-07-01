@@ -54,15 +54,15 @@ if (NOT EMSCRIPTEN)
 	set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 	add_subdirectory("dependencies/glfw" EXCLUDE_FROM_ALL)
 
-	FetchContent_Declare(
+	#add_subdirectory("dependencies/assimp" EXCLUDE_FROM_ALL)
+endif()
+
+FetchContent_Declare(
 		dawn
 		URL https://github.com/google/dawn/archive/a4695b94d4191bf496707dc121b180d4b81ee6b4.zip
 		URL_HASH SHA256=b2d4938bac76a5affb550c915c70ac82ab9b6aec574bae05eee93dc03992a825
 		FIND_PACKAGE_ARGS NAMES Dawn
-	)
-
-	#add_subdirectory("dependencies/assimp" EXCLUDE_FROM_ALL)
-endif()
+)
 
 add_subdirectory("Tako")
 

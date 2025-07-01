@@ -18,7 +18,7 @@ import Tako.SmallVec;
 class WStringView : public tako::CStringView
 {
 public:
-	#ifndef TAKO_EMSCRIPTEN
+	//#ifndef TAKO_EMSCRIPTEN
 	operator WGPUStringView()
 	{
 		return {m_str, m_len};
@@ -28,10 +28,10 @@ public:
 	{
 		return {m_str, m_len};
 	}
-	#endif
+	//#endif
 };
 
-#ifndef TAKO_EMSCRIPTEN
+//#ifndef TAKO_EMSCRIPTEN
 using WLabel = wgpu::StringView;
 
 template <>
@@ -44,9 +44,9 @@ public:
 		return format_to(ctx.out(), "{}", s);
 	}
 };
-#else
-using WLabel = const char*;
-#endif
+//#else
+//using WLabel = const char*;
+//#endif
 
 #ifdef TAKO_EMSCRIPTEN
 #define WGPUBufferBindingType_BindingNotUsed WGPUBufferBindingType_Undefined
@@ -167,8 +167,8 @@ namespace tako
 
 			// Surface
 #if defined(TAKO_EMSCRIPTEN)
-			wgpu::SurfaceDescriptorFromCanvasHTMLSelector fromCanvasHTMLSelector;
-			fromCanvasHTMLSelector.sType = wgpu::SType::SurfaceDescriptorFromCanvasHTMLSelector;
+			wgpu::EmscriptenSurfaceSourceCanvasHTMLSelector fromCanvasHTMLSelector;
+			fromCanvasHTMLSelector.sType = wgpu::SType::EmscriptenSurfaceSourceCanvasHTMLSelector;
 			fromCanvasHTMLSelector.selector = window->GetHandle();
 
 			wgpu::SurfaceDescriptor surfaceDescriptor;
@@ -184,11 +184,12 @@ namespace tako
 			wgpu::RequestAdapterOptions adapterOpts;
 			adapterOpts.compatibleSurface = m_surface;
 
-			m_instance.RequestAdapter(
+			auto adapterFuture = m_instance.RequestAdapter(
 				&adapterOpts,
-				[](WGPURequestAdapterStatus status, WGPUAdapter adapter, WLabel message, void* pUserData)
+                wgpu::CallbackMode::AllowSpontaneous, //TODO: research callback modes
+				[](wgpu::RequestAdapterStatus status, wgpu::Adapter adapter, WLabel message, WebGPUContext* pUserData)
 				{
-					static_cast<WebGPUContext*>(pUserData)->RequestAdapterCallback(static_cast<wgpu::RequestAdapterStatus>(status), adapter, message);
+					pUserData->RequestAdapterCallback(status, adapter, message);
 				},
 				this
 			);
@@ -197,6 +198,8 @@ namespace tako
 			{
 #ifdef TAKO_EMSCRIPTEN
 				emscripten_sleep(100);
+#else
+                instance.WaitAny(adapterFuture, 0);
 #endif
 			}
 		}
@@ -397,11 +400,11 @@ namespace tako
 
 			WGPUShaderModuleWGSLDescriptor shaderCodeDesc{};
 			shaderCodeDesc.chain.next = nullptr;
-#ifdef TAKO_EMSCRIPTEN
-			shaderCodeDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
-#else
+//#ifdef TAKO_EMSCRIPTEN
+			//shaderCodeDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
+//#else
 			shaderCodeDesc.chain.sType = WGPUSType_ShaderSourceWGSL;
-#endif
+//#endif
 			shaderCodeDesc.code = WStringView(pipelineDescriptor.shaderCode);
 
 			shaderDesc.nextInChain = &shaderCodeDesc.chain;
@@ -496,7 +499,7 @@ namespace tako
 			WGPUDepthStencilState depthStencilState;
 			SetDefault(depthStencilState);
 			depthStencilState.depthCompare = WGPUCompareFunction_LessEqual;
-			depthStencilState.depthWriteEnabled = WBool(true);
+			depthStencilState.depthWriteEnabled = WGPUOptionalBool(true);
 			depthStencilState.format = m_depthTextureFormat;
 			depthStencilState.stencilReadMask = 0;
 			depthStencilState.stencilWriteMask = 0;
@@ -731,10 +734,10 @@ namespace tako
 			{
 				auto adapter = adapterHandle;
 
-				#ifdef TAKO_EMSCRIPTEN
-				m_surfaceFormat = m_surface.GetPreferredFormat(adapter);
+				//#ifdef TAKO_EMSCRIPTEN
+				//m_surfaceFormat = m_surface.GetPreferredFormat(adapter);
 				//TODO: check if format is sRGB or not
-				#else
+				//#else
 				{
 					wgpu::SurfaceCapabilities capabilities;
 					m_surface.GetCapabilities(adapter, &capabilities);
@@ -764,7 +767,7 @@ namespace tako
 					}
 
 				}
-				#endif
+				//#endif
 
 				LOG("Surface Format: {}", (uint32_t) m_surfaceFormat);
 
@@ -776,21 +779,35 @@ namespace tako
 				deviceDesc.requiredLimits = &requiredLimits;
 				deviceDesc.defaultQueue.nextInChain = nullptr;
 				deviceDesc.defaultQueue.label = "DefaultQueue";
-				#ifdef TAKO_EMSCRIPTEN
-				deviceDesc.deviceLostCallback = DeviceLostCallback;
-				#else
-				deviceDesc.SetDeviceLostCallback(wgpu::CallbackMode::WaitAnyOnly, DeviceLostCallback);
+				//#ifdef TAKO_EMSCRIPTEN
+				//deviceDesc.deviceLostCallback = DeviceLostCallback;
+				//#else
+				deviceDesc.SetDeviceLostCallback(wgpu::CallbackMode::AllowSpontaneous, DeviceLostCallback);
 				deviceDesc.SetUncapturedErrorCallback(UncapturedErrorCallback);
-				#endif
+				//#endif
 
-				adapter.RequestDevice(
+				auto deviceFuture = adapter.RequestDevice(
 					&deviceDesc,
-					[](WGPURequestDeviceStatus status, WGPUDevice device, WLabel message, void* pUserData)
+                    wgpu::CallbackMode::AllowSpontaneous, //TODO: research callback modes
+					[](wgpu::RequestDeviceStatus status, wgpu::Device device, WLabel message, WebGPUContext* pUserData)
 					{
-						static_cast<WebGPUContext*>(pUserData)->RequestDeviceCallback(static_cast<wgpu::RequestDeviceStatus>(status), device, message);
+						pUserData->RequestDeviceCallback(status, device, message);
 					},
 					this
 				);
+
+
+
+#ifndef TAKO_EMSCRIPTEN
+                while (true)
+                {
+                    auto waitStatus = m_instance.WaitAny(deviceFuture, 0);
+                    if (waitStatus != wgpu::WaitStatus::TimedOut)
+                    {
+                        break;
+                    }
+                }
+#endif
 			}
 			else
 			{
@@ -804,7 +821,7 @@ namespace tako
 			{
 				m_device = device;
 				#ifdef TAKO_EMSCRIPTEN
-				wgpuDeviceSetUncapturedErrorCallback(m_device.Get(), UncapturedErrorCallback, nullptr);
+				//wgpuDeviceSetUncapturedErrorCallback(m_device.Get(), UncapturedErrorCallback, nullptr);
 				#endif
 
 				m_queue = m_device.GetQueue();
@@ -839,19 +856,19 @@ namespace tako
 			LOG("Work done ({})", fmt::underlying(status));
 		}
 
-#ifdef TAKO_EMSCRIPTEN
-		static void DeviceLostCallback(WGPUDeviceLostReason reason, char const* message, void* pUserData)
-#else
+//#ifdef TAKO_EMSCRIPTEN
+//		static void DeviceLostCallback(WGPUDeviceLostReason reason, char const* message, void* pUserData)
+//#else
 		static void DeviceLostCallback(const wgpu::Device& device, wgpu::DeviceLostReason reason, WLabel message)
-#endif
+//#endif
 		{
 			LOG_ERR("Device lost({}): {}", fmt::underlying(reason), message);
 		}
-#ifdef TAKO_EMSCRIPTEN
-		static void UncapturedErrorCallback(WGPUErrorType type, char const* message, void* pUserData)
-#else
+//#ifdef TAKO_EMSCRIPTEN
+//		static void UncapturedErrorCallback(WGPUErrorType type, char const* message, void* pUserData)
+//#else
 		static void UncapturedErrorCallback(const wgpu::Device& device, wgpu::ErrorType type, WLabel message)
-#endif
+//#endif
 		{
 			LOG_ERR("Uncaptured device error({}): {}", fmt::underlying(type), message);
 		}
@@ -860,7 +877,7 @@ namespace tako
 		{
 			wgpu::SurfaceTexture surfaceTexture;
 			m_surface.GetCurrentTexture(&surfaceTexture);
-			if (surfaceTexture.status != wgpu::SurfaceGetCurrentTextureStatus::Success)
+			if (surfaceTexture.status != wgpu::SurfaceGetCurrentTextureStatus::SuccessOptimal && surfaceTexture.status != wgpu::SurfaceGetCurrentTextureStatus::SuccessSuboptimal)
 			{
 				return nullptr;
 			}
@@ -906,17 +923,17 @@ namespace tako
 
 			for (U32 i = 0; i < images.size(); i++)
 			{
-				wgpu::ImageCopyTexture destination;
+				wgpu::TexelCopyTextureInfo destination;
 				#ifdef TAKO_EMSCRIPTEN
-				destination.nextInChain = nullptr;
+				//destination.nextInChain = nullptr;
 				#endif
 				destination.texture = entry.texture;
 				destination.mipLevel = 0;
 				destination.origin = { 0, 0, i };
 				destination.aspect = wgpu::TextureAspect::All;
 
-				wgpu::TextureDataLayout source;
-				source.nextInChain = nullptr;
+				wgpu::TexelCopyBufferLayout source;
+				//source.nextInChain = nullptr;
 				source.offset = 0;
 				source.bytesPerRow = 4 * textureDesc.size.width;
 				source.rowsPerImage = textureDesc.size.height;
@@ -1112,7 +1129,7 @@ namespace tako
 		void SetDefault(WGPUDepthStencilState &depthStencilState) const
 		{
 			depthStencilState.format = WGPUTextureFormat_Undefined;
-			depthStencilState.depthWriteEnabled = WBool(false);
+			depthStencilState.depthWriteEnabled = WGPUOptionalBool(false);
 			depthStencilState.depthCompare = WGPUCompareFunction_Always;
 			depthStencilState.stencilReadMask = 0xFFFFFFFF;
 			depthStencilState.stencilWriteMask = 0xFFFFFFFF;
@@ -1123,29 +1140,29 @@ namespace tako
 			SetDefault(depthStencilState.stencilBack);
 		}
 
-		wgpu::RequiredLimits GetRequiredLimits(const wgpu::Adapter& adapter) const
+		wgpu::Limits GetRequiredLimits(const wgpu::Adapter& adapter) const
 		{
-			wgpu::SupportedLimits supportedLimits;
+			wgpu::Limits supportedLimits;
 			adapter.GetLimits(&supportedLimits);
 
-			wgpu::RequiredLimits requiredLimits;
+			wgpu::Limits requiredLimits;
 
-			requiredLimits.limits.maxVertexAttributes = 2;
-			requiredLimits.limits.maxVertexBuffers = 1;
-			requiredLimits.limits.maxBufferSize = 10000 * 11 * sizeof(float);
-			requiredLimits.limits.maxVertexBufferArrayStride = 11 * sizeof(float);
-			requiredLimits.limits.maxInterStageShaderComponents = 8;
-			requiredLimits.limits.maxBindGroups = 4;
-			requiredLimits.limits.maxUniformBuffersPerShaderStage = 1;
-			requiredLimits.limits.maxUniformBufferBindingSize = 16 * 4 * sizeof(float);
-			requiredLimits.limits.maxTextureDimension1D = 2160;
-			requiredLimits.limits.maxTextureDimension2D = 3840;
-			requiredLimits.limits.maxTextureArrayLayers = 6;
-			requiredLimits.limits.maxSampledTexturesPerShaderStage = 1;
-			requiredLimits.limits.maxSamplersPerShaderStage = 1;
+			requiredLimits.maxVertexBuffers = 1;
+            requiredLimits.maxVertexAttributes = 2;
+            requiredLimits.maxBufferSize = 10000 * 11 * sizeof(float);
+            requiredLimits.maxVertexBufferArrayStride = 11 * sizeof(float);
+            requiredLimits.maxInterStageShaderVariables = 8;
+			requiredLimits.maxBindGroups = 4;
+			requiredLimits.maxUniformBuffersPerShaderStage = 1;
+			requiredLimits.maxUniformBufferBindingSize = 16 * 4 * sizeof(float);
+			requiredLimits.maxTextureDimension1D = 2160;
+			requiredLimits.maxTextureDimension2D = 3840;
+			requiredLimits.maxTextureArrayLayers = 6;
+			requiredLimits.maxSampledTexturesPerShaderStage = 1;
+			requiredLimits.maxSamplersPerShaderStage = 1;
 
-			requiredLimits.limits.minUniformBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
-			requiredLimits.limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minStorageBufferOffsetAlignment;
+			requiredLimits.minUniformBufferOffsetAlignment = supportedLimits.minUniformBufferOffsetAlignment;
+			requiredLimits.minStorageBufferOffsetAlignment = supportedLimits.minStorageBufferOffsetAlignment;
 
 			return requiredLimits;
 		}
