@@ -561,7 +561,7 @@ namespace tako
 	public:
 		World()
 		{
-			m_archetypes.insert({ 0, Archetype::Create<>() });
+			CreateEmptyArchetype();
 		}
 
 		Entity Create()
@@ -770,6 +770,7 @@ namespace tako
 			m_nextDeleted = 0;
 			m_deletedCount = 0;
 			m_archetypes.clear();
+			CreateEmptyArchetype();
 		}
 	private:
 		std::vector<EntityHandle> m_entities;
@@ -833,6 +834,11 @@ namespace tako
 			targetArch->CopyComponentData(handle, *targetHandle.chunk, handle.id, targetHandle.indexChunk);
 			RemoveEntityFromArchetype(handle);
 			m_entities[handle.id] = targetHandle;
+		}
+
+		void CreateEmptyArchetype()
+		{
+			m_archetypes.insert({ 0, Archetype::Create<>() });
 		}
 	};
 

@@ -288,6 +288,8 @@ if (TAKO_IMGUI)
 		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imstb_textedit.h"
 		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imstb_truetype.h"
 		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_demo.cpp"
+		"${PROJECT_SOURCE_DIR}/dependencies/imgui/misc/cpp/imgui_stdlib.h"
+		"${PROJECT_SOURCE_DIR}/dependencies/imgui/misc/cpp/imgui_stdlib.cpp"
 	)
 	target_compile_definitions(imgui PUBLIC IMGUI_IMPL_WEBGPU_BACKEND_DAWN)
 
@@ -318,6 +320,7 @@ if (TAKO_IMGUI)
 	endif()
 	target_include_directories(imgui PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/imgui")
 	target_include_directories(imgui PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/imgui/backends")
+	target_include_directories(imgui PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/imgui/misc/cpp")
 	target_link_libraries(imgui PUBLIC glfw webgpu_dawn)
 	target_link_libraries(${TAKO_DLL} PUBLIC imgui)
 endif()
