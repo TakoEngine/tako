@@ -326,6 +326,7 @@ if (TAKO_IMGUI)
 endif()
 
 add_subdirectory("src/RmlUi")
+add_subdirectory("src/CSG")
 
 if (TAKO_GLFW)
 	target_link_libraries(${TAKO_DLL} PUBLIC glfw)

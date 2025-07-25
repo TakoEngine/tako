@@ -64,6 +64,12 @@ FetchContent_Declare(
 		FIND_PACKAGE_ARGS NAMES Dawn
 )
 
+FetchContent_Declare(
+		manifold
+		GIT_REPOSITORY https://github.com/elalish/manifold.git
+		GIT_TAG 6754a3cf7cd3a16940efa4a9751cb63b0f49abf3 # 3.2.0
+)
+
 add_subdirectory("Tako")
 
 # Examples

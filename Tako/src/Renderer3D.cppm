@@ -24,6 +24,7 @@ import Tako.FileSystem;
 import Tako.GraphicsContext;
 import Tako.Math;
 import Tako.Resources;
+import Tako.CSG;
 
 
 template <>
@@ -62,7 +63,6 @@ namespace tako
 	{
 		Vector3 pos;
 		Vector3 normal;
-		Vector3 color;
 		Vector2 uv;
 
 		constexpr bool operator==(const Vertex& other) const
@@ -70,7 +70,6 @@ namespace tako
 			return
 				pos == other.pos &&
 				normal == other.normal &&
-				color == other.color &&
 				uv == other.uv;
 		}
 	};
@@ -140,6 +139,7 @@ namespace tako
 		void DrawMesh(const Mesh& mesh, const Material& material, const Matrix4& model);
 		void DrawMeshInstanced(const Mesh& mesh, const Material& material, size_t instanceCount, const Matrix4* transforms);
 		Mesh CreateMesh(std::span<const Vertex> vertices, std::span<const uint16_t> indices);
+		Mesh CreateMesh(const CSG::CSGMeshOutput& output);
 
 		void DrawCube(const Matrix4& model, const Material& material);
 		void DrawCube(Vector3 size, const Matrix4& model, const Material& material);
@@ -246,40 +246,40 @@ namespace tako
 		return
 		{
 			// Front
-			Vertex{{-x, -y, -z}, {0, 0, -1}, {1.0f, 0.0f, 0.0f}, {0, 0}},
-			Vertex{{ x, -y, -z}, {0, 0, -1}, {0.0f, 1.0f, 0.0f}, {1, 0}},
-			Vertex{{ x,  y, -z}, {0, 0, -1}, {0.0f, 0.0f, 1.0f}, {1, 1}},
-			Vertex{{-x,  y, -z}, {0, 0, -1}, {1.0f, 1.0f, 0.0f}, {0, 1}},
+			Vertex{{-x, -y, -z}, {0, 0, -1}, {0, 0}},
+			Vertex{{ x, -y, -z}, {0, 0, -1}, {1, 0}},
+			Vertex{{ x,  y, -z}, {0, 0, -1}, {1, 1}},
+			Vertex{{-x,  y, -z}, {0, 0, -1}, {0, 1}},
 
 			// Back
-			Vertex{{-x, -y,  z}, {0, 0, 1}, {0.0f, 1.0f, 1.0f}, {0, 0}},
-			Vertex{{ x, -y,  z}, {0, 0, 1}, {1.0f, 0.0f, 1.0f}, {1, 0}},
-			Vertex{{ x,  y,  z}, {0, 0, 1}, {0.0f, 0.0f, 0.0f}, {1, 1}},
-			Vertex{{-x,  y,  z}, {0, 0, 1}, {1.0f, 1.0f, 1.0f}, {0, 1}},
+			Vertex{{-x, -y,  z}, {0, 0, 1}, {0, 0}},
+			Vertex{{ x, -y,  z}, {0, 0, 1}, {1, 0}},
+			Vertex{{ x,  y,  z}, {0, 0, 1}, {1, 1}},
+			Vertex{{-x,  y,  z}, {0, 0, 1}, {0, 1}},
 
 			// Left
-			Vertex{{-x, -y, -z}, {-1, 0, 0}, {1.0f, 0.0f, 0.0f}, {0, 0}},
-			Vertex{{-x,  y, -z}, {-1, 0, 0}, {1.0f, 1.0f, 0.0f}, {0, 1}},
-			Vertex{{-x,  y,  z}, {-1, 0, 0}, {1.0f, 1.0f, 1.0f}, {1, 1}},
-			Vertex{{-x, -y,  z}, {-1, 0, 0}, {0.0f, 1.0f, 1.0f}, {1, 0}},
+			Vertex{{-x, -y, -z}, {-1, 0, 0}, {0, 0}},
+			Vertex{{-x,  y, -z}, {-1, 0, 0}, {0, 1}},
+			Vertex{{-x,  y,  z}, {-1, 0, 0}, {1, 1}},
+			Vertex{{-x, -y,  z}, {-1, 0, 0}, {1, 0}},
 
 			// Right
-			Vertex{{ x, -y, -z}, {1, 0, 0}, {0.0f, 1.0f, 0.0f}, {0, 0}},
-			Vertex{{ x,  y, -z}, {1, 0, 0}, {0.0f, 0.0f, 1.0f}, {0, 1}},
-			Vertex{{ x,  y,  z}, {1, 0, 0}, {0.0f, 0.0f, 0.0f}, {1, 1}},
-			Vertex{{ x, -y,  z}, {1, 0, 0}, {1.0f, 0.0f, 1.0f}, {1, 0}},
+			Vertex{{ x, -y, -z}, {1, 0, 0}, {0, 0}},
+			Vertex{{ x,  y, -z}, {1, 0, 0}, {0, 1}},
+			Vertex{{ x,  y,  z}, {1, 0, 0}, {1, 1}},
+			Vertex{{ x, -y,  z}, {1, 0, 0}, {1, 0}},
 
 			// Top
-			Vertex{{-x,  y, -z}, {0, 1, 0}, {1.0f, 1.0f, 0.0f}, {0, 0}},
-			Vertex{{ x,  y, -z}, {0, 1, 0}, {0.0f, 0.0f, 1.0f}, {1, 0}},
-			Vertex{{ x,  y,  z}, {0, 1, 0}, {0.0f, 0.0f, 0.0f}, {1, 1}},
-			Vertex{{-x,  y,  z}, {0, 1, 0}, {1.0f, 1.0f, 1.0f}, {0, 1}},
+			Vertex{{-x,  y, -z}, {0, 1, 0}, {0, 0}},
+			Vertex{{ x,  y, -z}, {0, 1, 0}, {1, 0}},
+			Vertex{{ x,  y,  z}, {0, 1, 0}, {1, 1}},
+			Vertex{{-x,  y,  z}, {0, 1, 0}, {0, 1}},
 
 			// Bottom
-			Vertex{{-x, -y, -z}, {0, -1, 0}, {1.0f, 0.0f, 0.0f}, {0, 0}},
-			Vertex{{ x, -y, -z}, {0, -1, 0}, {0.0f, 1.0f, 0.0f}, {1, 0}},
-			Vertex{{ x, -y,  z}, {0, -1, 0}, {1.0f, 0.0f, 1.0f}, {1, 1}},
-			Vertex{{-x, -y,  z}, {0, -1, 0}, {0.0f, 1.0f, 1.0f}, {0, 1}},
+			Vertex{{-x, -y, -z}, {0, -1, 0}, {0, 0}},
+			Vertex{{ x, -y, -z}, {0, -1, 0}, {1, 0}},
+			Vertex{{ x, -y,  z}, {0, -1, 0}, {1, 1}},
+			Vertex{{-x, -y,  z}, {0, -1, 0}, {0, 1}},
 		};
 	}
 
@@ -470,16 +470,14 @@ namespace tako
 			struct VertexInput {
 				@location(0) position: vec3f,
 				@location(1) normal: vec3f,
-				@location(2) color: vec3f,
-				@location(3) uv: vec2f,
+				@location(2) uv: vec2f,
 			};
 
 			struct VertexOutput {
 				@builtin(position) position: vec4f,
-				@location(0) color: vec3f,
-				@location(1) uv: vec2f,
-				@location(2) positionVS: vec3f,
-				@location(3) normalVS: vec3f,
+				@location(0) uv: vec2f,
+				@location(1) positionVS: vec3f,
+				@location(2) normalVS: vec3f,
 			}
 
 			@vertex
@@ -488,7 +486,6 @@ namespace tako
 				let modelView = camera.view * model;
 				var out: VertexOutput;
 				out.position = camera.projection * modelView * vec4f(in.position, 1.0);
-				out.color = in.color;
 				out.uv = in.uv;
 
 				out.positionVS = (modelView * vec4f(in.position, 1.0)).xyz;
@@ -512,7 +509,8 @@ namespace tako
 			@fragment
 			fn fs_main(in: VertexOutput) -> @location(0) vec4f {
 				let eyePos = vec4f(0, 0, 0, 1);
-				let baseColor = textureSample(baseColorTexture, baseColorSampler, in.uv);
+				let uv = in.uv;
+				let baseColor = textureSample(baseColorTexture, baseColorSampler, uv);
 				let N = normalize(vec4f(in.normalVS, 1));
 				let P = vec4f(in.positionVS, 1);
 
@@ -542,7 +540,7 @@ namespace tako
 			}
 		)";
 
-		std::array vertexAttributes = { PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec2 };
+		std::array vertexAttributes = { PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec2 };
 
 		PipelineDescriptor pipelineDescriptor;
 		pipelineDescriptor.shaderCode = shaderSource;
@@ -771,13 +769,20 @@ namespace tako
 		}
 	}
 
-	Mesh Renderer3D::CreateMesh(std::span<const Vertex> vertices,std::span<const uint16_t> indices)
+	Mesh Renderer3D::CreateMesh(std::span<const Vertex> vertices, std::span<const uint16_t> indices)
 	{
 		Mesh mesh;
 		mesh.vertexBuffer = m_context->CreateBuffer(BufferType::Vertex, vertices.data(), sizeof(vertices[0]) * vertices.size());
 		mesh.indexBuffer = m_context->CreateBuffer(BufferType::Index, indices.data(), sizeof(indices[0]) * indices.size());
 		mesh.indexCount = indices.size();
 		return std::move(mesh);
+	}
+
+	Mesh Renderer3D::CreateMesh(const CSG::CSGMeshOutput& output)
+	{
+		static_assert(sizeof(Vertex) == sizeof(CSG::CSGVertex));
+		auto vertices = std::bit_cast<std::span<const Vertex>>(std::span(output.vertices));
+		return CreateMesh(vertices, output.indices);
 	}
 
 	void Renderer3D::SetCameraView(const Matrix4& view)
@@ -936,7 +941,6 @@ namespace tako
 						Vertex v;
 						v.pos = pos;
 						//v.pos.y *= -1;
-						v.color = Vector3(1, 1, 1);
 						vertices[index] = v;
 					});
 
@@ -950,8 +954,9 @@ namespace tako
 						});
 					}
 
+					/*
 					auto colors = primitive.findAttribute("COLOR_0");
-					if (normals != primitive.attributes.end())
+					if (colors != primitive.attributes.end())
 					{
 						auto& colorAccessor = asset.accessors[colors->accessorIndex];
 						fastgltf::iterateAccessorWithIndex<Vector3>(asset, colorAccessor, [&](Vector3 color, size_t index)
@@ -959,6 +964,7 @@ namespace tako
 							vertices[index].color = color;
 						});
 					}
+					*/
 
 					auto uvs = primitive.findAttribute("TEXCOORD_0");
 					if (uvs != primitive.attributes.end())
@@ -1039,10 +1045,12 @@ namespace tako
 						{
 							nx, ny, nz
 						},
+						/*
 						//color
 						{
 							nx, ny, nz
 						},
+						*/
 						//uv
 						{
 							ux, uy
