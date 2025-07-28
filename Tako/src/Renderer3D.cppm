@@ -85,7 +85,13 @@ namespace tako
 
 	struct MaterialDescriptor
 	{
-		TextureType textureType = TextureType::E2D;
+		bool triplanar = false;
+	};
+
+	struct MaterialProperties
+	{
+		U32 triplanar = 0;
+		U32 padding[3];
 	};
 
 	export struct Mesh
@@ -190,10 +196,11 @@ namespace tako
 
 		Material CreateMaterial(Texture texture, const MaterialDescriptor& materialDescriptor = {})
 		{
-			std::array<ShaderBindingEntryData, 2> bindingData
+			std::array<ShaderBindingEntryData, 3> bindingData
 			{{
 				texture,
 				m_sampler,
+				materialDescriptor.triplanar ? m_matPropTriplanarBuffer : m_matPropNonTriplanarBuffer
 			}};
 			auto binding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(m_pipeline, 2), bindingData);
 			return binding;
@@ -219,6 +226,8 @@ namespace tako
 		Buffer m_lightBuffer;
 		size_t m_lightBufferSize = 0;
 		ShaderBinding m_lightBinding;
+		Buffer m_matPropNonTriplanarBuffer;
+		Buffer m_matPropTriplanarBuffer;
 		Pipeline m_skyPipeline;
 		Texture m_skyTexture;
 		Material m_skyMaterial;
@@ -424,6 +433,14 @@ namespace tako
 		m_lightSettingsBuffer = m_context->CreateBuffer(BufferType::Uniform, sizeof(LightSettings));
 		CreateLightBuffer(1);
 
+		{
+			MaterialProperties matProps;
+			matProps.triplanar = 0;
+			m_matPropNonTriplanarBuffer = m_context->CreateBuffer(BufferType::Uniform, &matProps, sizeof(MaterialProperties));
+			matProps.triplanar = 1;
+			m_matPropTriplanarBuffer = m_context->CreateBuffer(BufferType::Uniform, &matProps, sizeof(MaterialProperties));
+		}
+
 		CreateSkyboxPipeline();
 		m_skyCameraBuffer = m_context->CreateBuffer(BufferType::Uniform, sizeof(Matrix4));
 		std::array<ShaderBindingEntryData, 1> skyCameraBindingData
@@ -457,6 +474,11 @@ namespace tako
 				lightCount: u32,
 			};
 
+			struct Material
+			{
+				triplanar: u32,
+			};
+
 			@group(0) @binding(0) var<uniform> camera: Camera;
 
 			@group(1) @binding(0) var<uniform> lighting: Lighting;
@@ -464,6 +486,7 @@ namespace tako
 
 			@group(2) @binding(0) var baseColorTexture: texture_2d<f32>;
 			@group(2) @binding(1) var baseColorSampler: sampler;
+			@group(2) @binding(2) var<uniform> material: Material;
 
 			@group(3) @binding(0) var<storage, read> models : array<mat4x4f>;
 
@@ -478,6 +501,8 @@ namespace tako
 				@location(0) uv: vec2f,
 				@location(1) positionVS: vec3f,
 				@location(2) normalVS: vec3f,
+				@location(3) positionWS: vec3f,
+				@location(4) normalWS: vec3f,
 			}
 
 			@vertex
@@ -490,6 +515,9 @@ namespace tako
 
 				out.positionVS = (modelView * vec4f(in.position, 1.0)).xyz;
 				out.normalVS = (modelView * vec4f(in.normal, 0)).xyz;
+
+				out.positionWS = (model * vec4f(in.position, 1.0)).xyz;
+				out.normalWS = (model * vec4f(in.normal, 0)).xyz;
 
 				return out;
 			}
@@ -506,11 +534,36 @@ namespace tako
 				return max(dot(N, L), 0);
 			}
 
+			fn TriplanarSample(positionWS: vec3f, normalWS: vec3f, scale: f32) -> vec4f {
+				let blendWeightsRaw = abs(normalWS);
+				let blendWeights = blendWeightsRaw / (blendWeightsRaw.x + blendWeightsRaw.y + blendWeightsRaw.z);
+
+				let uvX = vec2f(fract(positionWS.x * scale), fract(positionWS.y * scale));
+				let uvY = vec2f(fract(positionWS.z * scale), fract(positionWS.y * scale));
+				let uvZ = vec2f(fract(positionWS.x * scale), fract(positionWS.z * scale));
+
+				let texX = textureSample(baseColorTexture, baseColorSampler, uvX);
+				let texY = textureSample(baseColorTexture, baseColorSampler, uvY);
+				let texZ = textureSample(baseColorTexture, baseColorSampler, uvZ);
+
+				return
+					texX * blendWeights.z +
+					texY * blendWeights.x +
+					texZ * blendWeights.y;
+			}
+
 			@fragment
 			fn fs_main(in: VertexOutput) -> @location(0) vec4f {
 				let eyePos = vec4f(0, 0, 0, 1);
-				let uv = in.uv;
-				let baseColor = textureSample(baseColorTexture, baseColorSampler, uv);
+
+				var baseColor: vec4f;
+				if (material.triplanar > 0) {
+					baseColor = TriplanarSample(in.positionWS, in.normalWS, 0.1);
+				}
+				else {
+					let uv = in.uv;
+					baseColor = textureSample(baseColorTexture, baseColorSampler, uv);
+				}
 				let N = normalize(vec4f(in.normalVS, 1));
 				let P = vec4f(in.positionVS, 1);
 
@@ -543,6 +596,8 @@ namespace tako
 		std::array vertexAttributes = { PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec2 };
 
 		PipelineDescriptor pipelineDescriptor;
+		pipelineDescriptor.name = "Renderer3D Default";
+
 		pipelineDescriptor.shaderCode = shaderSource;
 		pipelineDescriptor.vertEntry = "vs_main";
 		pipelineDescriptor.fragEntry = "fs_main";
@@ -558,10 +613,11 @@ namespace tako
 			ShaderBindingType::Uniform, sizeof(LightSettings),
 			ShaderBindingType::Storage, sizeof(GPULight)
 		}};
-		std::array<ShaderEntry, 2> materialBinding
+		std::array<ShaderEntry, 3> materialBinding
 		{{
 			ShaderBindingType::Texture2D, 0,
-			ShaderBindingType::Sampler, 0
+			ShaderBindingType::Sampler, 0,
+			ShaderBindingType::Uniform, sizeof(MaterialProperties)
 		}};
 		std::array<ShaderBindingDescriptor, 3> shaderBindings
 		{{
@@ -634,6 +690,8 @@ namespace tako
 		)";
 
 		PipelineDescriptor pipelineDescriptor;
+		pipelineDescriptor.name = "Renderer3D Skybox";
+
 		pipelineDescriptor.shaderCode = shaderSource;
 		pipelineDescriptor.vertEntry = "vs_main";
 		pipelineDescriptor.fragEntry = "fs_main";

@@ -413,6 +413,10 @@ namespace tako
 
 			WGPURenderPipelineDescriptor pipelineDesc{};
 			pipelineDesc.nextInChain = nullptr;
+			if (pipelineDescriptor.name)
+			{
+				pipelineDesc.label = WStringView(pipelineDescriptor.name.value());
+			}
 
 			WGPUVertexBufferLayout vertexBufferLayout{};
 			std::vector<WGPUVertexAttribute> vertexAttribs(pipelineDescriptor.vertexAttributeSize);

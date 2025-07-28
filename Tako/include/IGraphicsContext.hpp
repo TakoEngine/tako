@@ -5,6 +5,7 @@
 #include "Pipeline.hpp"
 #include <cstddef>
 #include <variant>
+#include <optional>
 #include <span>
 #include <memory>
 #include <vector>
@@ -53,6 +54,7 @@ namespace tako
 
 	struct PipelineDescriptor
 	{
+		std::optional<const char*> name;
 		const char* shaderCode = nullptr;
 		const char* vertEntry = nullptr;
 		const char* fragEntry = nullptr;

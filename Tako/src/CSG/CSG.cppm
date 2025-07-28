@@ -99,7 +99,7 @@ namespace tako::CSG
 		int resolution;
 
 		CylinderBrush() : height(0), radius(0), resolution(32) {}
-		CylinderBrush(float height, float radius, int resolution = 32) : height(height), radius(radius), resolution(0) {}
+		CylinderBrush(float height, float radius, int resolution = 32) : height(height), radius(radius), resolution(resolution) {}
 
 		manifold::Manifold GetManifold() const override
 		{
