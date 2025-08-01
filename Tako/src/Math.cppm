@@ -369,6 +369,21 @@ namespace Math
 			return (&x)[i];
 		}
 
+		constexpr Vector2 xy() const
+		{
+			return Vector2(x, y);
+		}
+
+		constexpr Vector2 xz() const
+		{
+			return Vector2(x, z);
+		}
+
+		constexpr Vector2 yz() const
+		{
+			return Vector2(y, z);
+		}
+
 		static const Vector3 left;
 		static const Vector3 right;
 		static const Vector3 up;
@@ -426,6 +441,11 @@ namespace Math
 		const float& operator[](size_t i) const
 		{
 			return (&x)[i];
+		}
+
+		constexpr Vector3 xyz() const
+		{
+			return Vector3(x, y, z);
 		}
 
 		REFLECT(Vector4, x, y, z, w)

@@ -87,9 +87,9 @@ namespace tako
 		T& Emplace(Args&& ... args)
 		{
 			ReserveSizeForPush();
-			T& ref = new(m_data[m_length]) T(std::forward<Args>(args)...);
+			new(m_data + m_length) T(std::forward<Args>(args)...);
 			m_length++;
-			return ref;
+			return m_data[m_length - 1];
 		}
 
 		void PushArray(const T* arr, size_t num)
@@ -143,6 +143,12 @@ namespace tako
 			ASSERT(index < m_length);
 			return m_data[index];
 		}
+
+		// Iterators might get invalidated by push/resize
+		T* begin() { return m_data; }
+		T* end() { return m_data + m_length; }
+		const T* begin() const { return m_data; }
+		const T* end() const { return m_data + m_length; }
 	private:
 		void ReserveSizeForPush()
 		{
