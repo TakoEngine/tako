@@ -59,7 +59,7 @@ struct std::hash<SphereCubeGenerationParams>
 
 namespace tako
 {
-	struct Vertex
+	export struct Vertex
 	{
 		Vector3 pos;
 		Vector3 normal;
@@ -83,7 +83,7 @@ namespace tako
 
 	export using Material = ShaderBinding;
 
-	struct MaterialDescriptor
+	export struct MaterialDescriptor
 	{
 		bool triplanar = false;
 	};
