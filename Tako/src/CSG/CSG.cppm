@@ -7,6 +7,18 @@ import Tako.Reflection;
 
 import Tako.Math;
 
+
+namespace tako::CSG
+{
+	export enum class CSGOperation
+	{
+		Union,
+		Subtraction,
+		Intersection
+	};
+}
+REFLECT_ENUM(tako::CSG::CSGOperation, Union, Subtraction, Intersection)
+
 namespace tako::CSG
 {
 	export struct CSGVertex
@@ -14,13 +26,6 @@ namespace tako::CSG
 		Vector3 position;
 		Vector3 normal;
 		Vector2 uv;
-	};
-
-	export enum class CSGOperation
-	{
-		Union,
-		Subtraction,
-		Intersection
 	};
 
 	manifold::OpType Convert(CSGOperation op)
@@ -44,37 +49,71 @@ namespace tako::CSG
 	{
 	public:
 		virtual manifold::Manifold GetManifold() const = 0; //TODO: Hide manifold for users
+
+		REFLECT_POLY(CSGNode)
 	};
 
-	/*
+	export struct CSGTransform
+	{
+		Vector3 position = {0, 0, 0};
+		Vector3 rotation = {0, 0, 0};
+		Vector3 scale = {1, 1, 1};
+
+		REFLECT(CSGTransform, position, rotation, scale)
+	};
+
+    export struct CSGCombinerNode
+    {
+        std::unique_ptr<CSGNode> node;
+        CSGOperation operation = CSGOperation::Union;
+		CSGTransform transform;
+
+		manifold::Manifold GetManifold() const
+		{
+			auto& translation = transform.position;
+			auto& rotation = transform.rotation;
+			auto& scale = transform.scale;
+			return node->GetManifold()
+				.Translate({translation.x, translation.y, translation.z})
+				.Rotate(rotation.x, rotation.y, rotation.z)
+				.Scale({scale.x, scale.y, scale.z});
+		}
+
+		REFLECT(CSGCombinerNode, node, operation, transform)
+    };
+
 	export struct CSGCombiner : public CSGNode
 	{
-		std::vector<std::unique_ptr<CSGNode>> nodes;
-		CSGOperation operation = CSGOperation::Union;
+		std::vector<CSGCombinerNode> nodes;
 
+        /*
 		template<typename... Nodes>
-		CSGCombiner(CSGOperation op = CSGOperation::Union, Nodes&&... argNodes) : operation(op)
+		CSGCombiner(Nodes&&... argNodes)
 		{
 			(nodes.emplace_back(std::make_unique<std::decay_t<Nodes>>(std::forward<Nodes>(argNodes))), ...);
 		}
+        */
 
-		CSGCombiner& Add(CSGNode&& node)
+        template<typename Node>
+            requires std::derived_from<std::decay_t<Node>, CSGNode>
+		CSGCombiner& Add(Node&& node, CSGOperation operation)
 		{
-			nodes.emplace_back(std::make_unique<CSGNode>(std::move(node)));
+			nodes.emplace_back(std::make_unique<CSGNode>(std::move(node)), operation);
 			return *this;
 		}
 
 		manifold::Manifold GetManifold() const override
 		{
 			manifold::Manifold res;
-			for (auto& const node : nodes)
+			for (auto& node : nodes)
 			{
-				res = res.Boolean(node->GetManifold(), Convert(operation));
+				res = res.Boolean(node.GetManifold(), Convert(node.operation));
 			}
 			return res;
 		}
+
+		REFLECT_CHILD(CSGCombiner, nodes)
 	};
-	*/
 
 	export struct BoxBrush : public CSGNode
 	{
@@ -89,7 +128,22 @@ namespace tako::CSG
 			return manifold::Manifold::Cube({ extents.x, extents.y, extents.z }, true);
 		}
 
-		REFLECT(BoxBrush, extents)
+		REFLECT_CHILD(BoxBrush, extents)
+	};
+
+	export struct SphereBrush : public CSGNode
+	{
+		float radius;
+		int resolution;
+
+		SphereBrush() : radius(0), resolution(32) {}
+
+		manifold::Manifold GetManifold() const override
+		{
+			return manifold::Manifold::Sphere(radius, resolution);
+		}
+
+		REFLECT_CHILD(SphereBrush, radius, resolution)
 	};
 
 	export struct CylinderBrush : public CSGNode
@@ -107,7 +161,7 @@ namespace tako::CSG
 				.Rotate(90, 0, 0);
 		}
 
-		REFLECT(CylinderBrush, height, radius, resolution)
+		REFLECT_CHILD(CylinderBrush, height, radius, resolution)
 	};
 
 	export class CSGResult : public CSGNode
@@ -171,5 +225,3 @@ namespace tako::CSG
 		return out;
 	}
 }
-
-REFLECT_ENUM(tako::CSG::CSGOperation, Union, Subtraction, Intersection)
