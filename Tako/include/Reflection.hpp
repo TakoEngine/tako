@@ -38,7 +38,11 @@
 	{ \
 		info->name = #type; \
 		info->size = sizeof(SelfType); \
-		info->constr = &::tako::Reflection::InitDefault<SelfType>; \
+		info->constr = &::tako::Reflection::InitDefault<SelfType>;             \
+        info->ConstructNew = []() -> void* \
+		{ \
+			return new SelfType(); \
+		}; \
 		info->fields = \
 		{ \
 			FOR_EACH(REFLECT_FIELD,__VA_ARGS__) \
@@ -73,4 +77,29 @@
 		}; \
 		static ::tako::Reflection::EnumInformation info(InitReflection); \
 		return &info; \
+	}
+
+#define REFLECT_POLY(type) \
+    using SelfType = type; \
+	static void InitReflection(::tako::Reflection::PolymorphicInformation* info) \
+	{ \
+		info->name = #type; \
+		info->size = sizeof(SelfType); \
+		info->GetDerivedInfo = [](const void* uptr) -> const ::tako::Reflection::TypeInformation* \
+		{ \
+			return static_cast<const std::unique_ptr<SelfType>*>(uptr)->get()->ReflectionDerivedInfo(); \
+		}; \
+		info->Reset = [](void* uptr, void* data) \
+		{ \
+			static_cast<std::unique_ptr<SelfType>*>(uptr)->reset(static_cast<SelfType*>(data)); \
+		}; \
+	} \
+	static inline const ::tako::Reflection::PolymorphicInformation Reflection = {InitReflection}; \
+	virtual const ::tako::Reflection::StructInformation* ReflectionDerivedInfo() const { return nullptr; };
+
+#define REFLECT_CHILD(type, ...) \
+	REFLECT(type, __VA_ARGS__) \
+	const ::tako::Reflection::StructInformation* ReflectionDerivedInfo() const override \
+	{ \
+		return &SelfType::Reflection; \
 	}

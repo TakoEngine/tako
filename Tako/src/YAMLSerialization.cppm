@@ -137,6 +137,17 @@ namespace tako::Serialization::YAML
 		out << ::YAML::EndSeq;
 	}
 
+	void EmitPoly(const void* data, const Reflection::PolymorphicInformation* info, ::YAML::Emitter& out)
+	{
+		auto elementInfo = info->GetDerivedInfo(data); //TODO: How to get from polymorphic subclass?
+		out << ::YAML::BeginMap;
+		out << ::YAML::Key << "type";
+		out << ::YAML::Value << elementInfo->name;
+		out << ::YAML::Key << "data";
+		Emit(static_cast<const std::unique_ptr<void>*>(data)->get(), elementInfo, out);
+		out << ::YAML::EndMap;
+	}
+
 	void Emit(const void* data, const Reflection::TypeInformation* info, ::YAML::Emitter& out)
 	{
 		switch (info->kind)
@@ -160,6 +171,11 @@ namespace tako::Serialization::YAML
 		{
 			auto enumInfo = reinterpret_cast<const Reflection::EnumInformation*>(info);
 			EmitEnum(data, enumInfo, out);
+		} break;
+		case Reflection::TypeKind::Polymorphic:
+		{
+			auto polyInfo = reinterpret_cast<const Reflection::PolymorphicInformation*>(info);
+			EmitPoly(data, polyInfo, out);
 		} break;
 		}
 	}
@@ -227,6 +243,14 @@ namespace tako::Serialization::YAML
 		}
 	}
 
+	void AssignPoly(void* data, const Reflection::PolymorphicInformation* info, const ::YAML::Node& node)
+	{
+		auto elementInfo = tako::Reflection::Resolver::GetTypeByName(node["type"].as<std::string>());
+		auto elementData = elementInfo->ConstructNew();
+		AssignMap(elementData, elementInfo, node["data"]);
+		info->Reset(data, elementData);
+	}
+
 	void Assign(void* data, const Reflection::TypeInformation* info, const ::YAML::Node& node)
 	{
 		if (!node.IsDefined())
@@ -254,6 +278,11 @@ namespace tako::Serialization::YAML
 		{
 			auto enumInfo = reinterpret_cast<const Reflection::EnumInformation*>(info);
 			AssignEnum(data, enumInfo, node);
+		} break;
+		case Reflection::TypeKind::Polymorphic:
+		{
+			auto polyInfo = reinterpret_cast<const Reflection::PolymorphicInformation*>(info);
+			AssignPoly(data, polyInfo, node);
 		} break;
 		}
 	}

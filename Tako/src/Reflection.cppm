@@ -1,5 +1,6 @@
 module;
 #include <vector>
+#include <memory>
 #include <cstddef>
 #include <string>
 #include <unordered_map>
@@ -16,7 +17,8 @@ namespace tako::Reflection
 		Primitive,
 		Struct,
 		Enum,
-		Array
+		Array,
+        Polymorphic
 	};
 
 	export struct TypeInformation
@@ -74,6 +76,7 @@ namespace tako::Reflection
 
 		std::vector<Field> fields;
 		void (*constr)(void*);
+		void* (*ConstructNew)();
 	};
 
 	export struct EnumInformation : public TypeInformation
@@ -107,10 +110,31 @@ namespace tako::Reflection
 		void* (*Push)(void*);
 	};
 
+    export struct PolymorphicInformation : public TypeInformation
+	{
+		PolymorphicInformation(void (*init)(PolymorphicInformation*))
+		{
+			init(this);
+			this->kind = TypeKind::Polymorphic;
+			//TODO: Register TypeRegistry?
+		}
+
+		const TypeInformation* (*GetDerivedInfo)(const void*);
+		void (*Reset)(void*, void*);
+	};
+
 	export template<typename T>
 	concept ReflectedStruct = requires
 	{
 		{ &T::Reflection } -> std::convertible_to<const StructInformation*>;
+	};
+
+	export template<typename T>
+	concept ReflectedPolymorphic = requires
+	{
+		typename T::element_type;
+		requires std::same_as<T, std::unique_ptr<typename T::element_type>>;
+		{ &T::element_type::Reflection } -> std::convertible_to<const PolymorphicInformation*>;
 	};
 
 	export template<typename T>
@@ -126,7 +150,7 @@ namespace tako::Reflection
 	} && !std::is_enum_v<T>;
 
 	template<typename T>
-	concept NonVectorReflected = ReflectedStruct<T> || ReflectedEnum<T> || ReflectedPrimitive<T>;
+	concept NonVectorReflected = ReflectedStruct<T> || ReflectedPolymorphic<T> || ReflectedEnum<T> || ReflectedPrimitive<T>;
 
 	export template<typename T>
 		concept ReflectedVector = requires
@@ -148,6 +172,10 @@ namespace tako::Reflection
 			if constexpr (ReflectedStruct<T>)
 			{
 				return &T::Reflection;
+			}
+			else if constexpr (ReflectedPolymorphic<T>)
+			{
+				return &T::element_type::Reflection;
 			}
 			else if constexpr (ReflectedVector<T>)
 			{
