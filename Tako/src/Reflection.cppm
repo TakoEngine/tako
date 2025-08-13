@@ -9,6 +9,7 @@ module;
 export module Tako.Reflection;
 
 import Tako.StringView;
+import Tako.NumberTypes;
 
 namespace tako::Reflection
 {
@@ -18,7 +19,7 @@ namespace tako::Reflection
 		Struct,
 		Enum,
 		Array,
-        Polymorphic
+		Polymorphic
 	};
 
 	export struct TypeInformation
@@ -269,4 +270,6 @@ DEFINE_REFLECTION_PRIMITIVE(int)
 DEFINE_REFLECTION_PRIMITIVE(float)
 DEFINE_REFLECTION_PRIMITIVE(bool)
 DEFINE_REFLECTION_PRIMITIVE(unsigned char)
+DEFINE_REFLECTION_PRIMITIVE(tako::U16)
+DEFINE_REFLECTION_PRIMITIVE(tako::U64)
 DEFINE_REFLECTION_PRIMITIVE(std::string) //TODO: handle separately?

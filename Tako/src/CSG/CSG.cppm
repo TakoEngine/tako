@@ -7,7 +7,6 @@ import Tako.Reflection;
 
 import Tako.Math;
 
-
 namespace tako::CSG
 {
 	export enum class CSGOperation
@@ -49,8 +48,11 @@ namespace tako::CSG
 	{
 	public:
 		virtual manifold::Manifold GetManifold() const = 0; //TODO: Hide manifold for users
+	};
 
-		REFLECT_POLY(CSGNode)
+	export struct CSGBrush : public CSGNode
+	{
+		REFLECT_POLY(CSGBrush)
 	};
 
 	export struct CSGTransform
@@ -64,7 +66,7 @@ namespace tako::CSG
 
     export struct CSGCombinerNode
     {
-        std::unique_ptr<CSGNode> node;
+        std::unique_ptr<CSGBrush> node;
         CSGOperation operation = CSGOperation::Union;
 		CSGTransform transform;
 
@@ -82,7 +84,7 @@ namespace tako::CSG
 		REFLECT(CSGCombinerNode, node, operation, transform)
     };
 
-	export struct CSGCombiner : public CSGNode
+	export struct CSGCombiner : public CSGBrush
 	{
 		std::vector<CSGCombinerNode> nodes;
 
@@ -94,8 +96,8 @@ namespace tako::CSG
 		}
         */
 
-        template<typename Node>
-            requires std::derived_from<std::decay_t<Node>, CSGNode>
+		template<typename Node>
+			requires std::derived_from<std::decay_t<Node>, CSGNode>
 		CSGCombiner& Add(Node&& node, CSGOperation operation)
 		{
 			nodes.emplace_back(std::make_unique<CSGNode>(std::move(node)), operation);
@@ -115,7 +117,7 @@ namespace tako::CSG
 		REFLECT_CHILD(CSGCombiner, nodes)
 	};
 
-	export struct BoxBrush : public CSGNode
+	export struct BoxBrush : public CSGBrush
 	{
 		Vector3 extents;
 
@@ -131,7 +133,7 @@ namespace tako::CSG
 		REFLECT_CHILD(BoxBrush, extents)
 	};
 
-	export struct SphereBrush : public CSGNode
+	export struct SphereBrush : public CSGBrush
 	{
 		float radius;
 		int resolution;
@@ -146,7 +148,7 @@ namespace tako::CSG
 		REFLECT_CHILD(SphereBrush, radius, resolution)
 	};
 
-	export struct CylinderBrush : public CSGNode
+	export struct CylinderBrush : public CSGBrush
 	{
 		float height;
 		float radius;

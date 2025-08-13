@@ -58,16 +58,22 @@ if (NOT EMSCRIPTEN)
 endif()
 
 FetchContent_Declare(
-		dawn
-		URL https://github.com/google/dawn/archive/a4695b94d4191bf496707dc121b180d4b81ee6b4.zip
-		URL_HASH SHA256=b2d4938bac76a5affb550c915c70ac82ab9b6aec574bae05eee93dc03992a825
-		FIND_PACKAGE_ARGS NAMES Dawn
+	dawn
+	URL https://github.com/google/dawn/archive/a4695b94d4191bf496707dc121b180d4b81ee6b4.zip
+	URL_HASH SHA256=b2d4938bac76a5affb550c915c70ac82ab9b6aec574bae05eee93dc03992a825
+	FIND_PACKAGE_ARGS NAMES Dawn
 )
 
 FetchContent_Declare(
-		manifold
-		GIT_REPOSITORY https://github.com/elalish/manifold.git
-		GIT_TAG 6754a3cf7cd3a16940efa4a9751cb63b0f49abf3 # 3.2.0
+	manifold
+	GIT_REPOSITORY https://github.com/elalish/manifold.git
+	GIT_TAG 6754a3cf7cd3a16940efa4a9751cb63b0f49abf3 # 3.2.0
+)
+
+FetchContent_Declare(
+	rapidhash
+	GIT_REPOSITORY https://github.com/Nicoshev/rapidhash.git
+	GIT_TAG abc8d971489440a13e18db37d09b5d6e4484737b
 )
 
 add_subdirectory("Tako")

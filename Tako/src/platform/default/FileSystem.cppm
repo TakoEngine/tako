@@ -18,7 +18,7 @@ export namespace tako::FileSystem
 		std::ifstream file(filePath, std::ios::binary);
 		if (!file.is_open())
 		{
-			LOG_ERR("Cant open file {}", filePath);
+			LOG_ERR("Can't open file {}", filePath);
 			return false;
 		}
 
@@ -33,9 +33,32 @@ export namespace tako::FileSystem
 		return true;
 	}
 
+	bool WriteFile(const char* filePath, const U8* data, size_t size)
+	{
+		std::ofstream file(filePath, std::ios::binary);
+		if (!file.is_open())
+		{
+			LOG_ERR("Can't create file: {}", filePath);
+			return false;
+		}
+
+		if (!file.write(reinterpret_cast<const char*>(data), size))
+		{
+			LOG("Can't write file: {}", filePath);
+			return false;
+		}
+
+		return true;
+	}
+
 	size_t GetFileSize(const char* filePath)
 	{
 		return std::filesystem::file_size(filePath);
+	}
+
+	bool Exists(const char* filePath)
+	{
+		return std::filesystem::exists(filePath);
 	}
 
 	std::string GetExecutablePath()

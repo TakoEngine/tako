@@ -52,6 +52,7 @@ target_sources(
 	"src/JobSystem.cppm"
 	"src/StringView.cppm"
 	"src/HandleVec.cppm"
+	"src/Hash.cppm"
 	"src/Allocators/Allocator.cppm"
 	"src/Allocators/FreeListAllocator.cppm"
 	"src/Allocators/LinearAllocator.cppm"
@@ -350,6 +351,14 @@ endif(TAKO_EDITOR)
 
 
 target_link_libraries(${TAKO_DLL} PUBLIC fmt)
+
+FetchContent_MakeAvailable(rapidhash)
+FetchContent_GetProperties(rapidhash)
+add_library(rapidhash INTERFACE)
+target_include_directories(rapidhash INTERFACE "${rapidhash_SOURCE_DIR}")
+add_library(rapidhash::rapidhash ALIAS rapidhash)
+
+target_link_libraries(${TAKO_DLL} PRIVATE rapidhash)
 
 add_executable(ECSBench "test/ECSBench.cpp")
 target_link_libraries(ECSBench PRIVATE tako)

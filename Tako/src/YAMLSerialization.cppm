@@ -68,6 +68,13 @@ namespace tako::Serialization::YAML
 		return { out.c_str() };;
 	}
 
+	export std::string Serialize(const void* data, const Reflection::TypeInformation* info)
+	{
+		::YAML::Emitter out;
+		Encode(data, info, out);
+		return { out.c_str() };;
+	}
+
 	void Emit(const void* data, const Reflection::TypeInformation* info, ::YAML::Emitter& out);
 
 	void EmitPrimitive(const void* data, const Reflection::PrimitiveInformation* info, ::YAML::Emitter& out)
@@ -88,6 +95,14 @@ namespace tako::Serialization::YAML
 		else if (info->IsType<unsigned char>())
 		{
 			out << *reinterpret_cast<const unsigned char*>(data);
+		}
+		else if (info->IsType<tako::U16>())
+		{
+			out << *reinterpret_cast<const tako::U16*>(data);
+		}
+		else if (info->IsType<tako::U64>())
+		{
+			out << *reinterpret_cast<const tako::U64*>(data);
 		}
 		else if (Reflection::GetPrimitiveInformation<std::string>() == info)
 		{
@@ -204,6 +219,14 @@ namespace tako::Serialization::YAML
 		else if (info->IsType<unsigned char>())
 		{
 			*reinterpret_cast<unsigned char*>(data) = node.as<unsigned char>();
+		}
+		else if (info->IsType<tako::U16>())
+		{
+			*reinterpret_cast<tako::U16*>(data) = node.as<tako::U16>();
+		}
+		else if (info->IsType<tako::U64>())
+		{
+			*reinterpret_cast<tako::U64*>(data) = node.as<tako::U64>();
 		}
 		else if (info->IsType<std::string>())
 		{
