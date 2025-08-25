@@ -122,28 +122,32 @@ namespace tako
 		void Poll()
 		{
 			glfwPollEvents();
-			if (glfwJoystickIsGamepad(GLFW_JOYSTICK_1))
+			for (auto joyID = GLFW_JOYSTICK_1; joyID <= GLFW_JOYSTICK_LAST; joyID++)
 			{
-				GLFWgamepadstate state;
-				if (glfwGetGamepadState(GLFW_JOYSTICK_1, &state))
+				if (glfwJoystickIsGamepad(joyID))
 				{
-					AxisUpdate left;
-					left.axis = Axis::Left;
-					left.value = Vector2(state.axes[GLFW_GAMEPAD_AXIS_LEFT_X], state.axes[GLFW_GAMEPAD_AXIS_LEFT_Y]);
-					m_callback(left);
-
-					AxisUpdate right;
-					right.axis = Axis::Right;
-					right.value = Vector2(state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X], state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y]);
-					m_callback(right);
-
-					for (auto [index, key] : GamepadMapping)
+					GLFWgamepadstate state;
+					if (glfwGetGamepadState(joyID, &state))
 					{
-						KeyPress evt;
-						evt.key = key;
-						evt.status = state.buttons[index] ? KeyStatus::Down : KeyStatus::Up;
-						m_callback(evt);
+						AxisUpdate left;
+						left.axis = Axis::Left;
+						left.value = Vector2(state.axes[GLFW_GAMEPAD_AXIS_LEFT_X], state.axes[GLFW_GAMEPAD_AXIS_LEFT_Y]);
+						m_callback(left);
+
+						AxisUpdate right;
+						right.axis = Axis::Right;
+						right.value = Vector2(state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X], state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y]);
+						m_callback(right);
+
+						for (auto [index, key] : GamepadMapping)
+						{
+							KeyPress evt;
+							evt.key = key;
+							evt.status = state.buttons[index] ? KeyStatus::Down : KeyStatus::Up;
+							m_callback(evt);
+						}
 					}
+					break; //TODO: support more than the first found controller
 				}
 			}
 		}
