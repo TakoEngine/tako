@@ -1336,7 +1336,7 @@ namespace tako
 
 	Matrix4 Matrix4::cameraViewMatrix(const Vector3 position, const Quaternion& rotation)
 	{
-		auto mat = rotation.ToRotationMatrix();
+		auto mat = Quaternion::Inverse(rotation).ToRotationMatrix();
 
 		return mat * Matrix4::translation(position * -1);
 	}
