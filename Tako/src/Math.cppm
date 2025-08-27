@@ -1018,6 +1018,16 @@ namespace Math
 			return Quaternion::AngleAxisRadians(std::acos(dot), rotAxis);
 		}
 
+		constexpr bool operator==(const Quaternion& rhs) const
+		{
+			return x == rhs.x && y == rhs.y && z == rhs.z && w == rhs.w;
+		}
+
+		constexpr bool operator!=(const Quaternion& rhs) const
+		{
+			return !(*this == rhs);
+		}
+
 		friend constexpr Quaternion operator*(const Quaternion& q, const Quaternion& r)
 		{
 			return Quaternion(
@@ -1141,6 +1151,14 @@ namespace Math
 			Vector3 right = Vector3::cross(forward, upDir).normalized();
 			Vector3 up = Vector3::cross(right, forward);
 
+			return Quaternion::FromBasis(right, up, forward * -1);
+		}
+
+		static Quaternion DirectionToRotation(const Vector3& direction, const Vector3& upDir)
+		{
+			Vector3 forward = direction.normalized();
+			Vector3 right = Vector3::cross(forward, upDir).normalized();
+			Vector3 up = Vector3::cross(right, forward);
 			return Quaternion::FromBasis(right, up, forward * -1);
 		}
 
