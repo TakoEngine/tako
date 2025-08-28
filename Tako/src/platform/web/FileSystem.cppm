@@ -34,6 +34,18 @@ export namespace tako::FileSystem
 		return ftell(file);
 	}
 
+	bool Exists(const char* filePath)
+	{
+		auto file = fopen(filePath, "rb");
+		if (file)
+		{
+			fclose(file);
+			return true;
+		}
+
+		return false;
+	}
+
 	std::string GetExecutablePath()
 	{
 		return "";
