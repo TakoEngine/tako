@@ -156,7 +156,7 @@ namespace tako
 		void DrawModel(const Model& model, const Matrix4& transform);
 		void DrawModelInstanced(const Model& model, size_t instanceCount, const Matrix4* transforms);
 
-		void SetCameraView(const Matrix4& view);
+		void SetCameraView(const Matrix4& view, float fov = 45);
 		void SetLights(LightRange auto lights);
 
 		Model LoadModel(StringView file);
@@ -843,10 +843,11 @@ namespace tako
 		return CreateMesh(vertices, output.indices);
 	}
 
-	void Renderer3D::SetCameraView(const Matrix4& view)
+	//TODO: Expose projection properly
+	void Renderer3D::SetCameraView(const Matrix4& view, float fov)
 	{
 		m_cameraData.view = view;
-		m_cameraData.proj = Matrix4::perspective(45, m_context->GetWidth() / (float) m_context->GetHeight(), 0.1, 1000);
+		m_cameraData.proj = Matrix4::perspective(fov, m_context->GetWidth() / (float) m_context->GetHeight(), 0.1, 1000);
 		//cam.viewProj = cam.proj * cam.view;
 		m_context->UpdateBuffer(m_cameraBuffer, &m_cameraData, sizeof(m_cameraData));
 	}

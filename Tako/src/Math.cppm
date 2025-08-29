@@ -889,16 +889,14 @@ namespace Math
 			}
 
 			Matrix4 result;
-			float tanHalfFov = tan(fov / 2);
+			float tanHalfFov = tan(fov * mathf::PI / 180 / 2);
 
 
 			result[0] = 1 / (aspect * tanHalfFov);
 			result[5] = 1 / tanHalfFov;
-			result[10] = farDist / (nearDist - farDist);
-			result[11] = -1;
+			result[10] = farDist / (farDist - nearDist);
+			result[11] = 1;
 			result[14] = -(farDist * nearDist) / (farDist - nearDist);
-
-			//result[5] *= -1; // Correct for gltf following opengl convention
 
 			return result;
 		}
@@ -967,6 +965,25 @@ namespace Math
 				std::cos(euler.x / 2) * std::cos(euler.y / 2) * std::sin(euler.z / 2) + std::sin(euler.x / 2) * std::sin(euler.y / 2) * std::cos(euler.z / 2),
 				std::cos(euler.x / 2) * std::cos(euler.y / 2) * std::cos(euler.z / 2) - std::sin(euler.x / 2) * std::sin(euler.y / 2) * std::sin(euler.z / 2),
 			};
+		}
+
+		float Yaw() const
+		{
+			return std::atan2(2.0f * (w * z + x * y), 1.0f - 2.0f * (y * y + z * z)) * 180 / mathf::PI;
+		}
+
+		float Pitch() const
+		{
+			float sinp = 2.0f * (w * y - z * x);
+			if (std::abs(sinp) >= 1)
+			{
+				return std::copysign(90.0f, sinp);
+			}
+			else
+			{
+				return std::asin(sinp) * 180 / mathf::PI;
+			}
+			
 		}
 
 		static Quaternion AngleAxis(float degrees, Vector3 axis)
@@ -1148,18 +1165,18 @@ namespace Math
 		static Quaternion LookAtRotation(const Vector3& eye, const Vector3& target, const Vector3& upDir)
 		{
 			Vector3 forward = (target - eye).normalized();
-			Vector3 right = Vector3::cross(forward, upDir).normalized();
-			Vector3 up = Vector3::cross(right, forward);
+			Vector3 right = Vector3::cross(upDir, forward).normalized();
+			Vector3 up = Vector3::cross(forward, right);
 
-			return Quaternion::FromBasis(right, up, forward * -1);
+			return Quaternion::FromBasis(right, up, forward);
 		}
 
 		static Quaternion DirectionToRotation(const Vector3& direction, const Vector3& upDir)
 		{
 			Vector3 forward = direction.normalized();
-			Vector3 right = Vector3::cross(forward, upDir).normalized();
-			Vector3 up = Vector3::cross(right, forward);
-			return Quaternion::FromBasis(right, up, forward * -1);
+			Vector3 right = Vector3::cross(upDir, forward).normalized();
+			Vector3 up = Vector3::cross(forward, right);
+			return Quaternion::FromBasis(right, up, forward);
 		}
 
 		static Quaternion FromBasis(const Vector3& right, const Vector3& up, const Vector3& forward)
@@ -1356,7 +1373,7 @@ namespace tako
 	{
 		auto mat = Quaternion::Inverse(rotation).ToRotationMatrix();
 
-		return mat * Matrix4::translation(position * -1);
+		return mat * Matrix4::translation(-position);
 	}
 
 	Matrix4 Matrix4::DirectionToRotation(const Vector3& direction, const Vector3& up)
