@@ -443,6 +443,21 @@ namespace Math
 			return (&x)[i];
 		}
 
+		constexpr Vector2 xy() const
+		{
+			return Vector2(x, y);
+		}
+
+		constexpr Vector2 xz() const
+		{
+			return Vector2(x, z);
+		}
+
+		constexpr Vector2 yz() const
+		{
+			return Vector2(y, z);
+		}
+
 		constexpr Vector3 xyz() const
 		{
 			return Vector3(x, y, z);

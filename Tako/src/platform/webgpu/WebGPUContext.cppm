@@ -117,6 +117,7 @@ namespace tako
 	{
 		wgpu::Texture texture;
 		wgpu::TextureView view;
+		wgpu::Extent3D size;
 	};
 
 	struct PipelineEntry
@@ -561,6 +562,12 @@ namespace tako
 			return CreateWGPUTexture(images, wgpu::TextureDimension::e2D, ConvertToWGPU(type));
 		}
 
+		void UpdateTexture(Texture texture, const ImageView image) override
+		{
+			auto& entry = m_textures[texture];
+			WriteTexture(entry, image);
+		}
+
 		void ReleaseTexture(const Texture texture) override
 		{
 			m_textures.Remove(texture);
@@ -904,6 +911,31 @@ namespace tako
 			return targetView;
 		}
 
+		void WriteTexture(TextureEntry& entry, const ImageView& image, unsigned int i = 0)
+		{
+			auto width = image.GetWidth();
+			auto height = image.GetHeight();
+			wgpu::TexelCopyTextureInfo destination;
+#ifdef TAKO_EMSCRIPTEN
+			//destination.nextInChain = nullptr;
+#endif
+			destination.texture = entry.texture;
+			destination.mipLevel = 0;
+			destination.origin = { 0, 0, i };
+			destination.aspect = wgpu::TextureAspect::All;
+
+			wgpu::TexelCopyBufferLayout source;
+			//source.nextInChain = nullptr;
+			source.offset = 0;
+			source.bytesPerRow = 4 * entry.size.width;
+			source.rowsPerImage = entry.size.height;
+
+			size_t imageSize = sizeof(Color) * width * height;
+			auto writeSize = entry.size;
+			writeSize.depthOrArrayLayers = 1;
+			m_queue.WriteTexture(&destination, image.GetData(), imageSize, &source, &writeSize);
+		}
+
 		Texture CreateWGPUTexture(const std::span<const ImageView> images, wgpu::TextureDimension dimension, wgpu::TextureViewDimension viewDimension)
 		{
 			ASSERT(images.size() > 0);
@@ -924,6 +956,7 @@ namespace tako
 			TextureEntry entry;
 			entry.texture = m_device.CreateTexture(&textureDesc);
 			ASSERT(entry.texture);
+			entry.size = textureDesc.size;
 
 			for (U32 i = 0; i < images.size(); i++)
 			{

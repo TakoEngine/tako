@@ -103,6 +103,7 @@ namespace tako
 		virtual ShaderBindingLayout GetPipelineShaderBindingLayout(Pipeline pipeline, size_t slot) = 0;
 		virtual Texture CreateTexture(const ImageView image, TextureType type = TextureType::E2D) = 0;
 		virtual Texture CreateTexture(std::span<const ImageView> images, TextureType type = TextureType::Cube) = 0;
+		virtual void UpdateTexture(Texture texture, const ImageView image) = 0;
 		virtual void ReleaseTexture(Texture texture) = 0;
 
 		virtual Sampler CreateSampler() = 0;
