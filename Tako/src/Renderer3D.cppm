@@ -25,6 +25,7 @@ import Tako.GraphicsContext;
 import Tako.Math;
 import Tako.Resources;
 import Tako.CSG;
+import Tako.HandleVec;
 
 
 template <>
@@ -81,13 +82,6 @@ namespace tako
 		//Matrix4 viewProj;
 	};
 
-	export using Material = ShaderBinding;
-
-	export struct MaterialDescriptor
-	{
-		bool triplanar = false;
-	};
-
 	struct MaterialProperties
 	{
 		U32 triplanar = 0;
@@ -99,6 +93,16 @@ namespace tako
 		Buffer vertexBuffer;
 		Buffer indexBuffer;
 		uint16_t indexCount;
+	};
+
+	export struct Shader
+	{
+		U64 value;
+	};
+
+	export struct Material
+	{
+		U64 value;
 	};
 
 	export struct Node
@@ -125,6 +129,46 @@ namespace tako
 	{
 		Vector3 direction{};
 		Color color = Color(1.0f, 1.0f, 1.0f, 1.0f);
+	};
+
+	export struct MaterialDescriptor
+	{
+		std::optional<Shader> shader = std::nullopt;
+	};
+
+	struct MaterialEntry
+	{
+		Shader shader;
+		ShaderBinding binding;
+	};
+
+	export struct ShaderDescriptor
+	{
+		const char* name;
+		bool useTriplanar = false;
+		bool useLighting = true;
+		std::optional<StringView> typeDefinitions = std::nullopt;
+		std::optional<StringView> functions = std::nullopt;
+		std::optional<StringView> determineBaseColor = std::nullopt;
+
+		struct MaterialVariable
+		{
+			StringView name;
+			ShaderBindingType type;
+			size_t size = 0;
+			std::optional<StringView> typeName = std::nullopt;
+		};
+
+		std::vector<MaterialVariable> materialVariables =
+		{
+			{ "baseColorTexture", ShaderBindingType::Texture2D },
+			{ "baseColorSampler", ShaderBindingType::Sampler }
+		};
+	};
+
+	struct ShaderData
+	{
+		Pipeline pipeline;
 	};
 
 	export using Light = std::variant<PointLight, DirectionalLight>;
@@ -194,16 +238,32 @@ namespace tako
 			return CreateTexture(tex);
 		}
 
+		Shader CreateShader(const ShaderDescriptor& descriptor)
+		{
+			return CreateShaderPipeline(descriptor);
+		}
+
 		Material CreateMaterial(Texture texture, const MaterialDescriptor& materialDescriptor = {})
 		{
-			std::array<ShaderBindingEntryData, 3> bindingData
+			std::array<ShaderBindingEntryData, 2> bindingData
 			{{
 				texture,
-				m_sampler,
-				materialDescriptor.triplanar ? m_matPropTriplanarBuffer : m_matPropNonTriplanarBuffer
+				m_sampler
 			}};
-			auto binding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(m_pipeline, 2), bindingData);
-			return binding;
+
+			return CreateMaterial(materialDescriptor, bindingData);
+		}
+
+		Material CreateMaterial(const MaterialDescriptor& materialDescriptor, std::span<ShaderBindingEntryData> materialBindingData)
+		{
+			auto shader = materialDescriptor.shader.value_or(m_defaultShader);
+			auto& shaderData = m_shaders[shader];
+			auto binding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(shaderData.pipeline, 2), materialBindingData);
+
+			MaterialEntry entry;
+			entry.shader = shader;
+			entry.binding = binding;
+			return m_materials.Insert(std::move(entry));
 		}
 
 		void RegisterLoaders(Resources* resources)
@@ -219,7 +279,9 @@ namespace tako
 		Mesh m_cubeMesh;
 		std::unordered_map<Vector3, Mesh> m_cubeMeshCache;
 		std::unordered_map<SphereCubeGenerationParams, Mesh> m_sphereMeshCache;
-		Pipeline m_pipeline;
+		Shader m_defaultShader;
+		HandleVec<Shader, ShaderData> m_shaders;
+		HandleVec<Material, MaterialEntry> m_materials;
 		Buffer m_cameraBuffer;
 		ShaderBinding m_cameraBinding;
 		Buffer m_lightSettingsBuffer;
@@ -229,17 +291,22 @@ namespace tako
 		Buffer m_matPropNonTriplanarBuffer;
 		Buffer m_matPropTriplanarBuffer;
 		Pipeline m_skyPipeline;
-		Texture m_skyTexture;
-		Material m_skyMaterial;
 		Buffer m_skyCameraBuffer;
 		ShaderBinding m_skyCameraBinding;
 
 	private:
 		CameraUniformData m_cameraData;
-		void CreatePipeline();
+		Shader CreateShaderPipeline(const ShaderDescriptor& descriptor);
 		void CreateLightBuffer(size_t size);
 		void CreateSkyboxPipeline();
 		Mesh CreateCubeMesh(Vector3 size);
+		void BindMaterial(Material material)
+		{
+			auto& entry = m_materials[material];
+			auto& shaderData = m_shaders[entry.shader];
+			m_context->BindPipeline(&shaderData.pipeline);
+			m_context->Bind(entry.binding, 2);
+		}
 	};
 }
 
@@ -421,14 +488,17 @@ namespace tako
 
 	Renderer3D::Renderer3D(GraphicsContext* context) : m_context(context)
 	{
-		CreatePipeline();
+		ShaderDescriptor defaultShaderDesc;
+		defaultShaderDesc.name = "Renderer3D Default Shader";
+		m_defaultShader = CreateShaderPipeline(defaultShaderDesc);
+		auto& shader = m_shaders[m_defaultShader];
 		m_sampler = m_context->CreateSampler();
 		m_cameraBuffer = m_context->CreateBuffer(BufferType::Uniform, sizeof(CameraUniformData));
 		std::array<ShaderBindingEntryData, 1> cameraBindingData
 		{{
 				m_cameraBuffer,
 		}};
-		m_cameraBinding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(m_pipeline, 0), cameraBindingData);
+		m_cameraBinding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(shader.pipeline, 0), cameraBindingData);
 
 		m_lightSettingsBuffer = m_context->CreateBuffer(BufferType::Uniform, sizeof(LightSettings));
 		CreateLightBuffer(1);
@@ -452,9 +522,10 @@ namespace tako
 		m_cubeMesh = CreateCubeMesh({1, 1, 1});
 	}
 
-	void Renderer3D::CreatePipeline()
+	std::string InstantiateShaderTemplate(const ShaderDescriptor& shaderDescriptor)
 	{
-		const char* shaderSource = R"(
+		std::string shader;
+		shader += R"(
 			struct Camera
 			{
 				view: mat4x4f,
@@ -473,21 +544,59 @@ namespace tako
 				ambient: vec4f,
 				lightCount: u32,
 			};
+		)";
 
-			struct Material
-			{
-				triplanar: u32,
-			};
+		if (shaderDescriptor.typeDefinitions)
+		{
+			shader += shaderDescriptor.typeDefinitions->ToStringView();
+		}
 
+		shader += R"(
 			@group(0) @binding(0) var<uniform> camera: Camera;
 
 			@group(1) @binding(0) var<uniform> lighting: Lighting;
 			@group(1) @binding(1) var<storage, read> lights: array<Light>;
+		)";
 
-			@group(2) @binding(0) var baseColorTexture: texture_2d<f32>;
-			@group(2) @binding(1) var baseColorSampler: sampler;
-			@group(2) @binding(2) var<uniform> material: Material;
+		for (int binding = 0; binding < shaderDescriptor.materialVariables.size(); binding++)
+		{
+			auto& var = shaderDescriptor.materialVariables[binding];
+			StringView qualifier = "var";
+			StringView typeName;
+			switch (var.type)
+			{
+			case ShaderBindingType::Uniform:
+				qualifier = "var<uniform>";
+				typeName = "mat4x4f";
+				break;
+			case ShaderBindingType::Storage:
+				qualifier = "var<storage, read>";
+				typeName = "array<mat4x4f>";
+				break;
+			case ShaderBindingType::Texture2D:
+				typeName = "texture_2d<f32>";
+				break;
+			case ShaderBindingType::Sampler:
+				typeName = "sampler";
+				break;
+			default:
+				ASSERT(false);
+				break;
+			}
+			if (var.typeName)
+			{
+				typeName = var.typeName.value();
+			}
+			shader += fmt::format(
+				"@group(2) @binding({}) {} {} : {};\n",
+				binding,
+				qualifier.ToStringView(),
+				var.name.ToStringView(),
+				typeName.ToStringView()
+			);
+		}
 
+		shader += R"(
 			@group(3) @binding(0) var<storage, read> models : array<mat4x4f>;
 
 			struct VertexInput {
@@ -498,18 +607,18 @@ namespace tako
 
 			struct VertexOutput {
 				@builtin(position) position: vec4f,
-				@location(0) uv: vec2f,
-				@location(1) positionVS: vec3f,
-				@location(2) normalVS: vec3f,
-				@location(3) positionWS: vec3f,
-				@location(4) normalWS: vec3f,
+					@location(0) uv: vec2f,
+					@location(1) positionVS: vec3f,
+					@location(2) normalVS: vec3f,
+					@location(3) positionWS: vec3f,
+					@location(4) normalWS: vec3f,
 			}
 
 			@vertex
-			fn vs_main(in: VertexInput, @builtin(instance_index) instanceIndex: u32) -> VertexOutput {
+				fn vs_main(in: VertexInput, @builtin(instance_index) instanceIndex: u32) -> VertexOutput {
 				let model = models[instanceIndex];
 				let modelView = camera.view * model;
-				var out: VertexOutput;
+				var out : VertexOutput;
 				out.position = camera.projection * modelView * vec4f(in.position, 1.0);
 				out.uv = in.uv;
 
@@ -522,48 +631,77 @@ namespace tako
 				return out;
 			}
 
-			fn CalculatePointLight(light: Light, P: vec4f, N: vec4f) -> f32 {
+			fn CalculatePointLight(light: Light, P : vec4f, N : vec4f) -> f32 {
 				var L = light.positionVS - P;
 				let distance = length(L);
 				L = L / distance;
 				return max(dot(N, L), 0);
 			}
 
-			fn CalculateDirectionalLight(light: Light, P: vec4f, N: vec4f) -> f32 {
+			fn CalculateDirectionalLight(light: Light, P : vec4f, N : vec4f) -> f32 {
 				var L = normalize(-light.positionVS);
 				return max(dot(N, L), 0);
 			}
+		)";
 
-			fn TriplanarSample(positionWS: vec3f, normalWS: vec3f, scale: f32) -> vec4f {
-				let blendWeightsRaw = abs(normalWS);
-				let blendWeights = blendWeightsRaw / (blendWeightsRaw.x + blendWeightsRaw.y + blendWeightsRaw.z);
+		if (shaderDescriptor.functions)
+		{
+			shader += shaderDescriptor.functions->ToStringView();
+		}
 
-				let uvX = vec2f(fract(positionWS.x * scale), fract(positionWS.y * scale));
-				let uvY = vec2f(fract(positionWS.z * scale), fract(positionWS.y * scale));
-				let uvZ = vec2f(fract(positionWS.x * scale), fract(positionWS.z * scale));
+		if (shaderDescriptor.determineBaseColor)
+		{
+			shader += fmt::format(R"(
+				fn DetermineBaseColor(in: VertexOutput) -> vec4f {{
+					{}
+				}}
+			)", shaderDescriptor.determineBaseColor->ToStringView());
+		}
+		else if (shaderDescriptor.useTriplanar)
+		{
+			shader += R"(
+				fn TriplanarSample(positionWS: vec3f, normalWS : vec3f, scale : f32) -> vec4f {
+					let blendWeightsRaw = abs(normalWS);
+					let blendWeights = blendWeightsRaw / (blendWeightsRaw.x + blendWeightsRaw.y + blendWeightsRaw.z);
 
-				let texX = textureSample(baseColorTexture, baseColorSampler, uvX);
-				let texY = textureSample(baseColorTexture, baseColorSampler, uvY);
-				let texZ = textureSample(baseColorTexture, baseColorSampler, uvZ);
+					let uvX = vec2f(fract(positionWS.x * scale), fract(positionWS.y * scale));
+					let uvY = vec2f(fract(positionWS.z * scale), fract(positionWS.y * scale));
+					let uvZ = vec2f(fract(positionWS.x * scale), fract(positionWS.z * scale));
 
-				return
-					texX * blendWeights.z +
-					texY * blendWeights.x +
-					texZ * blendWeights.y;
-			}
+					let texX = textureSample(baseColorTexture, baseColorSampler, uvX);
+					let texY = textureSample(baseColorTexture, baseColorSampler, uvY);
+					let texZ = textureSample(baseColorTexture, baseColorSampler, uvZ);
 
-			@fragment
-			fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-				let eyePos = vec4f(0, 0, 0, 1);
-
-				var baseColor: vec4f;
-				if (material.triplanar > 0) {
-					baseColor = TriplanarSample(in.positionWS, in.normalWS, 0.1);
+					return
+						texX * blendWeights.z +
+						texY * blendWeights.x +
+						texZ * blendWeights.y;
 				}
-				else {
+
+				fn DetermineBaseColor(in: VertexOutput) -> vec4f {
+					return TriplanarSample(in.positionWS, in.normalWS, 0.1);
+				}
+			)";
+		}
+		else
+		{
+			shader += R"(
+				fn DetermineBaseColor(in: VertexOutput) -> vec4f {
 					let uv = in.uv;
-					baseColor = textureSample(baseColorTexture, baseColorSampler, uv);
+					return textureSample(baseColorTexture, baseColorSampler, uv);
 				}
+			)";
+		}
+
+		shader += R"(
+			@fragment
+				fn fs_main(in: VertexOutput) -> @location(0) vec4f {
+				let eyePos = vec4f(0, 0, 0, 1);
+				let baseColor = DetermineBaseColor(in);
+		)";
+		if (shaderDescriptor.useLighting)
+		{
+			shader += R"(
 				let N = normalize(vec4f(in.normalVS, 1));
 				let P = vec4f(in.positionVS, 1);
 
@@ -571,8 +709,8 @@ namespace tako
 				var shading = lighting.ambient;
 				for (var i : u32 = 0; i < lighting.lightCount; i += 1) {
 					let light = lights[i];
-					var l: f32;
-					switch light.lightType {
+					var l : f32;
+					switch light.lightType{
 						case 1: {
 							l = CalculatePointLight(light, P, N);
 						}
@@ -586,19 +724,39 @@ namespace tako
 
 					shading += l * light.color;
 				}
+			)";
+		}
+		else
+		{
+			shader += R"(
+				var shading = vec4f(1, 1, 1, 1);
+			)";
+		}
 
+		shader += R"(
 				let color = baseColor * shading;
+		)";
 
-				return vec4f(pow(color.rgb, vec3f(1/2.2)), color.a);
+		shader += R"(
+				return vec4f(pow(color.rgb, vec3f(1 / 2.2)), color.a);
 			}
 		)";
+
+		LOG("{}", shader);
+		return shader;
+
+	}
+
+	Shader Renderer3D::CreateShaderPipeline(const ShaderDescriptor& shaderDescriptor)
+	{
+		auto shaderSource = InstantiateShaderTemplate(shaderDescriptor);
 
 		std::array vertexAttributes = { PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec3, PipelineVectorAttribute::Vec2 };
 
 		PipelineDescriptor pipelineDescriptor;
-		pipelineDescriptor.name = "Renderer3D Default";
+		pipelineDescriptor.name = shaderDescriptor.name;
 
-		pipelineDescriptor.shaderCode = shaderSource;
+		pipelineDescriptor.shaderCode = shaderSource.c_str();
 		pipelineDescriptor.vertEntry = "vs_main";
 		pipelineDescriptor.fragEntry = "fs_main";
 		pipelineDescriptor.vertexAttributes = vertexAttributes.data();
@@ -609,25 +767,29 @@ namespace tako
 			{ShaderBindingType::Uniform, sizeof(CameraUniformData)}
 		};
 		std::array<ShaderEntry, 2> lightingBinding
-		{{
+		{ {
 			ShaderBindingType::Uniform, sizeof(LightSettings),
 			ShaderBindingType::Storage, sizeof(GPULight)
-		}};
-		std::array<ShaderEntry, 3> materialBinding
-		{{
-			ShaderBindingType::Texture2D, 0,
-			ShaderBindingType::Sampler, 0,
-			ShaderBindingType::Uniform, sizeof(MaterialProperties)
-		}};
+		} };
+		std::vector<ShaderEntry> materialBinding;
+		materialBinding.reserve(shaderDescriptor.materialVariables.size());
+		for (auto& var : shaderDescriptor.materialVariables)
+		{
+			materialBinding.push_back({ var.type, var.size });
+		}
+
 		std::array<ShaderBindingDescriptor, 3> shaderBindings
-		{{
+		{ {
 			cameraBinding,
 			lightingBinding,
 			materialBinding
-		}};
+		} };
 		pipelineDescriptor.shaderBindings = shaderBindings;
 
-		m_pipeline = m_context->CreatePipeline(pipelineDescriptor);
+		ShaderData entry;
+		entry.pipeline = m_context->CreatePipeline(pipelineDescriptor);
+
+		return m_shaders.Insert(std::move(entry));
 		LOG("Created pipeline");
 	}
 
@@ -648,7 +810,8 @@ namespace tako
 		{
 			m_context->ReleaseShaderBinding(m_lightBinding);
 		}
-		m_lightBinding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(m_pipeline, 1), lightingBindingData);
+		auto& shader = m_shaders[m_defaultShader];
+		m_lightBinding = m_context->CreateShaderBinding(m_context->GetPipelineShaderBindingLayout(shader.pipeline, 1), lightingBindingData);
 	}
 
 	void Renderer3D::CreateSkyboxPipeline()
@@ -741,7 +904,8 @@ namespace tako
 
 	void Renderer3D::Begin()
 	{
-		m_context->BindPipeline(&m_pipeline);
+		auto& shader = m_shaders[m_defaultShader];
+		m_context->BindPipeline(&shader.pipeline);
 		m_context->Bind(m_cameraBinding, 0);
 		m_context->Bind(m_lightBinding, 1);
 	}
@@ -754,7 +918,7 @@ namespace tako
 	{
 		m_context->BindVertexBuffer(&mesh.vertexBuffer);
 		m_context->BindIndexBuffer(&mesh.indexBuffer);
-		m_context->Bind(material, 2);
+		BindMaterial(material);
 		m_context->DrawIndexed(mesh.indexCount, model);
 	}
 
@@ -762,7 +926,7 @@ namespace tako
 	{
 		m_context->BindVertexBuffer(&mesh.vertexBuffer);
 		m_context->BindIndexBuffer(&mesh.indexBuffer);
-		m_context->Bind(material, 2);
+		BindMaterial(material);
 		m_context->DrawIndexed(mesh.indexCount, instanceCount, transforms);
 	}
 

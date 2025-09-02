@@ -220,8 +220,10 @@ namespace tako::CSG
 			vert.normal = { mesh.vertProperties[i + 3], mesh.vertProperties[i + 4], mesh.vertProperties[i + 5] };
 			out.vertices.emplace_back(vert);
 		}
-		for (int i = 0; i < mesh.triVerts.size(); i++)
+		for (int i = 0; i < mesh.triVerts.size(); i += 3)
 		{
+			out.indices.push_back(mesh.triVerts[i+2]);
+			out.indices.push_back(mesh.triVerts[i+1]);
 			out.indices.push_back(mesh.triVerts[i]);
 		}
 		return out;
