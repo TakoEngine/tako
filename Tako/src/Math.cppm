@@ -359,6 +359,26 @@ namespace Math
 			return -2 * dot(normal, direction) * normal + direction;
 		}
 
+		constexpr static Vector3 Min(const Vector3& a, const Vector3& b)
+		{
+			return Vector3
+			{
+				std::min(a.x, b.x),
+				std::min(a.y, b.y),
+				std::min(a.z, b.z)
+			};
+		}
+
+		constexpr static Vector3 Max(const Vector3& a, const Vector3& b)
+		{
+			return Vector3
+			{
+				std::max(a.x, b.x),
+				std::max(a.y, b.y),
+				std::max(a.z, b.z)
+			};
+		}
+
 		float& operator[](size_t i)
 		{
 			return (&x)[i];
