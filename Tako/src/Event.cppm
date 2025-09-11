@@ -128,10 +128,10 @@ export namespace tako
 		Gamepad_Dpad_Right,
 		Gamepad_Start,
 		Gamepad_Select,
-		Gamepad_L,
-		Gamepad_L2,
-		Gamepad_R,
-		Gamepad_R2,
+		Gamepad_LB,
+		Gamepad_LT,
+		Gamepad_RB,
+		Gamepad_RT,
 		Unknown
 	};
 
