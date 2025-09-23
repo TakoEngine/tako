@@ -742,7 +742,7 @@ namespace tako
 			}
 		)";
 
-		LOG("{}", shader);
+		//LOG("{}", shader);
 		return shader;
 
 	}

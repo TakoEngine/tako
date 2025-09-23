@@ -28,6 +28,19 @@ export struct RmlDocument
 	U64 value;
 };
 
+export struct RmlDataModel
+{
+	U64 value;
+
+	void DirtyVariable(StringView name)
+	{
+		handle.DirtyVariable(Rml::String(name));
+	}
+private:
+	friend class RmlUi;
+	Rml::DataModelHandle handle;
+};
+
 export class RmlUi : public IEventHandler
 {
 public:
@@ -73,28 +86,62 @@ public:
 		}
 	}
 
-	using ModelHandle = Rml::DataModelHandle;
 	template<typename T>
-	ModelHandle RegisterDataBinding(T& data)
+	RmlDataModel RegisterDataModel(T& data, StringView modelName)
 	{
-		LOG("{}", Reflection::Resolver::GetName<T>());
-		auto constructor = m_context->CreateDataModel(Reflection::Resolver::GetName<T>());
-		/*
-		if (auto structHandle = constructor.template RegisterStruct<T>())
-		{
-			auto regMember = [&](auto& arg)
-			{
-				structHandle.RegisterMember(arg.name, arg.memberPtr);
-			};
-			std::apply([&](auto&... args) {((regMember(args)), ...);}, T::ReflectionMemberPtrs);
-		}
-		*/
+		ModelEntry entry;
+		entry.name = modelName;
+		auto constructor = m_context->CreateDataModel(entry.name);
+		auto typeRegister = constructor.GetDataTypeRegister();
+
 		auto regMember = [&](auto& mem)
 		{
+			using FieldType = typename std::decay_t<decltype(mem)>::FieldType;
+			EnsureTypeIsRegistered<FieldType>(constructor, typeRegister);
 			constructor.Bind(mem.name, &(data.*mem.memberPtr));
 		};
 		std::apply([&](auto&... args) {((regMember(args)), ...);}, T::ReflectionMemberPtrs);
-		return constructor.GetModelHandle();
+		auto modelHandle = entry.handle = constructor.GetModelHandle();
+		auto handle = m_dataModels.Insert(std::move(entry));
+		handle.handle = modelHandle;
+		return handle;
+	}
+
+	template<typename T>
+	RmlDataModel RegisterDataModel(T& data)
+	{
+		return RegisterDataModel(data, Reflection::Resolver::GetName<T>());
+	}
+
+	template<typename... Args, std::invocable<Args...> Callback>
+	void RegisterCallback(RmlDataModel dataModel, const std::string& callbackName, Callback callback)
+	{
+		auto& model = m_dataModels[dataModel];
+		auto constructor = m_context->GetDataModel(model.name);
+		auto rmlCallback = [callback, callbackName](Rml::DataModelHandle handle, Rml::Event& event, const Rml::VariantList& variantList)
+		{
+			constexpr size_t argCount = sizeof...(Args);
+			auto variantCount = variantList.size();
+			if (variantCount < argCount)
+			{
+				LOG_ERR("RmlCallback ({}) called with less arguments ({}) than required {}", callbackName, variantCount, argCount);
+				return;
+			}
+
+			auto convertArgs = [&]<std::size_t... I>(std::index_sequence<I...>)
+			{
+				return std::tuple{ variantList[I].Get<Args>()... };
+			};
+
+			std::apply(callback, convertArgs(std::make_index_sequence<argCount>{}));
+		};
+		constructor.BindEventCallback(callbackName, rmlCallback);
+	}
+
+	void ReleaseDataModel(RmlDataModel dataModel)
+	{
+		auto& model = m_dataModels[dataModel];
+		m_context->RemoveDataModel(model.name);
 	}
 
 	RmlDocument LoadDocument(StringView filePath)
@@ -129,6 +176,13 @@ public:
 		auto& entry = m_documents[document];
 		entry.shown = true;
 		entry.doc->Show();
+	}
+
+	void HideDocument(RmlDocument document)
+	{
+		auto& entry = m_documents[document];
+		entry.shown = false;
+		entry.doc->Hide();
 	}
 
 	void RegisterLoaders(Resources* resources)
@@ -209,13 +263,53 @@ private:
 		bool shown = false;
 	};
 
+	struct ModelEntry
+	{
+		Rml::DataModelHandle handle;
+		std::string name;
+	};
+
 	RmlUiRenderer m_renderer;
 	RmlUiSystem m_system;
 	Rml::Context* m_context = nullptr;
 	Window* m_window = nullptr;
 	HandleVec<RmlDocument, DocumentEntry> m_documents;
+	HandleVec<RmlDataModel, ModelEntry> m_dataModels;
 	GraphicsContext* m_graphicsContext = nullptr;
 	std::mutex m_mutex;
+
+	template<typename T>
+	void EnsureTypeIsRegistered(Rml::DataModelConstructor& constructor, Rml::DataTypeRegister* typeRegister)
+	{
+		//TODO: Figure out if RmlUI has a way to check for unregistered types without triggering an error log
+		if (!typeRegister->GetDefinition<T>())
+		{
+			RegisterType<T>(constructor, typeRegister);
+		}
+	}
+
+	template<typename T>
+	void RegisterType(Rml::DataModelConstructor& constructor, Rml::DataTypeRegister* typeRegister)
+	{
+		if constexpr (Reflection::ReflectedStruct<T>)
+		{
+			auto handle = constructor.RegisterStruct<T>();
+			ASSERT(handle);
+			auto regMember = [&](auto& mem)
+			{
+				using FieldType = typename std::decay_t<decltype(mem)>::FieldType;
+				EnsureTypeIsRegistered<FieldType>(constructor, typeRegister);
+				handle.RegisterMember(mem.name, mem.memberPtr);
+			};
+			std::apply([&](auto&... args) {((regMember(args)), ...); }, T::ReflectionMemberPtrs);
+			return;
+		}
+		else if constexpr (Reflection::ReflectedVector<T>)
+		{
+			EnsureTypeIsRegistered<T::value_type>(constructor, typeRegister);
+			constructor.RegisterArray<T>();
+		}
+	}
 };
 
 Rml::Input::KeyIdentifier RmlConvertKey(Key key)

@@ -235,6 +235,23 @@ namespace tako::Reflection
 			auto it = registry.find(name);
 			return it != registry.end() ? it->second : nullptr;
 		}
+
+		template<ReflectedEnum E>
+		static constexpr const char* EnumName(E enm)
+		{
+			auto info = GetEnumInformation<E>();
+			size_t enumValue = info->convertUnderlying(&enm);
+
+			for (auto& caseInfo : info->cases)
+			{
+				if (caseInfo.value == enumValue)
+				{ 
+					return caseInfo.name;
+				}
+			}
+
+			return nullptr;
+		}
 	};
 
 	template<typename T>
@@ -254,6 +271,9 @@ namespace tako::Reflection
 	{
 		const char* name;
 		F T::* memberPtr;
+
+		using ClassType = T;
+		using FieldType = F;
 	};
 }
 
