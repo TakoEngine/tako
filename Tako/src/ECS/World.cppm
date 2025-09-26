@@ -644,6 +644,16 @@ namespace tako
 			MoveEntityArchetype(handle, newHash);
 		}
 
+		template<typename T>
+		void SetComponent(Entity entity, const T& component)
+		{
+			if (!HasComponent<T>(entity))
+			{
+				AddComponent<T>(entity);
+			}
+			GetComponent<T>(entity) = component;
+		}
+
 		template<typename... Cs>
 		ComponentIterator<Cs...> Iter()
 		{
