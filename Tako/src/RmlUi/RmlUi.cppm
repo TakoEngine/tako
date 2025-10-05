@@ -306,7 +306,7 @@ private:
 		}
 		else if constexpr (Reflection::ReflectedVector<T>)
 		{
-			EnsureTypeIsRegistered<T::value_type>(constructor, typeRegister);
+			EnsureTypeIsRegistered<typename T::value_type>(constructor, typeRegister);
 			constructor.RegisterArray<T>();
 		}
 	}

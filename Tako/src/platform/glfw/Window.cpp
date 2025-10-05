@@ -146,6 +146,18 @@ namespace tako
 							evt.status = state.buttons[index] ? KeyStatus::Down : KeyStatus::Up;
 							m_callback(evt);
 						}
+
+						// Emulate trigger axis as button presses
+						constexpr float triggerDeadZone = 0.1f;
+						KeyPress lt;
+						lt.key = Key::Gamepad_LT;
+						lt.status = state.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER] > triggerDeadZone ? KeyStatus::Down : KeyStatus::Up;
+						m_callback(lt);
+
+						KeyPress rt;
+						rt.key = Key::Gamepad_RT;
+						rt.status = state.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER] > triggerDeadZone ? KeyStatus::Down : KeyStatus::Up;
+						m_callback(rt);
 					}
 					break; //TODO: support more than the first found controller
 				}

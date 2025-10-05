@@ -189,6 +189,11 @@ namespace Math
 			return v.normalize();
 		}
 
+		constexpr static float Dot(const Vector2& lhs, const Vector2& rhs)
+		{
+			return lhs.x * rhs.x + lhs.y * rhs.y;
+		}
+
 		REFLECT(Vector2, x, y)
 	};
 
