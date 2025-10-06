@@ -654,6 +654,16 @@ namespace tako
 			GetComponent<T>(entity) = component;
 		}
 
+		template<typename T>
+		T& GetOrAddComponent(Entity entity)
+		{
+			if (!HasComponent<T>(entity))
+			{
+				AddComponent<T>(entity);
+			}
+			return GetComponent<T>(entity);
+		}
+
 		template<typename... Cs>
 		ComponentIterator<Cs...> Iter()
 		{
