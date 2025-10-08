@@ -349,9 +349,14 @@ namespace Math
 			return Vector3::cross(*this, rhs);
 		}
 
-		constexpr static float dot(const Vector3& lhs, const Vector3& rhs)
+		constexpr static float Dot(const Vector3& lhs, const Vector3& rhs)
 		{
 			return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
+		}
+
+		constexpr static float dot(const Vector3& lhs, const Vector3& rhs)
+		{
+			return Dot(lhs, rhs);
 		}
 
 		constexpr static Vector3 Lerp(Vector3 a, Vector3 b, float t)
@@ -454,7 +459,7 @@ namespace Math
 			x /= factor;
 			y /= factor;
 			z /= factor;
-            w /= factor;
+			w /= factor;
 			return *this;
 		}
 
