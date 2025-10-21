@@ -49,6 +49,11 @@ namespace tako
 			return GetLength();
 		}
 
+		size_t Size() const
+		{
+			return GetLength();
+		}
+
 		size_t GetCapacity() const
 		{
 			return m_capacity;
@@ -130,6 +135,18 @@ namespace tako
 				m_data[i].~T();
 			}
 			m_length = 0;
+		}
+
+		T& Front() const
+		{
+			ASSERT(m_length > 0);
+			return m_data[0];
+		}
+
+		T& Back() const
+		{
+			ASSERT(m_length > 0);
+			return m_data[m_length - 1];
 		}
 
 		T& operator[](size_t index)
