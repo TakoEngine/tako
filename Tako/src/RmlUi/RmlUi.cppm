@@ -349,6 +349,12 @@ Rml::Input::KeyIdentifier RmlConvertKey(Key key)
 		case Key::Space: return Rml::Input::KI_SPACE;
 		case Key::Enter: return Rml::Input::KI_RETURN;
 		case Key::Backspace: return Rml::Input::KI_BACK;
+
+		case Key::Gamepad_Dpad_Up: return Rml::Input::KI_UP;
+		case Key::Gamepad_Dpad_Down: return Rml::Input::KI_DOWN;
+		case Key::Gamepad_Dpad_Left: return Rml::Input::KI_LEFT;
+		case Key::Gamepad_Dpad_Right: return Rml::Input::KI_RIGHT;
+		case Key::Gamepad_A: return Rml::Input::KI_RETURN;
 	}
 
 	return Rml::Input::KI_UNKNOWN;

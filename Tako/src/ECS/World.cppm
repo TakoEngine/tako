@@ -446,6 +446,12 @@ namespace tako
 		return std::array<U8, sizeof...(Cs)>({ComponentIDGenerator::GetID<Cs>()... });
 	}
 
+	template<typename T>
+	using EntityOrRef = std::conditional_t<std::same_as<T, Entity>, T, T&>;
+
+	export template<typename Cb, typename... Cs>
+	concept QueryCallback = std::invocable<Cb, EntityOrRef<Cs>...>;
+
 	template<typename C, typename... Cs>
 	class EntityTupleHelper
 	{
@@ -542,7 +548,7 @@ namespace tako
 		template<typename Cb, std::size_t... I>
 		static inline void CallbackTupleSequence(const std::tuple<C*, Cs*...>& componentArray, int index, Cb callback, std::index_sequence<I...>)
 		{
-			callback(IndexCompArray<I>(componentArray, index)...);
+			callback(std::get<I>(componentArray)[index]...);
 		}
 
 		template<std::size_t... I>
@@ -748,6 +754,19 @@ namespace tako
 						}
 					}
 				}
+			}
+		}
+
+		template<typename... Cs>
+		void ApplyQueryCallback(Entity entity, QueryCallback<Cs...> auto callback)
+		{
+			auto handle = m_entities[entity];
+			auto componentID = EntityTupleHelper<Cs...>::GetIDArray();
+			auto hash = EntityTupleHelper<Cs...>::GetHash();
+			if ((handle.archeType->componentHash & hash) == hash)
+			{
+				auto comps = EntityTupleHelper<Cs...>::GetComponentArrays(*handle.archeType, *handle.chunk, componentID);
+				EntityTupleHelper<Cs...>::CallbackTuple(comps, handle.indexChunk, callback);
 			}
 		}
 
