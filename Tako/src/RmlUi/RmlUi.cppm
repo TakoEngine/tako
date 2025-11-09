@@ -20,6 +20,8 @@ import Tako.Reflection;
 namespace tako
 {
 
+export using RmlVariant = Rml::Variant;
+
 Rml::Input::KeyIdentifier RmlConvertKey(Key key);
 int RmlConvertMouseButton(MouseButton button);
 
@@ -309,6 +311,13 @@ private:
 			EnsureTypeIsRegistered<typename T::value_type>(constructor, typeRegister);
 			constructor.RegisterArray<T>();
 		}
+		else if constexpr (std::is_same_v<T, RmlVariant>)
+		{
+			constructor.RegisterScalar<RmlVariant>(
+				[](const auto& source, auto& target) { target = source; },
+				[](auto& target, const auto& source) { target = source; }
+			);
+		}
 	}
 };
 
@@ -373,3 +382,14 @@ int RmlConvertMouseButton(MouseButton button)
 }
 
 }
+
+//TODO: Hack to make RmlVariants work with reflection, do proper implementation or implement own Variant type
+#define DEFINE_REFLECTION_PRIMITIVE(type) \
+	template<> \
+	const ::tako::Reflection::PrimitiveInformation* ::tako::Reflection::GetPrimitiveInformation<type>() \
+	{ \
+		static const ::tako::Reflection::PrimitiveInformation info(#type, sizeof(type)); \
+		return &info; \
+	}
+
+DEFINE_REFLECTION_PRIMITIVE(Rml::Variant)

@@ -68,6 +68,11 @@ namespace tako
 		static Bitmap FromFile(CStringView filePath);
 		static Bitmap FromFileData(const U8* data, size_t size);
 
+		Color* begin() { return m_data.get(); }
+		Color* end() { return m_data.get() + (m_width * m_height); }
+		const Color* begin() const { return m_data.get(); }
+		const Color* end() const { return m_data.get() + (m_width * m_height); }
+
 		operator const ImageView() const noexcept
 		{
 			return ToView();

@@ -475,7 +475,7 @@ namespace tako
 			pipelineDesc.primitive.topology = WGPUPrimitiveTopology_TriangleList;
 			pipelineDesc.primitive.stripIndexFormat = WGPUIndexFormat_Undefined;
 			pipelineDesc.primitive.frontFace = WGPUFrontFace_CCW;
-			pipelineDesc.primitive.cullMode = WGPUCullMode_Back;
+			pipelineDesc.primitive.cullMode = WGPUCullMode_None;
 
 			WGPUFragmentState fragmentState{};
 			fragmentState.module = shaderModule;
