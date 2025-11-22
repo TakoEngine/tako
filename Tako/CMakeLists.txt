@@ -1,5 +1,6 @@
 include(tako)
-set(TAKO_DLL "tako")
+set(TAKO_DLL "tako-lib")
+set(TAKO_RUNTIME "tako")
 add_library(${TAKO_DLL}
 	#"src/PixelArtDrawer.cpp"
 	"src/AudioImpl.cpp"
@@ -35,7 +36,6 @@ target_sources(
 	"src/Font.cppm"
 	"src/Event.cppm"
 	"src/Input.cppm"
-	"src/EntryPoint.cppm"
 	#"src/Jam/PlatformerPhysics2D.cppm"
 	"src/Jam/TileMap.cppm"
 	"src/Jam/LDtkImporter.cppm"
@@ -124,7 +124,6 @@ endif()
 
 if (WIN32)
 target_sources(${TAKO_DLL} PRIVATE
-	"src/platform/win32/Main.cppm"
 	#"src/platform/win32/Window.cpp"
 	"src/platform/win32/Log.cpp"
 	"include/WinUtility.hpp"
@@ -139,20 +138,17 @@ target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/web/Log.cpp"
 	#"src/platform/web/Timer.cpp"
 	"src/platform/default/Timer.cpp" # Temporary, as emscripten_get_now() seems to be broken
-	"src/platform/default/Main.cpp"
 	PUBLIC FILE_SET CXX_MODULES FILES
 	"src/platform/web/FileSystem.cppm"
 	)
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 target_sources(${TAKO_DLL} PRIVATE
-		"src/platform/default/Main.cpp"
 		"src/platform/default/Log.cpp"
 		PUBLIC FILE_SET CXX_MODULES FILES
 		"src/platform/default/FileSystem.cppm"
 		)
 else()
 target_sources(${TAKO_DLL} PRIVATE
-		"src/platform/default/Main.cpp"
 		"src/platform/default/Log.cpp"
 		PUBLIC FILE_SET CXX_MODULES FILES
 		"src/platform/default/FileSystem.cppm")
@@ -359,6 +355,8 @@ target_include_directories(rapidhash INTERFACE "${rapidhash_SOURCE_DIR}")
 add_library(rapidhash::rapidhash ALIAS rapidhash)
 
 target_link_libraries(${TAKO_DLL} PRIVATE rapidhash)
+
+add_subdirectory(Runtime)
 
 add_executable(ECSBench "test/ECSBench.cpp")
 target_link_libraries(ECSBench PRIVATE tako)
