@@ -1,6 +1,7 @@
 module;
 #include "Utility.hpp"
 #include <RmlUi/Core/FileInterface.h>
+#include <vector>
 export module Tako.RmlUi.File;
 
 import Tako.NumberTypes;
@@ -18,29 +19,49 @@ namespace tako
 
 		Rml::FileHandle Open(const Rml::String& path) override
 		{
-			return std::bit_cast<Rml::FileHandle>(m_vfs->Open(path));
+			auto file = m_vfs->Open(path);
+			if (m_freeList == 0)
+			{
+				m_openFiles.push_back(file);
+				return m_openFiles.size();
+			}
+
+			auto index = m_freeList;
+			m_freeList = m_openFiles[index - 1].value;
+			m_openFiles[index - 1] = file;
+			return index;
 		}
 
-		void Close(Rml::FileHandle file) override
+		void Close(Rml::FileHandle handle) override
 		{
-			m_vfs->Close(std::bit_cast<tako::File>(file));
-		}
-		size_t Read(void* buffer, size_t size, Rml::FileHandle file) override
-		{
-			return m_vfs->Read(std::bit_cast<tako::File>(file), static_cast<U8*>(buffer), size);
+			auto file = m_openFiles[handle - 1];
+			m_vfs->Close(file);
+
+			m_openFiles[handle - 1].value = m_freeList;
+			m_freeList = handle;
 		}
 
-		bool Seek(Rml::FileHandle file, long offset, int origin) override
+		size_t Read(void* buffer, size_t size, Rml::FileHandle handle) override
 		{
-			return m_vfs->Seek(std::bit_cast<tako::File>(file), offset, std::bit_cast<IO::SeekOrigin>(origin));
+			auto file = m_openFiles[handle - 1];
+			return m_vfs->Read(file, static_cast<U8*>(buffer), size);
 		}
 
-		size_t Tell(Rml::FileHandle file) override
+		bool Seek(Rml::FileHandle handle, long offset, int origin) override
 		{
-			return m_vfs->Tell(std::bit_cast<tako::File>(file));
+			auto file = m_openFiles[handle - 1];
+			return m_vfs->Seek(file, offset, std::bit_cast<IO::SeekOrigin>(origin));
+		}
+
+		size_t Tell(Rml::FileHandle handle) override
+		{
+			auto file = m_openFiles[handle - 1];
+			return m_vfs->Tell(file);
 		}
 	private:
 		VFS* m_vfs;
+		std::vector<File> m_openFiles;
+		Rml::FileHandle m_freeList = 0;
 	};
 
 }
