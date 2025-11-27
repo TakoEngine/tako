@@ -9,6 +9,7 @@ export module Tako.Resources;
 import Tako.StringView;
 import Tako.NumberTypes;
 import Tako.HandleVec;
+export import Tako.VFS;
 
 
 using TypeID = size_t;
@@ -57,9 +58,9 @@ namespace tako
 {
 	class ResourceLoaderFuncs
 	{
-		using LoadMemberPtr = U64(ResourceLoaderFuncs::*)(const StringView);
+		using LoadMemberPtr = U64(ResourceLoaderFuncs::*)(VFS*, const StringView);
 		using ReleaseMemberPtr = void(ResourceLoaderFuncs::*)(U64);
-		using ReloadMemberPtr = void(ResourceLoaderFuncs::*)(U64, const StringView);
+		using ReloadMemberPtr = void(ResourceLoaderFuncs::*)(U64, VFS*, const StringView);
 	public:
 		ResourceLoaderFuncs()
 		{
@@ -71,18 +72,18 @@ namespace tako
 		template<typename T, Handle R>
 		ResourceLoaderFuncs(
 			T* obj,
-			R (T::*memFn)(const StringView),
+			R (T::*memFn)(VFS* vfs, const StringView),
 			void (T::*releaseFn)(R),
-			void(T::*reloadFn)(R, const StringView) = nullptr
+			void(T::*reloadFn)(R, VFS* vfs, const StringView) = nullptr
 		)
 		{
 			m_loader = obj;
 			m_memberLoadFunc = reinterpret_cast<LoadMemberPtr>(memFn);
-			m_loadInvoker = [](void* loader, LoadMemberPtr memberFunc, const StringView path) -> U64
+			m_loadInvoker = [](void* loader, LoadMemberPtr memberFunc, VFS* vfs, const StringView path) -> U64
 			{
 				T* o = static_cast<T*>(loader);
 				auto m = reinterpret_cast<decltype(memFn)>(memberFunc);
-				auto r = (o->*m)(path);
+				auto r = (o->*m)(vfs, path);
 				return std::bit_cast<U64>(r);
 			};
 			m_memberReleaseFunc = reinterpret_cast<ReleaseMemberPtr>(releaseFn);
@@ -95,18 +96,18 @@ namespace tako
 			m_memberReloadFunc = reinterpret_cast<ReloadMemberPtr>(reloadFn);
 			if (m_memberReloadFunc)
 			{
-				m_reloadInvoker = [](void* loader, ReloadMemberPtr memberFunc, U64 handle, const StringView path) -> void
+				m_reloadInvoker = [](void* loader, ReloadMemberPtr memberFunc, U64 handle, VFS* vfs, const StringView path) -> void
 				{
 					T* o = static_cast<T*>(loader);
 					auto m = reinterpret_cast<decltype(reloadFn)>(memberFunc);
-					(o->*m)(std::bit_cast<R>(handle), path);
+					(o->*m)(std::bit_cast<R>(handle), vfs, path);
 				};
 			}
 		}
 
-		U64 Load(const StringView path)
+		U64 Load(VFS* vfs, const StringView path)
 		{
-			return m_loadInvoker(m_loader, m_memberLoadFunc, path);
+			return m_loadInvoker(m_loader, m_memberLoadFunc, vfs, path);
 		}
 
 		void Release(U64 handle)
@@ -114,10 +115,10 @@ namespace tako
 			m_releaseInvoker(m_loader, m_memberReleaseFunc, handle);
 		}
 
-		void Reload(U64 handle, const StringView path)
+		void Reload(U64 handle, VFS* vfs, const StringView path)
 		{
 			ASSERT(m_memberReloadFunc);
-			m_reloadInvoker(m_loader, m_memberReloadFunc, handle, path);
+			m_reloadInvoker(m_loader, m_memberReloadFunc, handle, vfs, path);
 		}
 
 		bool CanReload() const
@@ -128,11 +129,11 @@ namespace tako
 	private:
 		void* m_loader;
 		LoadMemberPtr m_memberLoadFunc;
-		U64(*m_loadInvoker)(void*, LoadMemberPtr, const StringView);
+		U64(*m_loadInvoker)(void*, LoadMemberPtr, VFS*, const StringView);
 		ReleaseMemberPtr m_memberReleaseFunc;
 		void(*m_releaseInvoker)(void*, ReleaseMemberPtr, U64);
 		ReloadMemberPtr m_memberReloadFunc;
-		void(*m_reloadInvoker)(void*, ReloadMemberPtr, U64, const StringView) = nullptr;
+		void(*m_reloadInvoker)(void*, ReloadMemberPtr, U64, VFS*, const StringView) = nullptr;
 	};
 
 	using LoaderFunc = std::function<U64(StringView)>;
@@ -140,16 +141,17 @@ namespace tako
 	export class Resources
 	{
 	public:
-		Resources()
+		Resources(VFS* vfs)
 		{
+			m_vfs = vfs;
 		}
 
 		template<Handle Handle, typename L>
 		void RegisterLoader(
 			L* loader,
-			Handle(L::*loadFunc)(const StringView),
+			Handle(L::*loadFunc)(VFS* vfs, const StringView),
 			void(L::*releaseFunc)(Handle),
-			void(L::*reloadFunc)(Handle, const StringView) = nullptr
+			void(L::*reloadFunc)(Handle, VFS* vfs, const StringView) = nullptr
 		)
 		{
 			ASSERT(loadFunc);
@@ -177,7 +179,7 @@ namespace tako
 			ASSERT(loader != m_loaders.end());
 			CacheEntry entry;
 			entry.type = typeID;
-			entry.handle = loader->second.Load(path);
+			entry.handle = loader->second.Load(m_vfs, path);
 			entry.refCount = 1;
 			auto [inserted, _] = m_pathCache.emplace(std::make_pair(std::string(path), entry));
 			m_handleCache.emplace(std::make_pair(entry, std::string_view(inserted->first)));
@@ -234,9 +236,10 @@ namespace tako
 			{
 				return;
 			}
-			loader->second.Reload(itEntry->second.handle, path);
+			loader->second.Reload(itEntry->second.handle, m_vfs, path);
 		}
 	private:
+		VFS* m_vfs;
 		struct CacheEntry : public CacheKey
 		{
 			U32 refCount;

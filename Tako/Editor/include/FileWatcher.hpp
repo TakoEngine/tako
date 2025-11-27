@@ -7,19 +7,22 @@
 #include <mutex>
 #include <atomic>
 
+import Tako.VFS;
+
 namespace tako
 {
 	struct FileChanged
 	{
 		std::filesystem::path path;
+		std::filesystem::path mountPath;
 	};
 
 	class FileWatcher
 	{
 	public:
-		FileWatcher(std::string_view watchPath)
+		FileWatcher(VFS* vfs)
 		{
-			m_thread = std::thread(&FileWatcher::WatchFolder, this, std::string(watchPath));
+			m_thread = std::thread(&FileWatcher::WatchFolder, this, vfs);
 		}
 
 		~FileWatcher()
@@ -48,43 +51,58 @@ namespace tako
 		std::mutex m_mutex;
 		std::vector<FileChanged> m_changes;
 
-		void WatchFolder(std::string_view path)
+		void WatchFolder(VFS* vfs)
 		{
 			std::unordered_map<std::filesystem::path, std::filesystem::file_time_type> paths;
-			for (auto &file : std::filesystem::recursive_directory_iterator(path)) {
-				paths[file.path()] = std::filesystem::last_write_time(file);
+
+			for (auto& path : vfs->GetMountPaths())
+			{
+				for (auto &file : std::filesystem::recursive_directory_iterator(path))
+				{
+					paths[file.path()] = std::filesystem::last_write_time(file);
+				}
 			}
 
 			while (m_running)
 			{
 				// Check modified
 				{
-					std::lock_guard<std::mutex> lock(m_mutex);
-					for (auto &file : std::filesystem::recursive_directory_iterator(path))
-					{
-						if (!std::filesystem::exists(file.path())) {
-							continue;
-						}
-						auto newWrite = std::filesystem::last_write_time(file);
+					std::vector<FileChanged> changes;
 
-						auto found = paths.find(file.path());
-						if (found != paths.end())
+					for (auto& path : vfs->GetMountPaths())
+					{
+						for (auto &file : std::filesystem::recursive_directory_iterator(path))
 						{
-							auto lastWrite = found->second;
-							if (lastWrite != newWrite) {
-								//LOG("File changed! {}", file.path());
-								m_changes.push_back({file.path()});
-								found->second = newWrite;
-								m_changed = true;
+							if (!std::filesystem::exists(file.path())) {
+								continue;
+							}
+							auto newWrite = std::filesystem::last_write_time(file);
+
+							auto found = paths.find(file.path());
+							if (found != paths.end())
+							{
+								auto lastWrite = found->second;
+								if (lastWrite != newWrite) {
+									//LOG("File changed! {}", file.path());
+									changes.push_back({file.path(), path});
+									found->second = newWrite;
+
+								}
+							}
+							else
+							{
+								//LOG("New file! {}", file.path());
+								paths[file.path()] = newWrite;
+								changes.push_back({file.path(), path});
 							}
 						}
-						else
-						{
-							//LOG("New file! {}", file.path());
-							paths[file.path()] = newWrite;
-							m_changes.push_back({file.path()});
-							m_changed = true;
-						}
+					}
+
+					if (changes.size() > 0)
+					{
+						std::lock_guard<std::mutex> lock(m_mutex);
+						m_changed = true;
+						m_changes.insert(m_changes.end(), changes.begin(), changes.end());
 					}
 				}
 

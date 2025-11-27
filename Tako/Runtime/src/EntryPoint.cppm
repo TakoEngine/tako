@@ -34,6 +34,7 @@ import Tako.Audio;
 //import Tako.Renderer3D;
 import Tako.Application;
 //import Tako.Serialization;
+import Tako.VFS;
 import Tako.Resources;
 import Tako.JobSystem;
 import Tako.RmlUi;
@@ -47,6 +48,7 @@ namespace tako
 		tako::GraphicsContext& context;
 		tako::Input& input;
 		tako::Audio& audio;
+        tako::VFS& vfs;
 		tako::Resources& resources;
 		tako::RmlUi& ui;
 		void* gameData;
@@ -84,7 +86,7 @@ namespace tako
 #ifdef TAKO_EDITOR
 		for (auto& change: data->watcher.Poll())
 		{
-			auto path = change.path.string();
+			auto path = std::filesystem::relative(change.path, change.mountPath).string();
 			//TODO: make more robust
 			for (auto& c : path)
 			{
@@ -93,7 +95,9 @@ namespace tako
 					c = '/';
 				}
 			}
+			path = "/" + path;
 			LOG("Filechange detected {}", path);
+			//TODO: Check if change is the highest priority mount path
 			data->resources.Reload(path);
 		}
 #endif
@@ -330,9 +334,15 @@ namespace tako
 		#endif
 		tako::Broadcaster broadcaster;
 
-		Resources resources;
+		VFS vfs;
+		#ifdef TAKO_EMSCRIPTEN
+			vfs.AddMountPath("");
+		#else
+			vfs.AddMountPath("./Assets");
+		#endif
+		Resources resources(&vfs);
 		RmlUi ui;
-		ui.Init(&window, context.get());
+		ui.Init(&window, context.get(), &vfs, &resources);
 
 		void* gameData = malloc(config.gameDataSize);
 #ifndef EMSCRIPTEN
@@ -343,7 +353,7 @@ namespace tako
 #endif
 
 #ifdef TAKO_EDITOR
-		tako::FileWatcher watcher("./Assets");
+		tako::FileWatcher watcher(&vfs);
 #endif
 
 		std::atomic<bool> keepRunning = true;
@@ -394,6 +404,7 @@ namespace tako
 			*context,
 			input,
 			audio,
+			vfs,
 			resources,
 			ui,
 			gameData,

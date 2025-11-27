@@ -9,6 +9,7 @@ import Tako.StringView;
 import Tako.GraphicsContext;
 import Tako.RmlUi.Renderer;
 import Tako.RmlUi.System;
+import Tako.RmlUi.File;
 import Tako.Event;
 import Tako.Window;
 import Tako.NumberTypes;
@@ -49,14 +50,16 @@ public:
 	RmlUi()
 	{}
 
-	void Init(Window* window, GraphicsContext* graphicsContext)
+	void Init(Window* window, GraphicsContext* graphicsContext, VFS* vfs, Resources* resources)
 	{
 		m_window = window;
 		m_graphicsContext = graphicsContext;
-		m_renderer.Init(graphicsContext);
+		m_renderer.Init(graphicsContext, resources);
+		m_fileInterface.Init(vfs);
 
 		Rml::SetRenderInterface(&m_renderer);
 		Rml::SetSystemInterface(&m_system);
+		Rml::SetFileInterface(&m_fileInterface);
 
 		Rml::Initialise();
 		m_context = Rml::CreateContext("main", Rml::Vector2i(graphicsContext->GetWidth(), graphicsContext->GetHeight()));
@@ -146,7 +149,8 @@ public:
 		m_context->RemoveDataModel(model.name);
 	}
 
-	RmlDocument LoadDocument(StringView filePath)
+	//TODO: implement IO interface
+	RmlDocument LoadDocument(VFS* vfs, StringView filePath)
 	{
 		Rml::String path(filePath);
 		DocumentEntry entry;
@@ -161,7 +165,7 @@ public:
 		m_documents.Remove(document);
 	}
 
-	void ReloadDocument(RmlDocument old, const StringView filePath)
+	void ReloadDocument(RmlDocument old, VFS* vfs, const StringView filePath)
 	{
 		auto& entry = m_documents[old];
 		m_context->UnloadDocument(entry.doc);
@@ -273,6 +277,7 @@ private:
 
 	RmlUiRenderer m_renderer;
 	RmlUiSystem m_system;
+	RmlUiFileInterface m_fileInterface;
 	Rml::Context* m_context = nullptr;
 	Window* m_window = nullptr;
 	HandleVec<RmlDocument, DocumentEntry> m_documents;

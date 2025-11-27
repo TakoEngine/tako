@@ -21,6 +21,7 @@ export namespace tako::FileSystem
 }
 */
 
+//TODO: Rename it to IO?
 export namespace tako::FileSystem
 {
 	std::string ReadText(const char* filePath)

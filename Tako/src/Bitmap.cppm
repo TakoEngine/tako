@@ -253,7 +253,7 @@ namespace tako
 	}
 
 	Bitmap Bitmap::FromFileData(const U8* data, size_t size)
-	{;
+	{
 		int width, height, channels;
 		stbi_uc* img = stbi_load_from_memory(data, size, &width, &height, &channels, 4);
 		Bitmap bitmap((Color*)img, width, height);

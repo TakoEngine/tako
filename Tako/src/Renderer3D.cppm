@@ -231,11 +231,18 @@ namespace tako
 			m_context->ReleaseTexture(texture);
 		}
 
-		Texture LoadTexture(const StringView path)
+		Texture LoadTexture(VFS* vfs, const StringView path)
 		{
-			CStringBuffer p(path);
-			Bitmap tex = Bitmap::FromFile(p);
+			auto buffer = vfs->LoadFile(path);
+			Bitmap tex = Bitmap::FromFileData(buffer.data(), buffer.size());
 			return CreateTexture(tex);
+		}
+
+		void ReloadTexture(Texture texture, VFS* vfs, const StringView path)
+		{
+			auto buffer = vfs->LoadFile(path);
+			Bitmap tex = Bitmap::FromFileData(buffer.data(), buffer.size());
+			m_context->UpdateTexture(texture, tex);
 		}
 
 		Shader CreateShader(const ShaderDescriptor& descriptor)
@@ -268,7 +275,7 @@ namespace tako
 
 		void RegisterLoaders(Resources* resources)
 		{
-			resources->RegisterLoader<Texture>(this, &Renderer3D::LoadTexture, &Renderer3D::ReleaseTexture);
+			resources->RegisterLoader<Texture>(this, &Renderer3D::LoadTexture, &Renderer3D::ReleaseTexture, &Renderer3D::ReloadTexture);
 		}
 
 		Skybox CreateSkybox(Texture cubemap);

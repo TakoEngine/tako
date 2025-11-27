@@ -53,6 +53,8 @@ target_sources(
 	"src/StringView.cppm"
 	"src/HandleVec.cppm"
 	"src/Hash.cppm"
+	"src/IO.cppm"
+	"src/VFS.cppm"
 	"src/Allocators/Allocator.cppm"
 	"src/Allocators/FreeListAllocator.cppm"
 	"src/Allocators/LinearAllocator.cppm"
@@ -129,6 +131,7 @@ target_sources(${TAKO_DLL} PRIVATE
 	"include/WinUtility.hpp"
 	"src/platform/win32/WinUtility.cpp"
 	#"src/platform/default/Timer.cpp"
+	"src/platform/default/IO.cpp"
 	PUBLIC FILE_SET CXX_MODULES FILES
 	"src/platform/default/FileSystem.cppm"
 )
@@ -138,18 +141,21 @@ target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/web/Log.cpp"
 	#"src/platform/web/Timer.cpp"
 	"src/platform/default/Timer.cpp" # Temporary, as emscripten_get_now() seems to be broken
+	"src/platform/default/IO.cpp"
 	PUBLIC FILE_SET CXX_MODULES FILES
 	"src/platform/web/FileSystem.cppm"
 	)
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 target_sources(${TAKO_DLL} PRIVATE
 		"src/platform/default/Log.cpp"
+		"src/platform/default/IO.cpp"
 		PUBLIC FILE_SET CXX_MODULES FILES
 		"src/platform/default/FileSystem.cppm"
 		)
 else()
 target_sources(${TAKO_DLL} PRIVATE
 		"src/platform/default/Log.cpp"
+		"src/platform/default/IO.cpp"
 		PUBLIC FILE_SET CXX_MODULES FILES
 		"src/platform/default/FileSystem.cppm")
 endif()

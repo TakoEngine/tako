@@ -8,7 +8,7 @@ export module Tako.RmlUi.Renderer;
 import Tako.GraphicsContext;
 import Tako.Math;
 import Tako.Bitmap;
-import Tako.FileSystem;
+import Tako.Resources;
 
 namespace tako
 {
@@ -16,9 +16,10 @@ namespace tako
 export class RmlUiRenderer : public Rml::RenderInterface
 {
 public:
-	void Init(GraphicsContext* context)
+	void Init(GraphicsContext* context, Resources* resources)
 	{
 		m_context = context;
+		m_resources = resources;
 		InitPipeline();
 		m_sampler = context->CreateSampler();
 		m_transformLayout = context->GetPipelineShaderBindingLayout(m_pipeline, 1);
@@ -114,25 +115,23 @@ public:
 
 	Rml::TextureHandle LoadTexture(Rml::Vector2i& texture_dimensions, const Rml::String& source) override
 	{
-		//TODO: Use resource manager & hot reload
-		auto imgData = FileSystem::ReadFile(source.c_str());
-		auto img = Bitmap::FromFileData(imgData.data(), imgData.size());
-		Texture texture = m_context->CreateTexture(img);
-		return MakeTextureHandle(texture);
+		Texture texture = m_resources->Load<Texture>(source);
+		return MakeTextureHandle(texture, true);
 	}
 
 	Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte> source, Rml::Vector2i source_dimensions) override
 	{
 		ImageView img(reinterpret_cast<const Color*>(source.data()), source_dimensions.x, source_dimensions.y);
 		Texture texture = m_context->CreateTexture(img);
-		return MakeTextureHandle(texture);
+		return MakeTextureHandle(texture, false);
 	}
 
-	Rml::TextureHandle MakeTextureHandle(Texture texture)
+	Rml::TextureHandle MakeTextureHandle(Texture texture, bool loadedFromResources)
 	{
 		TexEntry tex;
 		tex.tex = texture;
 		tex.mat = CreateTextureBinding(tex.tex);
+		tex.loadedFromResources = loadedFromResources;
 
 		if (m_textureFreelist)
 		{
@@ -152,7 +151,14 @@ public:
 		LOG("Release Texture");
 		auto tex = &m_textures[texture];
 		m_context->ReleaseShaderBinding(tex->mat);
-		m_context->ReleaseTexture(tex->tex);
+		if (tex->loadedFromResources)
+		{
+			m_resources->Release(tex->tex);
+		}
+		else
+		{
+			m_context->ReleaseTexture(tex->tex);
+		}
 
 		*reinterpret_cast<size_t*>(tex) = m_textureFreelist;
 		m_textureFreelist = texture;
@@ -197,6 +203,7 @@ private:
 	{
 		Texture tex;
 		ShaderBinding mat;
+		bool loadedFromResources;
 	};
 
 	struct TransformEntry
@@ -206,6 +213,7 @@ private:
 	};
 
 	GraphicsContext* m_context;
+	Resources* m_resources;
 	Pipeline m_pipeline;
 	Sampler m_sampler;
 	Buffer m_cameraBuffer;
