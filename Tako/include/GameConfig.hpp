@@ -12,6 +12,7 @@ import Tako.Input;
 import Tako.Audio;
 import Tako.RmlUi;
 import Tako.NumberTypes;
+import Tako.VFS;
 import Tako.Resources;
 import Tako.GraphicsContext;
 
@@ -20,6 +21,7 @@ namespace tako
 	struct SetupData
 	{
 		GraphicsContext* context;
+		VFS* vfs;
 		Resources* resources;
 		Audio* audio;
 		RmlUi* ui;

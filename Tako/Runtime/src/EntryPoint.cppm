@@ -252,7 +252,7 @@ namespace tako
 		{
 			data->jobSys.RunJob([=]()
 			{
-				data->config.Setup(data->gameData, { &data->context, &data->resources, &data->audio, &data->ui });
+				data->config.Setup(data->gameData, { &data->context, &data->vfs, &data->resources, &data->audio, &data->ui });
 			});
 		}
 	}
@@ -348,7 +348,7 @@ namespace tako
 #ifndef EMSCRIPTEN
 		if (config.Setup)
 		{
-			config.Setup(gameData, { context.get(), &resources, &audio, &ui });
+			config.Setup(gameData, { context.get(), &vfs, &resources, &audio, &ui });
 		}
 #endif
 
