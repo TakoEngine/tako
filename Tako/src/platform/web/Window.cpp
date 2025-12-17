@@ -201,10 +201,19 @@ namespace tako
 		{
 			if (m_callback)
 			{
-				WindowResize evt;
-				evt.width = width;
-				evt.height = height;
-				m_callback(evt);
+				{
+					WindowResize evt;
+					evt.width = width;
+					evt.height = height;
+					m_callback(evt);
+				}
+
+				{
+					FramebufferResize evt;
+					evt.width = width;
+					evt.height = height;
+					m_callback(evt);
+				}
 			}
 		}
 
