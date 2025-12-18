@@ -186,6 +186,18 @@ namespace tako
 			m_callback = callback;
 		}
 
+		void SetFullScreenMode(Window::FullScreenMode mode)
+		{
+			if (mode == Window::FullScreenMode::Windowed)
+			{
+				emscripten_exit_fullscreen();
+			}
+			else
+			{
+				emscripten_request_fullscreen(HTML_TARGET, true);
+			}
+		}
+
 		void Resize(int width, int height)
 		{
 			ResizeCanvas(width, height);
@@ -394,5 +406,10 @@ namespace tako
 	void Window::SetEventCallback(const std::function<void(Event&)>& callback)
 	{
 		m_impl->SetEventCallback(callback);
+	}
+
+	void Window::SetFullScreenMode(Window::FullScreenMode mode)
+	{
+		m_impl->SetFullScreenMode(mode);
 	}
 }

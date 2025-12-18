@@ -169,6 +169,19 @@ namespace tako
 			m_callback = callback;
 		}
 
+		void SetFullScreenMode(Window::FullScreenMode mode)
+		{
+			GLFWmonitor* monitor = nullptr;
+			int width = m_width;
+			int height = m_height;
+			int refreshRate = GLFW_DONT_CARE;
+			if (mode == FullScreenMode::FullScreen)
+			{
+				monitor = glfwGetPrimaryMonitor();
+			}
+			glfwSetWindowMonitor(m_window, monitor, 0, 0, width, height, refreshRate);
+		}
+
 		int m_width, m_height;
 		Point m_frameBufferSize;
 		GLFWwindow* m_window;
@@ -290,5 +303,10 @@ namespace tako
 	void Window::SetEventCallback(const std::function<void(Event&)>& callback)
 	{
 		m_impl->SetEventCallback(callback);
+	}
+
+	void Window::SetFullScreenMode(Window::FullScreenMode mode)
+	{
+		m_impl->SetFullScreenMode(mode);
 	}
 }

@@ -134,6 +134,7 @@ namespace tako
 	public:
 		WebGPUContext(Window* window)
 		{
+			m_window = window;
 			auto frameBufferSize = window->GetFramebufferSize();
 			m_width = frameBufferSize.x;
 			m_height = frameBufferSize.y;
@@ -709,6 +710,11 @@ namespace tako
 			return m_renderPass;
 		}
 
+		Window* GetWindow() override
+		{
+			return m_window;
+		}
+
 	private:
 		WGPUTextureFormat m_depthTextureFormat = WGPUTextureFormat_Depth24Plus;
 		WGPUTexture m_depthTexture;
@@ -733,6 +739,7 @@ namespace tako
 
 		bool m_initComplete = false; //TODO: tie into "await" system
 		U32 m_width, m_height;
+		Window* m_window;
 		wgpu::Queue m_queue;
 		wgpu::Device m_device;
 		wgpu::TextureFormat m_surfaceFormat;

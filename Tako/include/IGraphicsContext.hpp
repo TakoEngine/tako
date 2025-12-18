@@ -115,5 +115,8 @@ namespace tako
 
 		virtual ShaderBinding CreateShaderBinding(ShaderBindingLayout layout, std::span<ShaderBindingEntryData> entryData) = 0;
 		virtual void ReleaseShaderBinding(ShaderBinding binding) = 0;
+
+		//HACK: temporary, remove after implementing proper module/plugin structure
+		virtual Window* GetWindow() = 0;
 	};
 }

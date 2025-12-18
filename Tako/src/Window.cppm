@@ -21,7 +21,16 @@ namespace tako
 		int GetHeight();
 		Point GetFramebufferSize();
 		WindowHandle GetHandle() const;
+
 		void SetEventCallback(const std::function<void(Event&)>& callback);
+
+		enum class FullScreenMode
+		{
+			Windowed,
+			FullScreen
+		};
+		void SetFullScreenMode(FullScreenMode mode);
+
 	private:
 		class WindowImpl;
 		std::unique_ptr<WindowImpl> m_impl;
