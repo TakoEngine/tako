@@ -57,6 +57,18 @@ namespace tako
 			{"KeyX", Key::X},
 			{"KeyY", Key::Y},
 			{"KeyZ", Key::Z},
+			{"F1", Key::F1},
+			{"F2", Key::F2},
+			{"F3", Key::F3},
+			{"F4", Key::F4},
+			{"F5", Key::F5},
+			{"F6", Key::F6},
+			{"F7", Key::F7},
+			{"F8", Key::F8},
+			{"F9", Key::F9},
+			{"F10", Key::F10},
+			{"F11", Key::F11},
+			{"F12", Key::F12},
 			{"ArrowDown", Key::Down},
 			{"ArrowLeft", Key::Left},
 			{"ArrowRight", Key::Right},
@@ -196,6 +208,13 @@ namespace tako
 			{
 				emscripten_request_fullscreen(HTML_TARGET, true);
 			}
+		}
+
+		Window::FullScreenMode GetFullScreenMode()
+		{
+			EmscriptenFullscreenChangeEvent status;
+			emscripten_get_fullscreen_status(&status);
+			return status.fullscreenEnabled ? Window::FullScreenMode::FullScreen : Window::FullScreenMode::Windowed;
 		}
 
 		void Resize(int width, int height)
@@ -411,5 +430,10 @@ namespace tako
 	void Window::SetFullScreenMode(Window::FullScreenMode mode)
 	{
 		m_impl->SetFullScreenMode(mode);
+	}
+
+	Window::FullScreenMode Window::GetFullScreenMode()
+	{
+		return m_impl->GetFullScreenMode();
 	}
 }

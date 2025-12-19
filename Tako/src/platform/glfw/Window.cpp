@@ -40,6 +40,18 @@ namespace tako
 		{GLFW_KEY_X, Key::X},
 		{GLFW_KEY_Y, Key::Y},
 		{GLFW_KEY_Z, Key::Z},
+		{GLFW_KEY_F1, Key::F1},
+		{GLFW_KEY_F2, Key::F2},
+		{GLFW_KEY_F3, Key::F3},
+		{GLFW_KEY_F4, Key::F4},
+		{GLFW_KEY_F5, Key::F5},
+		{GLFW_KEY_F6, Key::F6},
+		{GLFW_KEY_F7, Key::F7},
+		{GLFW_KEY_F8, Key::F8},
+		{GLFW_KEY_F9, Key::F9},
+		{GLFW_KEY_F10, Key::F10},
+		{GLFW_KEY_F11, Key::F11},
+		{GLFW_KEY_F12, Key::F12},
 		{GLFW_KEY_DOWN, Key::Down},
 		{GLFW_KEY_LEFT, Key::Left},
 		{GLFW_KEY_RIGHT, Key::Right},
@@ -98,6 +110,7 @@ namespace tako
 			m_window = glfwCreateWindow(initWidth, initHeight, "tako", NULL, NULL);
 			m_width = initWidth;
 			m_height = initHeight;
+			m_fullScreenMode = FullScreenMode::Windowed;
 			if (!m_window)
 			{
 				LOG_ERR("Error creating window");
@@ -180,9 +193,16 @@ namespace tako
 				monitor = glfwGetPrimaryMonitor();
 			}
 			glfwSetWindowMonitor(m_window, monitor, 0, 0, width, height, refreshRate);
+			m_fullScreenMode = mode;
+		}
+
+		Window::FullScreenMode GetFullScreenMode()
+		{
+			return m_fullScreenMode;
 		}
 
 		int m_width, m_height;
+		Window::FullScreenMode m_fullScreenMode;
 		Point m_frameBufferSize;
 		GLFWwindow* m_window;
 		std::function<void(Event&)> m_callback;
@@ -308,5 +328,10 @@ namespace tako
 	void Window::SetFullScreenMode(Window::FullScreenMode mode)
 	{
 		m_impl->SetFullScreenMode(mode);
+	}
+
+	Window::FullScreenMode Window::GetFullScreenMode()
+	{
+		return m_impl->GetFullScreenMode();
 	}
 }

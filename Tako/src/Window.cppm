@@ -30,6 +30,7 @@ namespace tako
 			FullScreen
 		};
 		void SetFullScreenMode(FullScreenMode mode);
+		FullScreenMode GetFullScreenMode();
 
 	private:
 		class WindowImpl;
