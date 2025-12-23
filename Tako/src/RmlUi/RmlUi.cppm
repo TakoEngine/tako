@@ -10,7 +10,7 @@ import Tako.GraphicsContext;
 import Tako.RmlUi.Renderer;
 import Tako.RmlUi.System;
 import Tako.RmlUi.File;
-import Tako.Event;
+import Tako.InputEvent;
 import Tako.Window;
 import Tako.NumberTypes;
 import Tako.Resources;
@@ -44,7 +44,7 @@ private:
 	Rml::DataModelHandle handle;
 };
 
-export class RmlUi : public IEventHandler
+export class RmlUi : public IInputEventHandler
 {
 public:
 	RmlUi()
@@ -196,70 +196,70 @@ public:
 		resources->RegisterLoader(this, &RmlUi::LoadDocument, &RmlUi::ReleaseDocument, &RmlUi::ReloadDocument);
 	}
 
-	void HandleEvent(Event& evt) override
+	bool HandleInputEvent(InputEvent& evt) override
 	{
 		if (!m_context)
 		{
-			return;
+			return false;
 		}
 
 		switch (evt.GetType())
 		{
-			case EventType::KeyPress:
+			case InputEventType::KeyPress:
 			{
 				KeyPress& press = static_cast<KeyPress&>(evt);
 				auto key = RmlConvertKey(press.key);
 				int keyMod = 0;
 				if (press.status == KeyStatus::Down)
 				{
-					m_context->ProcessKeyDown(key, keyMod);
+					return !m_context->ProcessKeyDown(key, keyMod);
 				}
 				else
 				{
-					m_context->ProcessKeyUp(key, keyMod);
+					return !m_context->ProcessKeyUp(key, keyMod);
 				}
 			} break;
-			case EventType::TextInputUpdate:
+			case InputEventType::TextInputUpdate:
 			{
 				TextInputUpdate& input = static_cast<TextInputUpdate&>(evt);
-				std::visit(overloaded
+				return std::visit(overloaded
 				{
 					[&](U32 character)
 					{
-						m_context->ProcessTextInput(character);
+						return !m_context->ProcessTextInput(character);
 					},
 					[&](const char* str)
 					{
-						m_context->ProcessTextInput(str);
+						return !m_context->ProcessTextInput(str);
 					}
 				}, input.input);
 
 			} break;
-			case EventType::MouseMove:
+			case InputEventType::MouseMove:
 			{
 				MouseMove& move = static_cast<MouseMove&>(evt);
-				m_context->ProcessMouseMove(move.position.x, m_graphicsContext->GetHeight() - move.position.y, 0);
+				return !m_context->ProcessMouseMove(move.position.x, m_graphicsContext->GetHeight() - move.position.y, 0);
 			} break;
-			case EventType::MouseButtonPress:
+			case InputEventType::MouseButtonPress:
 			{
 				MouseButtonPress& press = static_cast<MouseButtonPress&>(evt);
 				int button = RmlConvertMouseButton(press.button);
 				if (button < 0)
 				{
-					return;
+					return false;
 				}
 				int keyMod = 0;
 				if (press.status == MouseButtonStatus::Down)
 				{
-					m_context->ProcessMouseButtonDown(button, keyMod);
+					return !m_context->ProcessMouseButtonDown(button, keyMod);
 				}
 				else
 				{
-					m_context->ProcessMouseButtonUp(button, keyMod);
+					return !m_context->ProcessMouseButtonUp(button, keyMod);
 				}
 			} break;
+			default: return false;
 		}
-
 	}
 
 private:

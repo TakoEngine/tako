@@ -6,6 +6,7 @@ module;
 export module Tako.Window;
 
 export import Tako.Event;
+export import Tako.InputEvent;
 import Tako.Math;
 
 namespace tako
@@ -23,6 +24,7 @@ namespace tako
 		WindowHandle GetHandle() const;
 
 		void SetEventCallback(const std::function<void(Event&)>& callback);
+		void SetInputCallback(const std::function<bool(InputEvent&)>& callback);
 
 		enum class FullScreenMode
 		{

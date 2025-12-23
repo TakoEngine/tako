@@ -4,19 +4,19 @@ module;
 #include <cstddef>
 export module Tako.Input;
 
+export import Tako.InputEvent;
 import Tako.Math;
-import Tako.Event;
 
 namespace tako
 {
-	export class Input : public IEventHandler
+	export class Input : public IInputEventHandler
 	{
 	public:
-		virtual void HandleEvent(Event& evt) override
+		bool HandleInputEvent(InputEvent& evt) override
 		{
 			switch (evt.GetType())
 			{
-				case tako::EventType::KeyPress:
+				case tako::InputEventType::KeyPress:
 				{
 					tako::KeyPress& press = static_cast<tako::KeyPress &>(evt);
 					if (press.key != Key::Unknown)
@@ -26,18 +26,18 @@ namespace tako
 						activeKeys[k] = press.status;
 					}
 				} break;
-				case tako::EventType::MouseMove:
+				case tako::InputEventType::MouseMove:
 				{
 					tako::MouseMove& move = static_cast<tako::MouseMove&>(evt);
 					m_curMousePosition = move.position;
 				} break;
-				case tako::EventType::MouseButtonPress:
+				case tako::InputEventType::MouseButtonPress:
 				{
 					tako::MouseButtonPress& press = static_cast<tako::MouseButtonPress&>(evt);
 					auto b = static_cast<size_t>(press.button) - 1;
 					activeMouseButtons[b] = press.status;
 				} break;
-				case tako::EventType::AxisUpdate:
+				case tako::InputEventType::AxisUpdate:
 				{
 					tako::AxisUpdate& update = static_cast<tako::AxisUpdate&>(evt);
 					auto axis = update.value;
@@ -45,6 +45,8 @@ namespace tako
 					m_axis[static_cast<size_t>(update.axis)] = axis;
 				} break;
 			}
+
+			return false; //TODO: Investige if events should be preventend from bubbling up
 		}
 
 

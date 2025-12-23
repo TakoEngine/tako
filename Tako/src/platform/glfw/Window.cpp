@@ -145,19 +145,19 @@ namespace tako
 						AxisUpdate left;
 						left.axis = Axis::Left;
 						left.value = Vector2(state.axes[GLFW_GAMEPAD_AXIS_LEFT_X], state.axes[GLFW_GAMEPAD_AXIS_LEFT_Y]);
-						m_callback(left);
+						m_inputCallback(left);
 
 						AxisUpdate right;
 						right.axis = Axis::Right;
 						right.value = Vector2(state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X], state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y]);
-						m_callback(right);
+						m_inputCallback(right);
 
 						for (auto [index, key] : GamepadMapping)
 						{
 							KeyPress evt;
 							evt.key = key;
 							evt.status = state.buttons[index] ? KeyStatus::Down : KeyStatus::Up;
-							m_callback(evt);
+							m_inputCallback(evt);
 						}
 
 						// Emulate trigger axis as button presses
@@ -165,12 +165,12 @@ namespace tako
 						KeyPress lt;
 						lt.key = Key::Gamepad_LT;
 						lt.status = state.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER] > triggerDeadZone ? KeyStatus::Down : KeyStatus::Up;
-						m_callback(lt);
+						m_inputCallback(lt);
 
 						KeyPress rt;
 						rt.key = Key::Gamepad_RT;
 						rt.status = state.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER] > triggerDeadZone ? KeyStatus::Down : KeyStatus::Up;
-						m_callback(rt);
+						m_inputCallback(rt);
 					}
 					break; //TODO: support more than the first found controller
 				}
@@ -180,6 +180,11 @@ namespace tako
 		void SetEventCallback(const std::function<void(Event&)>& callback)
 		{
 			m_callback = callback;
+		}
+
+		void SetInputCallback(const std::function<bool(InputEvent&)>& callback)
+		{
+			m_inputCallback = callback;
 		}
 
 		void SetFullScreenMode(Window::FullScreenMode mode)
@@ -206,6 +211,7 @@ namespace tako
 		Point m_frameBufferSize;
 		GLFWwindow* m_window;
 		std::function<void(Event&)> m_callback;
+		std::function<bool(InputEvent&)> m_inputCallback;
 
 		static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 		{
@@ -227,7 +233,7 @@ namespace tako
 				evt.status = KeyStatus::Up;
 			}
 
-			win->m_callback(evt);
+			win->m_inputCallback(evt);
 		}
 
 		static void CharCallback(GLFWwindow* window, unsigned int codepoint)
@@ -235,7 +241,7 @@ namespace tako
 			auto win = static_cast<WindowImpl*>(glfwGetWindowUserPointer(window));
 			TextInputUpdate evt;
 			evt.input = codepoint;
-			win->m_callback(evt);
+			win->m_inputCallback(evt);
 		}
 
 		static void CursorPositionCallback(GLFWwindow* window, double xpos, double ypos)
@@ -243,7 +249,7 @@ namespace tako
 			auto win = static_cast<WindowImpl*>(glfwGetWindowUserPointer(window));
 			MouseMove evt;
 			evt.position = Vector2(xpos, win->m_height - ypos);
-			win->m_callback(evt);
+			win->m_inputCallback(evt);
 		}
 
 		static void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
@@ -258,7 +264,7 @@ namespace tako
 			MouseButtonPress evt;
 			evt.button = MouseCodeMapping[button];
 			evt.status = action == GLFW_PRESS || action == GLFW_REPEAT ? MouseButtonStatus::Down : MouseButtonStatus::Up;
-			win->m_callback(evt);
+			win->m_inputCallback(evt);
 		}
 
 		static void WindowSizeCallback(GLFWwindow* window, int width, int height)
@@ -323,6 +329,11 @@ namespace tako
 	void Window::SetEventCallback(const std::function<void(Event&)>& callback)
 	{
 		m_impl->SetEventCallback(callback);
+	}
+
+	void Window::SetInputCallback(const std::function<bool(InputEvent&)>& callback)
+	{
+		m_impl->SetInputCallback(callback);
 	}
 
 	void Window::SetFullScreenMode(Window::FullScreenMode mode)

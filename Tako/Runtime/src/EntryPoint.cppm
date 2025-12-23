@@ -30,6 +30,7 @@ module;
 
 export module EntryPoint;
 
+import Tako.InputEvent;
 import Tako.Audio;
 //import Tako.Renderer3D;
 import Tako.Application;
@@ -39,6 +40,9 @@ import Tako.Resources;
 import Tako.JobSystem;
 import Tako.RmlUi;
 import Tako.Allocators.CachePoolAllocator;
+#ifdef TAKO_IMGUI
+import Tako.ImGui;
+#endif
 
 namespace tako
 {
@@ -333,6 +337,7 @@ namespace tako
 
 		#endif
 		tako::Broadcaster broadcaster;
+		tako::InputBroadcaster inputBroadcaster;
 
 		VFS vfs;
 		#ifdef TAKO_EMSCRIPTEN
@@ -387,12 +392,20 @@ namespace tako
 
 		broadcaster.Register(&onEvent);
 		broadcaster.Register(context.get());
-		broadcaster.Register(&ui);
-		broadcaster.Register(&input);
+		#ifdef TAKO_IMGUI
+			ImGuiInputHandler imguiInput;
+			inputBroadcaster.Register(&imguiInput);
+		#endif
+		inputBroadcaster.Register(&ui);
+		inputBroadcaster.Register(&input);
 
 		window.SetEventCallback([&](tako::Event& evt)
 		{
 			broadcaster.Broadcast(evt);
+		});
+		window.SetInputCallback([&](tako::InputEvent& evt)
+		{
+			return inputBroadcaster.Broadcast(evt);
 		});
 
 		//size_t framePoolSize = config.frameDataSize * 10;
