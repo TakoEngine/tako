@@ -5,10 +5,19 @@ module Tako.IO;
 
 namespace tako::IO
 {
-    FileHandle* Open(StringView filePath)
+	const char* ModeToStr(FileOpenMode mode)
+	{
+		switch (mode)
+		{
+			case FileOpenMode::Read: return "rb";
+			case FileOpenMode::Write: return "wb";
+		}
+	}
+
+    FileHandle* Open(StringView filePath, FileOpenMode mode)
     {
         CStringBuffer pathBuffer(filePath);
-        return fopen(pathBuffer.c_str(), "rb");
+        return fopen(pathBuffer.c_str(), ModeToStr(mode));
     }
 
     void Close(FileHandle* file)

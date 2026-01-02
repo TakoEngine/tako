@@ -9,7 +9,12 @@ namespace tako::IO
 {
     export using FileHandle = void;
 
-    export FileHandle* Open(StringView filePath);
+	export enum class FileOpenMode
+	{
+		Read,
+		Write
+	};
+    export FileHandle* Open(StringView filePath, FileOpenMode mode = FileOpenMode::Read);
     export void Close(FileHandle* file);
 
     export size_t Read(FileHandle* file, U8* buffer, size_t size);
