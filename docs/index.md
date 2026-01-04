@@ -1,4 +1,4 @@
-# Tako Engine (WIP)
+# Overview
 
 A game engine/framework which adapts to your needs,
 written in C++20.
@@ -14,5 +14,3 @@ written in C++20.
 - Windows
 - Linux
 - Web
-
-The API is still very volatile, so expect breaking changes
