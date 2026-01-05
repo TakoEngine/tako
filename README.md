@@ -9,6 +9,8 @@ written in C++20.
 - Cross graphics api abstraction layer
 - Virtual File System
 - Job System
+- Create geometry via *CSG* (Constructive Solid Geometry)
+- Ingame UI via [RmlUi](https://github.com/mikke89/RmlUi)
 
 ## Supported platforms
 - Windows

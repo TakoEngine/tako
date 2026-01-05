@@ -3,7 +3,10 @@ site_name: Tako Engine
 repo_url: https://github.com/TakoEngine/tako
 nav:
   - index.md
-  - reflection.md
+  - concepts.md
+  - Systems:
+    - Reflection: systems/reflection.md
+    - ECS: systems/ecs.md
 theme:
   name: material
   palette:
