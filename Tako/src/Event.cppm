@@ -14,11 +14,6 @@ export namespace tako
 		WindowClose,
 		WindowResize,
 		FramebufferResize,
-		KeyPress,
-		TextInputUpdate,
-		MouseMove,
-		MouseButtonPress,
-		AxisUpdate,
 		AppQuit
 	};
 
@@ -81,127 +76,6 @@ export namespace tako
 		{
 			os << GetName() << "(" << width << "," << height << ")";
 		}
-	};
-
-	enum class Key
-	{
-		A = 0,
-		B,
-		C,
-		D,
-		E,
-		F,
-		G,
-		H,
-		I,
-		J,
-		K,
-		L,
-		M,
-		N,
-		O,
-		P,
-		Q,
-		R,
-		S,
-		T,
-		U,
-		V,
-		W,
-		X,
-		Y,
-		Z,
-		Up,
-		Down,
-		Left,
-		Right,
-		Space,
-		Enter,
-		Backspace,
-		Gamepad_A,
-		Gamepad_B,
-		Gamepad_X,
-		Gamepad_Y,
-		Gamepad_Dpad_Up,
-		Gamepad_Dpad_Down,
-		Gamepad_Dpad_Left,
-		Gamepad_Dpad_Right,
-		Gamepad_Start,
-		Gamepad_Select,
-		Gamepad_L,
-		Gamepad_L2,
-		Gamepad_R,
-		Gamepad_R2,
-		Unknown
-	};
-
-	enum class KeyStatus
-	{
-		Up = 0,
-		Down
-	};
-
-	class KeyPress : public Event
-	{
-	public:
-		EVENT_CLASS_TYPE(KeyPress)
-
-		Key key;
-		KeyStatus status;
-	};
-
-	class TextInputUpdate : public Event
-	{
-	public:
-		EVENT_CLASS_TYPE(TextInputUpdate)
-
-		std::variant<U32, const char*> input;
-	};
-
-	class MouseMove : public Event
-	{
-	public:
-		EVENT_CLASS_TYPE(MouseMove)
-
-		Vector2 position;
-	};
-
-	enum class MouseButton
-	{
-		Left = 1,
-		Right = 2,
-		Middle = 3
-	};
-
-	enum class MouseButtonStatus
-	{
-		Up = 0,
-		Down
-	};
-
-	class MouseButtonPress : public Event
-	{
-	public:
-		EVENT_CLASS_TYPE(MouseButtonPress)
-
-		MouseButton button;
-		MouseButtonStatus status;
-	};
-
-	enum class Axis
-	{
-		Left,
-		Right,
-		Unknown
-	};
-
-	class AxisUpdate : public Event
-	{
-	public:
-		EVENT_CLASS_TYPE(AxisUpdate)
-
-		Axis axis;
-		Vector2 value;
 	};
 
 	class AppQuit : public Event

@@ -1,0 +1,10 @@
+target_sources(${TAKO_DLL} PRIVATE
+	PUBLIC FILE_SET CXX_MODULES FILES
+	"CSG.cppm"
+)
+
+set(MANIFOLD_PYBIND OFF CACHE BOOL "" FORCE)
+set(MANIFOLD_CROSS_SECTION OFF CACHE BOOL "" FORCE)
+set(MANIFOLD_TEST OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(manifold)
+target_link_libraries(${TAKO_DLL} PUBLIC manifold)

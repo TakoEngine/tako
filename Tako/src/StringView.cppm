@@ -79,6 +79,11 @@ namespace tako
 			return {m_str, m_len};
 		}
 
+        constexpr std::string ToString() const noexcept
+        {
+            return std::string(m_str, m_len);
+        }
+
 		constexpr bool IsCString() const noexcept
 		{
 			return m_isTerminated;

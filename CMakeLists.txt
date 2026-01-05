@@ -23,8 +23,13 @@ endif()
 
 add_subdirectory("Utils")
 add_subdirectory("dependencies/fmt" EXCLUDE_FROM_ALL)
-add_subdirectory("dependencies/yaml-cpp" EXCLUDE_FROM_ALL)
 add_subdirectory("dependencies/json" EXCLUDE_FROM_ALL)
+
+FetchContent_Declare(
+	yaml-cpp
+	GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+	GIT_TAG 28f93bdec6387d42332220afa9558060c8016795
+)
 
 set(FASTGLTF_COMPILE_AS_CPP20 ON CACHE BOOL "" FORCE)
 #set(FASTGLTF_ENABLE_CPP_MODULES ON CACHE BOOL "" FORCE)
@@ -35,12 +40,12 @@ FetchContent_Declare(
 	GIT_TAG 42608f77f20749dd6ddc9e0536788eaad70ea4b5 # 2.13.3
 	FIND_PACKAGE_ARGS NAMES Freetype
 )
-if (NOT EMSCRIPTEN)
+#if (NOT EMSCRIPTEN)
 	FetchContent_MakeAvailable(freetype)
 	if (NOT TARGET Freetype::Freetype)
 		add_library(Freetype::Freetype ALIAS freetype)
 	endif()
-endif()
+#endif()
 add_subdirectory("${PROJECT_SOURCE_DIR}/dependencies/RmlUi" EXCLUDE_FROM_ALL)
 
 if (NOT EMSCRIPTEN)
@@ -49,15 +54,27 @@ if (NOT EMSCRIPTEN)
 	set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 	add_subdirectory("dependencies/glfw" EXCLUDE_FROM_ALL)
 
-	FetchContent_Declare(
-		dawn
-		URL https://github.com/google/dawn/archive/66bf64e67071911fffd159a4e3d556d055e76d85.zip
-		URL_HASH SHA256=1af27805b8fa86527397c7a2d852f31634348a16437958dd70e79d1a16293570
-		FIND_PACKAGE_ARGS NAMES Dawn
-	)
-
 	#add_subdirectory("dependencies/assimp" EXCLUDE_FROM_ALL)
 endif()
+
+FetchContent_Declare(
+	dawn
+	URL https://github.com/google/dawn/archive/a4695b94d4191bf496707dc121b180d4b81ee6b4.zip
+	URL_HASH SHA256=b2d4938bac76a5affb550c915c70ac82ab9b6aec574bae05eee93dc03992a825
+	FIND_PACKAGE_ARGS NAMES Dawn
+)
+
+FetchContent_Declare(
+	manifold
+	GIT_REPOSITORY https://github.com/elalish/manifold.git
+	GIT_TAG 6754a3cf7cd3a16940efa4a9751cb63b0f49abf3 # 3.2.0
+)
+
+FetchContent_Declare(
+	rapidhash
+	GIT_REPOSITORY https://github.com/Nicoshev/rapidhash.git
+	GIT_TAG abc8d971489440a13e18db37d09b5d6e4484737b
+)
 
 add_subdirectory("Tako")
 

@@ -40,6 +40,18 @@ namespace tako
 		{GLFW_KEY_X, Key::X},
 		{GLFW_KEY_Y, Key::Y},
 		{GLFW_KEY_Z, Key::Z},
+		{GLFW_KEY_F1, Key::F1},
+		{GLFW_KEY_F2, Key::F2},
+		{GLFW_KEY_F3, Key::F3},
+		{GLFW_KEY_F4, Key::F4},
+		{GLFW_KEY_F5, Key::F5},
+		{GLFW_KEY_F6, Key::F6},
+		{GLFW_KEY_F7, Key::F7},
+		{GLFW_KEY_F8, Key::F8},
+		{GLFW_KEY_F9, Key::F9},
+		{GLFW_KEY_F10, Key::F10},
+		{GLFW_KEY_F11, Key::F11},
+		{GLFW_KEY_F12, Key::F12},
 		{GLFW_KEY_DOWN, Key::Down},
 		{GLFW_KEY_LEFT, Key::Left},
 		{GLFW_KEY_RIGHT, Key::Right},
@@ -55,8 +67,8 @@ namespace tako
 		{GLFW_GAMEPAD_BUTTON_B, Key::Gamepad_B},
 		{GLFW_GAMEPAD_BUTTON_X, Key::Gamepad_X},
 		{GLFW_GAMEPAD_BUTTON_Y, Key::Gamepad_Y},
-		{GLFW_GAMEPAD_BUTTON_LEFT_BUMPER, Key::Gamepad_L},
-		{GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER, Key::Gamepad_R},
+		{GLFW_GAMEPAD_BUTTON_LEFT_BUMPER, Key::Gamepad_LB},
+		{GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER, Key::Gamepad_RB},
 		//{6, Key::Gamepad_L2},
 		//{7, Key::Gamepad_R2},
 		{GLFW_GAMEPAD_BUTTON_BACK, Key::Gamepad_Select},
@@ -98,6 +110,7 @@ namespace tako
 			m_window = glfwCreateWindow(initWidth, initHeight, "tako", NULL, NULL);
 			m_width = initWidth;
 			m_height = initHeight;
+			m_fullScreenMode = FullScreenMode::Windowed;
 			if (!m_window)
 			{
 				LOG_ERR("Error creating window");
@@ -122,28 +135,44 @@ namespace tako
 		void Poll()
 		{
 			glfwPollEvents();
-			if (glfwJoystickIsGamepad(GLFW_JOYSTICK_1))
+			for (auto joyID = GLFW_JOYSTICK_1; joyID <= GLFW_JOYSTICK_LAST; joyID++)
 			{
-				GLFWgamepadstate state;
-				if (glfwGetGamepadState(GLFW_JOYSTICK_1, &state))
+				if (glfwJoystickIsGamepad(joyID))
 				{
-					AxisUpdate left;
-					left.axis = Axis::Left;
-					left.value = Vector2(state.axes[GLFW_GAMEPAD_AXIS_LEFT_X], state.axes[GLFW_GAMEPAD_AXIS_LEFT_Y]);
-					m_callback(left);
-
-					AxisUpdate right;
-					right.axis = Axis::Right;
-					right.value = Vector2(state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X], state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y]);
-					m_callback(right);
-
-					for (auto [index, key] : GamepadMapping)
+					GLFWgamepadstate state;
+					if (glfwGetGamepadState(joyID, &state))
 					{
-						KeyPress evt;
-						evt.key = key;
-						evt.status = state.buttons[index] ? KeyStatus::Down : KeyStatus::Up;
-						m_callback(evt);
+						AxisUpdate left;
+						left.axis = Axis::Left;
+						left.value = Vector2(state.axes[GLFW_GAMEPAD_AXIS_LEFT_X], state.axes[GLFW_GAMEPAD_AXIS_LEFT_Y]);
+						m_inputCallback(left);
+
+						AxisUpdate right;
+						right.axis = Axis::Right;
+						right.value = Vector2(state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X], state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y]);
+						m_inputCallback(right);
+
+						for (auto [index, key] : GamepadMapping)
+						{
+							KeyPress evt;
+							evt.key = key;
+							evt.status = state.buttons[index] ? KeyStatus::Down : KeyStatus::Up;
+							m_inputCallback(evt);
+						}
+
+						// Emulate trigger axis as button presses
+						constexpr float triggerDeadZone = 0.1f;
+						KeyPress lt;
+						lt.key = Key::Gamepad_LT;
+						lt.status = state.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER] > triggerDeadZone ? KeyStatus::Down : KeyStatus::Up;
+						m_inputCallback(lt);
+
+						KeyPress rt;
+						rt.key = Key::Gamepad_RT;
+						rt.status = state.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER] > triggerDeadZone ? KeyStatus::Down : KeyStatus::Up;
+						m_inputCallback(rt);
 					}
+					break; //TODO: support more than the first found controller
 				}
 			}
 		}
@@ -153,10 +182,36 @@ namespace tako
 			m_callback = callback;
 		}
 
+		void SetInputCallback(const std::function<bool(InputEvent&)>& callback)
+		{
+			m_inputCallback = callback;
+		}
+
+		void SetFullScreenMode(Window::FullScreenMode mode)
+		{
+			GLFWmonitor* monitor = nullptr;
+			int width = m_width;
+			int height = m_height;
+			int refreshRate = GLFW_DONT_CARE;
+			if (mode == FullScreenMode::FullScreen)
+			{
+				monitor = glfwGetPrimaryMonitor();
+			}
+			glfwSetWindowMonitor(m_window, monitor, 0, 0, width, height, refreshRate);
+			m_fullScreenMode = mode;
+		}
+
+		Window::FullScreenMode GetFullScreenMode()
+		{
+			return m_fullScreenMode;
+		}
+
 		int m_width, m_height;
+		Window::FullScreenMode m_fullScreenMode;
 		Point m_frameBufferSize;
 		GLFWwindow* m_window;
 		std::function<void(Event&)> m_callback;
+		std::function<bool(InputEvent&)> m_inputCallback;
 
 		static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 		{
@@ -178,7 +233,7 @@ namespace tako
 				evt.status = KeyStatus::Up;
 			}
 
-			win->m_callback(evt);
+			win->m_inputCallback(evt);
 		}
 
 		static void CharCallback(GLFWwindow* window, unsigned int codepoint)
@@ -186,7 +241,7 @@ namespace tako
 			auto win = static_cast<WindowImpl*>(glfwGetWindowUserPointer(window));
 			TextInputUpdate evt;
 			evt.input = codepoint;
-			win->m_callback(evt);
+			win->m_inputCallback(evt);
 		}
 
 		static void CursorPositionCallback(GLFWwindow* window, double xpos, double ypos)
@@ -194,7 +249,7 @@ namespace tako
 			auto win = static_cast<WindowImpl*>(glfwGetWindowUserPointer(window));
 			MouseMove evt;
 			evt.position = Vector2(xpos, win->m_height - ypos);
-			win->m_callback(evt);
+			win->m_inputCallback(evt);
 		}
 
 		static void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
@@ -209,7 +264,7 @@ namespace tako
 			MouseButtonPress evt;
 			evt.button = MouseCodeMapping[button];
 			evt.status = action == GLFW_PRESS || action == GLFW_REPEAT ? MouseButtonStatus::Down : MouseButtonStatus::Up;
-			win->m_callback(evt);
+			win->m_inputCallback(evt);
 		}
 
 		static void WindowSizeCallback(GLFWwindow* window, int width, int height)
@@ -274,5 +329,20 @@ namespace tako
 	void Window::SetEventCallback(const std::function<void(Event&)>& callback)
 	{
 		m_impl->SetEventCallback(callback);
+	}
+
+	void Window::SetInputCallback(const std::function<bool(InputEvent&)>& callback)
+	{
+		m_impl->SetInputCallback(callback);
+	}
+
+	void Window::SetFullScreenMode(Window::FullScreenMode mode)
+	{
+		m_impl->SetFullScreenMode(mode);
+	}
+
+	Window::FullScreenMode Window::GetFullScreenMode()
+	{
+		return m_impl->GetFullScreenMode();
 	}
 }

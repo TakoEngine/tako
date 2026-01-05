@@ -4,19 +4,19 @@ module;
 #include <cstddef>
 export module Tako.Input;
 
+export import Tako.InputEvent;
 import Tako.Math;
-import Tako.Event;
 
 namespace tako
 {
-	export class Input : public IEventHandler
+	export class Input : public IInputEventHandler
 	{
 	public:
-		virtual void HandleEvent(Event& evt) override
+		bool HandleInputEvent(InputEvent& evt) override
 		{
 			switch (evt.GetType())
 			{
-				case tako::EventType::KeyPress:
+				case tako::InputEventType::KeyPress:
 				{
 					tako::KeyPress& press = static_cast<tako::KeyPress &>(evt);
 					if (press.key != Key::Unknown)
@@ -26,12 +26,18 @@ namespace tako
 						activeKeys[k] = press.status;
 					}
 				} break;
-				case tako::EventType::MouseMove:
+				case tako::InputEventType::MouseMove:
 				{
 					tako::MouseMove& move = static_cast<tako::MouseMove&>(evt);
 					m_curMousePosition = move.position;
 				} break;
-				case tako::EventType::AxisUpdate:
+				case tako::InputEventType::MouseButtonPress:
+				{
+					tako::MouseButtonPress& press = static_cast<tako::MouseButtonPress&>(evt);
+					auto b = static_cast<size_t>(press.button) - 1;
+					activeMouseButtons[b] = press.status;
+				} break;
+				case tako::InputEventType::AxisUpdate:
 				{
 					tako::AxisUpdate& update = static_cast<tako::AxisUpdate&>(evt);
 					auto axis = update.value;
@@ -39,6 +45,8 @@ namespace tako
 					m_axis[static_cast<size_t>(update.axis)] = axis;
 				} break;
 			}
+
+			return false; //TODO: Investige if events should be preventend from bubbling up
 		}
 
 
@@ -50,6 +58,7 @@ namespace tako
 		Vector2 GetAxis(Axis axis);
 		Vector2 GetMousePosition();
 		Vector2 GetMouseMovement();
+		bool GetMouseButton(MouseButton button);
 	private:
 		Vector2 m_mousePosition;
 		Vector2 m_prevMousePosition;
@@ -57,6 +66,8 @@ namespace tako
 		std::array<KeyStatus, static_cast<size_t>(Key::Unknown)> activeKeys = {KeyStatus::Up};
 		std::array<KeyStatus, static_cast<size_t>(Key::Unknown)> keys = {KeyStatus::Up};
 		std::array<KeyStatus, static_cast<size_t>(Key::Unknown)> prevKeys = {KeyStatus::Up};
+		std::array<MouseButtonStatus, static_cast<size_t>(MouseButton::Middle)> activeMouseButtons = {MouseButtonStatus::Up};
+		std::array<MouseButtonStatus, static_cast<size_t>(MouseButton::Middle)> mouseButtons = {MouseButtonStatus::Up};
 		std::array<bool, static_cast<size_t>(Key::Unknown)> m_activeChangedKeys = { false };
 		std::array<bool, static_cast<size_t>(Key::Unknown)> m_changedKeys = { false };
 		std::array<Vector2, static_cast<size_t>(Axis::Unknown)> m_axis = {Vector2()};
@@ -110,6 +121,11 @@ namespace tako
 		return m_mousePosition - m_prevMousePosition;
 	}
 
+	bool Input::GetMouseButton(MouseButton button)
+	{
+		return mouseButtons[static_cast<size_t>(button) - 1] == MouseButtonStatus::Down;
+	}
+
 	void Input::Update()
 	{
 		prevKeys = keys;
@@ -118,6 +134,7 @@ namespace tako
 		m_activeChangedKeys = { false };
 		m_prevMousePosition = m_mousePosition;
 		m_mousePosition = m_curMousePosition;
+		mouseButtons = activeMouseButtons;
 	}
 }
 

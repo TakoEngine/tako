@@ -1,17 +1,27 @@
 #pragma once
+
+// Workaround for (possibly) https://github.com/llvm/llvm-project/issues/136289
+#ifdef TAKO_EMSCRIPTEN
+#undef _LIBCPP_HIDE_FROM_ABI
+#define _LIBCPP_HIDE_FROM_ABI
+#endif
+
 #include "GraphicsAPI.hpp"
 
 import Tako.Input;
 import Tako.Audio;
 import Tako.RmlUi;
 import Tako.NumberTypes;
+import Tako.VFS;
 import Tako.Resources;
+import Tako.GraphicsContext;
 
 namespace tako
 {
 	struct SetupData
 	{
 		GraphicsContext* context;
+		VFS* vfs;
 		Resources* resources;
 		Audio* audio;
 		RmlUi* ui;

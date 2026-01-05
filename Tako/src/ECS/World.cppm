@@ -446,6 +446,12 @@ namespace tako
 		return std::array<U8, sizeof...(Cs)>({ComponentIDGenerator::GetID<Cs>()... });
 	}
 
+	template<typename T>
+	using EntityOrRef = std::conditional_t<std::same_as<T, Entity>, T, T&>;
+
+	export template<typename Cb, typename... Cs>
+	concept QueryCallback = std::invocable<Cb, EntityOrRef<Cs>...>;
+
 	template<typename C, typename... Cs>
 	class EntityTupleHelper
 	{
@@ -542,7 +548,7 @@ namespace tako
 		template<typename Cb, std::size_t... I>
 		static inline void CallbackTupleSequence(const std::tuple<C*, Cs*...>& componentArray, int index, Cb callback, std::index_sequence<I...>)
 		{
-			callback(IndexCompArray<I>(componentArray, index)...);
+			callback(std::get<I>(componentArray)[index]...);
 		}
 
 		template<std::size_t... I>
@@ -561,7 +567,7 @@ namespace tako
 	public:
 		World()
 		{
-			m_archetypes.insert({ 0, Archetype::Create<>() });
+			CreateEmptyArchetype();
 		}
 
 		Entity Create()
@@ -622,6 +628,13 @@ namespace tako
 		}
 
 		template<typename T>
+		void AddComponent(Entity entity, const T& component)
+		{
+			AddComponent<T>(entity);
+			GetComponent<T>(entity) = component;
+		}
+
+		template<typename T>
 		void RemoveComponent(Entity entity)
 		{
 			auto compID = ComponentIDGenerator::GetID<T>();
@@ -635,6 +648,26 @@ namespace tako
 			}
 
 			MoveEntityArchetype(handle, newHash);
+		}
+
+		template<typename T>
+		void SetComponent(Entity entity, const T& component)
+		{
+			if (!HasComponent<T>(entity))
+			{
+				AddComponent<T>(entity);
+			}
+			GetComponent<T>(entity) = component;
+		}
+
+		template<typename T>
+		T& GetOrAddComponent(Entity entity)
+		{
+			if (!HasComponent<T>(entity))
+			{
+				AddComponent<T>(entity);
+			}
+			return GetComponent<T>(entity);
 		}
 
 		template<typename... Cs>
@@ -725,6 +758,19 @@ namespace tako
 		}
 
 		template<typename... Cs>
+		void ApplyQueryCallback(Entity entity, QueryCallback<Cs...> auto callback)
+		{
+			auto handle = m_entities[entity];
+			auto componentID = EntityTupleHelper<Cs...>::GetIDArray();
+			auto hash = EntityTupleHelper<Cs...>::GetHash();
+			if ((handle.archeType->componentHash & hash) == hash)
+			{
+				auto comps = EntityTupleHelper<Cs...>::GetComponentArrays(*handle.archeType, *handle.chunk, componentID);
+				EntityTupleHelper<Cs...>::CallbackTuple(comps, handle.indexChunk, callback);
+			}
+		}
+
+		template<typename... Cs>
 		auto Iterate()
 		{
 			return m_archetypes
@@ -763,6 +809,7 @@ namespace tako
 			m_nextDeleted = 0;
 			m_deletedCount = 0;
 			m_archetypes.clear();
+			CreateEmptyArchetype();
 		}
 	private:
 		std::vector<EntityHandle> m_entities;
@@ -826,6 +873,11 @@ namespace tako
 			targetArch->CopyComponentData(handle, *targetHandle.chunk, handle.id, targetHandle.indexChunk);
 			RemoveEntityFromArchetype(handle);
 			m_entities[handle.id] = targetHandle;
+		}
+
+		void CreateEmptyArchetype()
+		{
+			m_archetypes.insert({ 0, Archetype::Create<>() });
 		}
 	};
 

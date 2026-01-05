@@ -1,0 +1,44 @@
+site_name: Tako Engine
+# site_url:
+repo_url: https://github.com/TakoEngine/tako
+nav:
+  - index.md
+  - concepts.md
+  - Systems:
+    - Reflection: systems/reflection.md
+    - ECS: systems/ecs.md
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+      primary: deep purple
+      accent: pink
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+      primary: deep purple
+      accent: pink
+  features:
+    - navigation.path
+    - navigation.footer
+plugins:
+  - privacy
+  - search
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
