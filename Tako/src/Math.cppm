@@ -895,35 +895,6 @@ namespace Math
 			);
 		}
 
-		static Matrix4 lookAt(const Vector3& eye, const Vector3& target, const Vector3& upDir)
-		{
-			Vector3 forward = eye - target;
-			forward.normalize();
-
-			Vector3 left = upDir.cross(forward);
-			left.normalize();
-
-			Vector3 up = forward.cross(left);
-
-			Matrix4 matrix = Matrix4::identity;
-
-			matrix[0] = left.x;
-			matrix[4] = left.y;
-			matrix[8] = left.z;
-			matrix[1] = up.x;
-			matrix[5] = up.y;
-			matrix[9] = up.z;
-			matrix[2] = forward.x;
-			matrix[6] = forward.y;
-			matrix[10] = forward.z;
-
-			matrix[12] = -left.x * eye.x - left.y * eye.y - left.z * eye.z;
-			matrix[13] = -up.x * eye.x - up.y * eye.y - up.z * eye.z;
-			matrix[14] = -forward.x * eye.x - forward.y * eye.y - forward.z * eye.z;
-
-			return matrix;
-		}
-
 		static Matrix4 cameraViewMatrix(const Vector3 position, const Quaternion& rotation);
 
 		constexpr static Matrix4 perspective(float fov, float aspect, float nearDist, float farDist)
@@ -982,12 +953,12 @@ namespace Math
 
 		constexpr Matrix3 ToRotationMatrix3() const
 		{
-			return Matrix3::Transpose(Matrix3
+			return Matrix3
 			(
 				1 - 2 * (y * y + z * z), 2 * (x * y - w * z), 2 * (x * z + w * y),
 				2 * (x * y + w * z), 1 - 2 * (x * x + z * z), 2 * (y * z - w * x),
 				2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y)
-			));
+			);
 		}
 
 		constexpr Matrix4 ToRotationMatrix4() const
@@ -1233,14 +1204,14 @@ namespace Math
 			{
 				float s = std::sqrt(trace + 1.0f) * 2.0f;
 				q.w = 0.25f * s;
-				q.x = (up.z - forward.y) / s;
-				q.y = (forward.x - right.z) / s;
-				q.z = (right.y - up.x) / s;
+				q.x = (forward.y - up.z) / s;
+				q.y = (right.z - forward.x) / s;
+				q.z = (up.x - right.y) / s;
 			}
 			else if (right.x > up.y && right.x > forward.z)
 			{
 				float s = std::sqrt(1.0f + right.x - up.y - forward.z) * 2.0f;
-				q.w = (up.z - forward.y) / s;
+				q.w = (forward.y - up.z) / s;
 				q.x = 0.25f * s;
 				q.y = (up.x + right.y) / s;
 				q.z = (forward.x + right.z) / s;
@@ -1248,7 +1219,7 @@ namespace Math
 			else if (up.y > forward.z)
 			{
 				float s = std::sqrt(1.0f + up.y - right.x - forward.z) * 2.0f;
-				q.w = (forward.x - right.z) / s;
+				q.w = (right.z - forward.x) / s;
 				q.x = (up.x + right.y) / s;
 				q.y = 0.25f * s;
 				q.z = (forward.y + up.z) / s;
@@ -1256,7 +1227,7 @@ namespace Math
 			else
 			{
 				float s = std::sqrt(1.0f + forward.z - right.x - up.y) * 2.0f;
-				q.w = (right.y - up.x) / s;
+				q.w = (up.x - right.y) / s;
 				q.x = (forward.x + right.z) / s;
 				q.y = (forward.y + up.z) / s;
 				q.z = 0.25f * s;
