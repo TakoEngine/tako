@@ -1,7 +1,8 @@
 module;
 #include <vector>
 #include <variant>
-#include <Utility.hpp>
+#include <bit>
+#include "Utility.hpp"
 export module Tako.HandleVec;
 
 import Tako.NumberTypes;

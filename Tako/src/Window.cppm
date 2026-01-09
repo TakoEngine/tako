@@ -6,6 +6,7 @@ module;
 export module Tako.Window;
 
 export import Tako.Event;
+export import Tako.InputEvent;
 import Tako.Math;
 
 namespace tako
@@ -21,7 +22,18 @@ namespace tako
 		int GetHeight();
 		Point GetFramebufferSize();
 		WindowHandle GetHandle() const;
+
 		void SetEventCallback(const std::function<void(Event&)>& callback);
+		void SetInputCallback(const std::function<bool(InputEvent&)>& callback);
+
+		enum class FullScreenMode
+		{
+			Windowed,
+			FullScreen
+		};
+		void SetFullScreenMode(FullScreenMode mode);
+		FullScreenMode GetFullScreenMode();
+
 	private:
 		class WindowImpl;
 		std::unique_ptr<WindowImpl> m_impl;

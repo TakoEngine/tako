@@ -12,6 +12,7 @@ module Tako.Window;
 
 import Tako.Math;
 import Tako.Bitmap;
+import Tako.InputEvent;
 
 using namespace tako::literals;
 
@@ -57,6 +58,18 @@ namespace tako
 			{"KeyX", Key::X},
 			{"KeyY", Key::Y},
 			{"KeyZ", Key::Z},
+			{"F1", Key::F1},
+			{"F2", Key::F2},
+			{"F3", Key::F3},
+			{"F4", Key::F4},
+			{"F5", Key::F5},
+			{"F6", Key::F6},
+			{"F7", Key::F7},
+			{"F8", Key::F8},
+			{"F9", Key::F9},
+			{"F10", Key::F10},
+			{"F11", Key::F11},
+			{"F12", Key::F12},
 			{"ArrowDown", Key::Down},
 			{"ArrowLeft", Key::Left},
 			{"ArrowRight", Key::Right},
@@ -72,10 +85,10 @@ namespace tako
 			{1, Key::Gamepad_B},
 			{2, Key::Gamepad_X},
 			{3, Key::Gamepad_Y},
-			{4, Key::Gamepad_L},
-			{5, Key::Gamepad_R},
-			{6, Key::Gamepad_L2},
-			{7, Key::Gamepad_R2},
+			{4, Key::Gamepad_LB},
+			{5, Key::Gamepad_RB},
+			{6, Key::Gamepad_LT},
+			{7, Key::Gamepad_RT},
 			{8, Key::Gamepad_Select},
 			{9, Key::Gamepad_Start},
 			{12, Key::Gamepad_Dpad_Up},
@@ -149,7 +162,7 @@ namespace tako
 							KeyPress evt;
 							evt.key = key;
 							evt.status = padState.digitalButton[index] ? KeyStatus::Down : KeyStatus::Up;
-							m_callback(evt);
+							m_inputCallback(evt);
 						}
 
 						{
@@ -157,11 +170,11 @@ namespace tako
 							evt.axis = Axis::Left;
 							evt.value.x = padState.axis[0];
 							evt.value.y = padState.axis[1];
-							m_callback(evt);
+							m_inputCallback(evt);
 							evt.axis = Axis::Right;
 							evt.value.x = padState.axis[2];
 							evt.value.y = padState.axis[3];
-							m_callback(evt);
+							m_inputCallback(evt);
 						}
 
 						break;
@@ -179,11 +192,36 @@ namespace tako
 		int m_width, m_height;
 		EMSCRIPTEN_WEBGL_CONTEXT_HANDLE m_contextHandle;
 		std::function<void(Event&)> m_callback;
+		std::function<bool(InputEvent&)> m_inputCallback;
 		std::unordered_map<int, EmscriptenTouchPoint> m_touches;
 
 		void SetEventCallback(const std::function<void(Event&)>& callback)
 		{
 			m_callback = callback;
+		}
+
+		void SetInputCallback(const std::function<bool(InputEvent&)>& callback)
+		{
+			m_inputCallback = callback;
+		}
+
+		void SetFullScreenMode(Window::FullScreenMode mode)
+		{
+			if (mode == Window::FullScreenMode::Windowed)
+			{
+				emscripten_exit_fullscreen();
+			}
+			else
+			{
+				emscripten_request_fullscreen(HTML_TARGET, true);
+			}
+		}
+
+		Window::FullScreenMode GetFullScreenMode()
+		{
+			EmscriptenFullscreenChangeEvent status;
+			emscripten_get_fullscreen_status(&status);
+			return status.fullscreenEnabled ? Window::FullScreenMode::FullScreen : Window::FullScreenMode::Windowed;
 		}
 
 		void Resize(int width, int height)
@@ -201,10 +239,19 @@ namespace tako
 		{
 			if (m_callback)
 			{
-				WindowResize evt;
-				evt.width = width;
-				evt.height = height;
-				m_callback(evt);
+				{
+					WindowResize evt;
+					evt.width = width;
+					evt.height = height;
+					m_callback(evt);
+				}
+
+				{
+					FramebufferResize evt;
+					evt.width = width;
+					evt.height = height;
+					m_callback(evt);
+				}
 			}
 		}
 
@@ -249,8 +296,7 @@ namespace tako
 							evt.status = KeyStatus::Up;
 							break;
 					}
-					win->m_callback(evt);
-					handled = true;
+					handled = win->m_inputCallback(evt);
 				}
 
 				//TODO: Checking for length == 1 might cause problems with special characters or IME
@@ -258,12 +304,11 @@ namespace tako
 				{
 					TextInputUpdate evt;
 					evt.input = keyEvent->key;
-					win->m_callback(evt);
-					handled = true;
+					handled = win->m_inputCallback(evt);
 				}
 			}
 
-			return true;
+			return handled;
 		}
 
 		EM_BOOL static MouseMoveCallback(int eventType, const EmscriptenMouseEvent* mouseEvent, void *userData)
@@ -274,8 +319,7 @@ namespace tako
 				MouseMove evt;
 				evt.position.x = mouseEvent->clientX;
 				evt.position.y = win->m_height - mouseEvent->clientY;
-				win->m_callback(evt);
-				return true;
+				return win->m_inputCallback(evt);
 			}
 			return false;
 		}
@@ -297,7 +341,7 @@ namespace tako
 						evt.status = MouseButtonStatus::Up;
 						break;
 				}
-				win->m_callback(evt);
+				return win->m_inputCallback(evt);
 			}
 			return false;
 		}
@@ -325,8 +369,7 @@ namespace tako
 							MouseMove evt;
 							evt.position.x = touch.clientX;
 							evt.position.y = win->m_height - touch.clientY;
-							win->m_callback(evt);
-							handled = true;
+							handled = win->m_inputCallback(evt);
 						}
 						win->m_touches[touch.identifier] = touch;
 					}
@@ -385,5 +428,20 @@ namespace tako
 	void Window::SetEventCallback(const std::function<void(Event&)>& callback)
 	{
 		m_impl->SetEventCallback(callback);
+	}
+
+	void Window::SetInputCallback(const std::function<bool(InputEvent&)>& callback)
+	{
+		m_impl->SetInputCallback(callback);
+	}
+
+	void Window::SetFullScreenMode(Window::FullScreenMode mode)
+	{
+		m_impl->SetFullScreenMode(mode);
+	}
+
+	Window::FullScreenMode Window::GetFullScreenMode()
+	{
+		return m_impl->GetFullScreenMode();
 	}
 }

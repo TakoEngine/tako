@@ -7,9 +7,14 @@
   },
   "configurePresets": [
     {
+      "name": "common-base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build-${presetName}"
+    },
+    {
       "name": "native-base",
       "hidden": true,
-      "binaryDir": "${sourceDir}/build-${presetName}",
+      "inherits": [ "common-base" ],
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
@@ -72,6 +77,37 @@
       "name": "linux-release",
       "displayName": "Linux Release",
       "inherits": [ "linux-base" ],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "emscripten-base",
+      "hidden": true,
+      "inherits": [ "common-base" ],
+      "generator": "Ninja",
+      "cacheVariables": {
+        "BUILD_SHARED_LIBS": "OFF",
+        "CMAKE_TOOLCHAIN_FILE": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+      },
+      "condition": {
+        "type": "matches",
+        "string": "$env{EMSDK}",
+        "regex": ".+"
+      }
+    },
+    {
+      "name": "emscripten-debug",
+      "displayName": "Emscripten Debug",
+      "inherits": [ "emscripten-base" ],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "emscripten-release",
+      "displayName": "Emscripten Release",
+      "inherits": [ "emscripten-base" ],
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }

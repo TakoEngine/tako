@@ -1,16 +1,19 @@
 # Tako Engine (WIP)
 
 A game engine/framework which adapts to your needs,
-written in C++.
+written in C++20.
 
 ## Features
-### Core
 - Performant ECS system
-- Easy to use 2D rendering methods streamlined for pixel perfect games
+- Reflection system
+- Cross graphics api abstraction layer
+- Virtual File System
+- Job System
+- Create geometry via *CSG* (Constructive Solid Geometry)
+- Ingame UI via [RmlUi](https://github.com/mikke89/RmlUi)
 
 ## Supported platforms
 - Windows
-- macOS
 - Linux
 - Web
 

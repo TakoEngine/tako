@@ -31,14 +31,19 @@ module;
 
 export module EntryPoint;
 
+import Tako.InputEvent;
 import Tako.Audio;
 //import Tako.Renderer3D;
 import Tako.Application;
 //import Tako.Serialization;
+import Tako.VFS;
 import Tako.Resources;
 import Tako.JobSystem;
 import Tako.RmlUi;
 import Tako.Allocators.CachePoolAllocator;
+#ifdef TAKO_IMGUI
+import Tako.ImGui;
+#endif
 
 namespace tako
 {
@@ -48,6 +53,7 @@ namespace tako
 		tako::GraphicsContext& context;
 		tako::Input& input;
 		tako::Audio& audio;
+        tako::VFS& vfs;
 		tako::Resources& resources;
 		tako::RmlUi& ui;
 		void* gameData;
@@ -85,7 +91,7 @@ namespace tako
 #ifdef TAKO_EDITOR
 		for (auto& change: data->watcher.Poll())
 		{
-			auto path = change.path.string();
+			auto path = std::filesystem::relative(change.path, change.mountPath).string();
 			//TODO: make more robust
 			for (auto& c : path)
 			{
@@ -94,7 +100,9 @@ namespace tako
 					c = '/';
 				}
 			}
+			path = "/" + path;
 			LOG("Filechange detected {}", path);
+			//TODO: Check if change is the highest priority mount path
 			data->resources.Reload(path);
 		}
 #endif
@@ -242,7 +250,7 @@ namespace tako
 		{
 			//data->jobSys.RunJob([=]()
 			{
-				data->config.Setup(data->gameData, { &data->context, &data->resources, &data->audio, &data->ui });
+				data->config.Setup(data->gameData, { &data->context, &data->vfs, &data->resources, &data->audio, &data->ui });
 			}//);
 		}
 	}
@@ -334,21 +342,28 @@ namespace tako
 
 		#endif
 		tako::Broadcaster broadcaster;
+		tako::InputBroadcaster inputBroadcaster;
 
-		Resources resources;
+		VFS vfs;
+		#ifdef TAKO_EMSCRIPTEN
+			vfs.AddMountPath("");
+		#else
+			vfs.AddMountPath("./Assets");
+		#endif
+		Resources resources(&vfs);
 		RmlUi ui;
-		ui.Init(&window, context.get());
+		ui.Init(&window, context.get(), &vfs, &resources);
 
 		void* gameData = malloc(config.gameDataSize);
 #ifndef EMSCRIPTEN
 		if (config.Setup)
 		{
-			config.Setup(gameData, { context.get(), &resources, &audio, &ui });
+			config.Setup(gameData, { context.get(), &vfs, &resources, &audio, &ui });
 		}
 #endif
 
 #ifdef TAKO_EDITOR
-		tako::FileWatcher watcher("./Assets");
+		tako::FileWatcher watcher(&vfs);
 #endif
 
 		std::atomic<bool> keepRunning = true;
@@ -382,12 +397,20 @@ namespace tako
 
 		broadcaster.Register(&onEvent);
 		broadcaster.Register(context.get());
-		broadcaster.Register(&ui);
-		broadcaster.Register(&input);
+		#ifdef TAKO_IMGUI
+			ImGuiInputHandler imguiInput;
+			inputBroadcaster.Register(&imguiInput);
+		#endif
+		inputBroadcaster.Register(&ui);
+		inputBroadcaster.Register(&input);
 
 		window.SetEventCallback([&](tako::Event& evt)
 		{
 			broadcaster.Broadcast(evt);
+		});
+		window.SetInputCallback([&](tako::InputEvent& evt)
+		{
+			return inputBroadcaster.Broadcast(evt);
 		});
 
 		//size_t framePoolSize = config.frameDataSize * 10;
@@ -399,6 +422,7 @@ namespace tako
 			*context,
 			input,
 			audio,
+			vfs,
 			resources,
 			ui,
 			gameData,

@@ -1,6 +1,5 @@
 module;
 #include "Utility.hpp"
-#include "Reflection.hpp"
 #include <RmlUi/Core.h>
 #include <variant>
 #include <mutex>
@@ -10,15 +9,19 @@ import Tako.StringView;
 import Tako.GraphicsContext;
 import Tako.RmlUi.Renderer;
 import Tako.RmlUi.System;
-import Tako.Event;
+import Tako.RmlUi.File;
+import Tako.InputEvent;
 import Tako.Window;
 import Tako.NumberTypes;
 import Tako.Resources;
 import Tako.HandleVec;
+import Tako.Reflection;
 
 
 namespace tako
 {
+
+export using RmlVariant = Rml::Variant;
 
 Rml::Input::KeyIdentifier RmlConvertKey(Key key);
 int RmlConvertMouseButton(MouseButton button);
@@ -28,20 +31,35 @@ export struct RmlDocument
 	U64 value;
 };
 
-export class RmlUi : public IEventHandler
+export struct RmlDataModel
+{
+	U64 value;
+
+	void DirtyVariable(StringView name)
+	{
+		handle.DirtyVariable(Rml::String(name));
+	}
+private:
+	friend class RmlUi;
+	Rml::DataModelHandle handle;
+};
+
+export class RmlUi : public IInputEventHandler
 {
 public:
 	RmlUi()
 	{}
 
-	void Init(Window* window, GraphicsContext* graphicsContext)
+	void Init(Window* window, GraphicsContext* graphicsContext, VFS* vfs, Resources* resources)
 	{
 		m_window = window;
 		m_graphicsContext = graphicsContext;
-		m_renderer.Init(graphicsContext);
+		m_renderer.Init(graphicsContext, resources);
+		m_fileInterface.Init(vfs);
 
 		Rml::SetRenderInterface(&m_renderer);
 		Rml::SetSystemInterface(&m_system);
+		Rml::SetFileInterface(&m_fileInterface);
 
 		Rml::Initialise();
 		m_context = Rml::CreateContext("main", Rml::Vector2i(graphicsContext->GetWidth(), graphicsContext->GetHeight()));
@@ -73,31 +91,66 @@ public:
 		}
 	}
 
-	using ModelHandle = Rml::DataModelHandle;
 	template<typename T>
-	ModelHandle RegisterDataBinding(T& data)
+	RmlDataModel RegisterDataModel(T& data, StringView modelName)
 	{
-		LOG("{}", Reflection::Resolver::GetName<T>());
-		auto constructor = m_context->CreateDataModel(Reflection::Resolver::GetName<T>());
-		/*
-		if (auto structHandle = constructor.template RegisterStruct<T>())
-		{
-			auto regMember = [&](auto& arg)
-			{
-				structHandle.RegisterMember(arg.name, arg.memberPtr);
-			};
-			std::apply([&](auto&... args) {((regMember(args)), ...);}, T::ReflectionMemberPtrs);
-		}
-		*/
+		ModelEntry entry;
+		entry.name = modelName;
+		auto constructor = m_context->CreateDataModel(entry.name);
+		auto typeRegister = constructor.GetDataTypeRegister();
+
 		auto regMember = [&](auto& mem)
 		{
+			using FieldType = typename std::decay_t<decltype(mem)>::FieldType;
+			EnsureTypeIsRegistered<FieldType>(constructor, typeRegister);
 			constructor.Bind(mem.name, &(data.*mem.memberPtr));
 		};
 		std::apply([&](auto&... args) {((regMember(args)), ...);}, T::ReflectionMemberPtrs);
-		return constructor.GetModelHandle();
+		auto modelHandle = entry.handle = constructor.GetModelHandle();
+		auto handle = m_dataModels.Insert(std::move(entry));
+		handle.handle = modelHandle;
+		return handle;
 	}
 
-	RmlDocument LoadDocument(StringView filePath)
+	template<typename T>
+	RmlDataModel RegisterDataModel(T& data)
+	{
+		return RegisterDataModel(data, Reflection::Resolver::GetName<T>());
+	}
+
+	template<typename... Args, std::invocable<Args...> Callback>
+	void RegisterCallback(RmlDataModel dataModel, const std::string& callbackName, Callback callback)
+	{
+		auto& model = m_dataModels[dataModel];
+		auto constructor = m_context->GetDataModel(model.name);
+		auto rmlCallback = [callback, callbackName](Rml::DataModelHandle handle, Rml::Event& event, const Rml::VariantList& variantList)
+		{
+			constexpr size_t argCount = sizeof...(Args);
+			auto variantCount = variantList.size();
+			if (variantCount < argCount)
+			{
+				LOG_ERR("RmlCallback ({}) called with less arguments ({}) than required {}", callbackName, variantCount, argCount);
+				return;
+			}
+
+			auto convertArgs = [&]<std::size_t... I>(std::index_sequence<I...>)
+			{
+				return std::tuple{ variantList[I].Get<Args>()... };
+			};
+
+			std::apply(callback, convertArgs(std::make_index_sequence<argCount>{}));
+		};
+		constructor.BindEventCallback(callbackName, rmlCallback);
+	}
+
+	void ReleaseDataModel(RmlDataModel dataModel)
+	{
+		auto& model = m_dataModels[dataModel];
+		m_context->RemoveDataModel(model.name);
+	}
+
+	//TODO: implement IO interface
+	RmlDocument LoadDocument(VFS* vfs, StringView filePath)
 	{
 		Rml::String path(filePath);
 		DocumentEntry entry;
@@ -112,7 +165,7 @@ public:
 		m_documents.Remove(document);
 	}
 
-	void ReloadDocument(RmlDocument old, const StringView filePath)
+	void ReloadDocument(RmlDocument old, VFS* vfs, const StringView filePath)
 	{
 		auto& entry = m_documents[old];
 		m_context->UnloadDocument(entry.doc);
@@ -131,75 +184,82 @@ public:
 		entry.doc->Show();
 	}
 
+	void HideDocument(RmlDocument document)
+	{
+		auto& entry = m_documents[document];
+		entry.shown = false;
+		entry.doc->Hide();
+	}
+
 	void RegisterLoaders(Resources* resources)
 	{
 		resources->RegisterLoader(this, &RmlUi::LoadDocument, &RmlUi::ReleaseDocument, &RmlUi::ReloadDocument);
 	}
 
-	void HandleEvent(Event& evt) override
+	bool HandleInputEvent(InputEvent& evt) override
 	{
 		if (!m_context)
 		{
-			return;
+			return false;
 		}
 
 		switch (evt.GetType())
 		{
-			case EventType::KeyPress:
+			case InputEventType::KeyPress:
 			{
 				KeyPress& press = static_cast<KeyPress&>(evt);
 				auto key = RmlConvertKey(press.key);
 				int keyMod = 0;
 				if (press.status == KeyStatus::Down)
 				{
-					m_context->ProcessKeyDown(key, keyMod);
+					return !m_context->ProcessKeyDown(key, keyMod);
 				}
 				else
 				{
-					m_context->ProcessKeyUp(key, keyMod);
+					return !m_context->ProcessKeyUp(key, keyMod);
 				}
 			} break;
-			case EventType::TextInputUpdate:
+			case InputEventType::TextInputUpdate:
 			{
 				TextInputUpdate& input = static_cast<TextInputUpdate&>(evt);
-				std::visit(overloaded
+				return std::visit(overloaded
 				{
 					[&](U32 character)
 					{
-						m_context->ProcessTextInput(character);
+						return !m_context->ProcessTextInput(character);
 					},
 					[&](const char* str)
 					{
-						m_context->ProcessTextInput(str);
+						return !m_context->ProcessTextInput(str);
 					}
 				}, input.input);
 
 			} break;
-			case EventType::MouseMove:
+			case InputEventType::MouseMove:
 			{
 				MouseMove& move = static_cast<MouseMove&>(evt);
-				m_context->ProcessMouseMove(move.position.x, m_graphicsContext->GetHeight() - move.position.y, 0);
+				return !m_context->ProcessMouseMove(move.position.x, m_graphicsContext->GetHeight() - move.position.y, 0);
 			} break;
-			case EventType::MouseButtonPress:
+			case InputEventType::MouseButtonPress:
 			{
 				MouseButtonPress& press = static_cast<MouseButtonPress&>(evt);
 				int button = RmlConvertMouseButton(press.button);
 				if (button < 0)
 				{
-					return;
+					return false;
 				}
 				int keyMod = 0;
 				if (press.status == MouseButtonStatus::Down)
 				{
-					m_context->ProcessMouseButtonDown(button, keyMod);
+					return !m_context->ProcessMouseButtonDown(button, keyMod);
 				}
 				else
 				{
-					m_context->ProcessMouseButtonUp(button, keyMod);
+					return !m_context->ProcessMouseButtonUp(button, keyMod);
 				}
 			} break;
+			default: return false;
 		}
-
 	}
 
 private:
@@ -209,13 +269,61 @@ private:
 		bool shown = false;
 	};
 
+	struct ModelEntry
+	{
+		Rml::DataModelHandle handle;
+		std::string name;
+	};
+
 	RmlUiRenderer m_renderer;
 	RmlUiSystem m_system;
+	RmlUiFileInterface m_fileInterface;
 	Rml::Context* m_context = nullptr;
 	Window* m_window = nullptr;
 	HandleVec<RmlDocument, DocumentEntry> m_documents;
+	HandleVec<RmlDataModel, ModelEntry> m_dataModels;
 	GraphicsContext* m_graphicsContext = nullptr;
 	std::mutex m_mutex;
+
+	template<typename T>
+	void EnsureTypeIsRegistered(Rml::DataModelConstructor& constructor, Rml::DataTypeRegister* typeRegister)
+	{
+		//TODO: Figure out if RmlUI has a way to check for unregistered types without triggering an error log
+		if (!typeRegister->GetDefinition<T>())
+		{
+			RegisterType<T>(constructor, typeRegister);
+		}
+	}
+
+	template<typename T>
+	void RegisterType(Rml::DataModelConstructor& constructor, Rml::DataTypeRegister* typeRegister)
+	{
+		if constexpr (Reflection::ReflectedStruct<T>)
+		{
+			auto handle = constructor.RegisterStruct<T>();
+			ASSERT(handle);
+			auto regMember = [&](auto& mem)
+			{
+				using FieldType = typename std::decay_t<decltype(mem)>::FieldType;
+				EnsureTypeIsRegistered<FieldType>(constructor, typeRegister);
+				handle.RegisterMember(mem.name, mem.memberPtr);
+			};
+			std::apply([&](auto&... args) {((regMember(args)), ...); }, T::ReflectionMemberPtrs);
+			return;
+		}
+		else if constexpr (Reflection::ReflectedVector<T>)
+		{
+			EnsureTypeIsRegistered<typename T::value_type>(constructor, typeRegister);
+			constructor.RegisterArray<T>();
+		}
+		else if constexpr (std::is_same_v<T, RmlVariant>)
+		{
+			constructor.RegisterScalar<RmlVariant>(
+				[](const auto& source, auto& target) { target = source; },
+				[](auto& target, const auto& source) { target = source; }
+			);
+		}
+	}
 };
 
 Rml::Input::KeyIdentifier RmlConvertKey(Key key)
@@ -255,6 +363,12 @@ Rml::Input::KeyIdentifier RmlConvertKey(Key key)
 		case Key::Space: return Rml::Input::KI_SPACE;
 		case Key::Enter: return Rml::Input::KI_RETURN;
 		case Key::Backspace: return Rml::Input::KI_BACK;
+
+		case Key::Gamepad_Dpad_Up: return Rml::Input::KI_UP;
+		case Key::Gamepad_Dpad_Down: return Rml::Input::KI_DOWN;
+		case Key::Gamepad_Dpad_Left: return Rml::Input::KI_LEFT;
+		case Key::Gamepad_Dpad_Right: return Rml::Input::KI_RIGHT;
+		case Key::Gamepad_A: return Rml::Input::KI_RETURN;
 	}
 
 	return Rml::Input::KI_UNKNOWN;
@@ -273,3 +387,14 @@ int RmlConvertMouseButton(MouseButton button)
 }
 
 }
+
+//TODO: Hack to make RmlVariants work with reflection, do proper implementation or implement own Variant type
+#define DEFINE_REFLECTION_PRIMITIVE(type) \
+	template<> \
+	const ::tako::Reflection::PrimitiveInformation* ::tako::Reflection::GetPrimitiveInformation<type>() \
+	{ \
+		static const ::tako::Reflection::PrimitiveInformation info(#type, sizeof(type)); \
+		return &info; \
+	}
+
+DEFINE_REFLECTION_PRIMITIVE(Rml::Variant)

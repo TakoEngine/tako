@@ -1,0 +1,12 @@
+FROM emscripten/emsdk:4.0.10
+
+RUN embuilder build freetype
+
+COPY ./install-cmake.sh /tmp/
+RUN /tmp/install-cmake.sh && rm /tmp/install-cmake.sh
+
+COPY ./install-ninja.sh /tmp/
+RUN /tmp/install-ninja.sh && rm /tmp/install-ninja.sh
+
+RUN useradd -m -G sudo -s /bin/bash tako && echo 'tako ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+USER tako

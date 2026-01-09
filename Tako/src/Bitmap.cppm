@@ -60,12 +60,18 @@ namespace tako
 
 		void Clear(Color c);
 		void FillRect(I32 x, I32 y, I32 w, I32 h, Color c);
+		void CheckerBoard(Color c1, Color c2, I32 tileSize);
 		void DrawBitmap(I32 x, I32 y, const Bitmap& bitmap);
 		void DrawBitmap(I32 x, I32 y, I32 xb, I32 yb, I32 w, I32 h, const Bitmap& bitmap);
 
 		Bitmap Clone() const;
 		static Bitmap FromFile(CStringView filePath);
 		static Bitmap FromFileData(const U8* data, size_t size);
+
+		Color* begin() { return m_data.get(); }
+		Color* end() { return m_data.get() + (m_width * m_height); }
+		const Color* begin() const { return m_data.get(); }
+		const Color* end() const { return m_data.get() + (m_width * m_height); }
 
 		operator const ImageView() const noexcept
 		{
@@ -187,6 +193,24 @@ namespace tako
 		}
 	}
 
+	void Bitmap::CheckerBoard(Color c1, Color c2, I32 tileSize)
+	{
+		for (I32 x = 0; x < m_width; x++)
+		{
+			for (I32 y = 0; y < m_height; y++)
+			{
+				if (((x / tileSize) + (y / tileSize)) % 2 == 0)
+				{
+					m_data[y * m_width + x] = c1;
+				}
+				else
+				{
+					m_data[y * m_width + x] = c2;
+				}
+			}
+		}
+	}
+
 	void Bitmap::DrawBitmap(I32 x, I32 y, const Bitmap& bitmap)
 	{
 		for (int i = 0; i < bitmap.m_width; i++)
@@ -229,7 +253,7 @@ namespace tako
 	}
 
 	Bitmap Bitmap::FromFileData(const U8* data, size_t size)
-	{;
+	{
 		int width, height, channels;
 		stbi_uc* img = stbi_load_from_memory(data, size, &width, &height, &channels, 4);
 		Bitmap bitmap((Color*)img, width, height);

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-CMAKE_VERSION=3.30.3
+CMAKE_VERSION=3.31.6
 
 mkdir /tmpcmake
 cd /tmpcmake

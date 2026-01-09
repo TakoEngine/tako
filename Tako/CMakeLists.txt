@@ -1,8 +1,8 @@
 include(tako)
-set(TAKO_DLL "tako")
+set(TAKO_DLL "tako-lib")
+set(TAKO_RUNTIME "tako")
 add_library(${TAKO_DLL}
 	#"src/PixelArtDrawer.cpp"
-	"src/Reflection.cpp"
 	"src/AudioImpl.cpp"
 )
 
@@ -14,6 +14,7 @@ target_sources(
 	"include/NumberTypes.hpp"
 	"include/Texture.hpp"
 	#"include/PixelArtDrawer.hpp"
+	"include/Reflection.hpp"
 	"include/Tako.hpp"
 	"include/Sprite.hpp"
 	"include/Entity.hpp"
@@ -23,7 +24,6 @@ target_sources(
 	"include/VertexBuffer.hpp"
 	"include/Pipeline.hpp"
 	"include/GameConfig.hpp"
-	"include/Reflection.hpp"
 )
 target_sources(
 	${TAKO_DLL} PUBLIC
@@ -35,16 +35,17 @@ target_sources(
 	"src/Bitmap.cppm"
 	"src/Font.cppm"
 	"src/Event.cppm"
+	"src/InputEvent.cppm"
 	"src/Input.cppm"
-	"src/EntryPoint.cppm"
-	"src/Jam/PlatformerPhysics2D.cppm"
+	#"src/Jam/PlatformerPhysics2D.cppm"
 	"src/Jam/TileMap.cppm"
 	"src/Jam/LDtkImporter.cppm"
 	"src/SmallVec.cppm"
 	"src/Application.cppm"
 	"src/FileSystem.cppm"
 	"src/Resources.cppm"
-	"src/Serialization.cppm"
+	"src/Reflection.cppm"
+	"src/YAMLSerialization.cppm"
 	"src/Audio.cppm"
 	"src/Assets.cppm"
 	"src/GraphicsContext.cppm"
@@ -53,12 +54,20 @@ target_sources(
 	"src/JobSystem/JobSystem.cppm"
 	"src/StringView.cppm"
 	"src/HandleVec.cppm"
+	"src/Hash.cppm"
+	"src/IO.cppm"
+	"src/VFS.cppm"
 	"src/Allocators/Allocator.cppm"
 	"src/Allocators/FreeListAllocator.cppm"
 	"src/Allocators/LinearAllocator.cppm"
 	"src/Allocators/PoolAllocator.cppm"
 	"src/Allocators/CachePoolAllocator.cppm"
 )
+
+# Workaround for some clang versions crashing when having debug info for JobSystem.cppm
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+	set_source_files_properties(src/JobSystem.cppm PROPERTIES COMPILE_FLAGS "-g0")
+endif()
 
 option (TAKO_FORCE_LOG "Log even in release builds" OFF)
 if (TAKO_FORCE_LOG)
@@ -110,7 +119,7 @@ set_feature(TAKO_WEBGPU true)
 set_feature(TAKO_GLFW true)
 set_feature(TAKO_GLAD true)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-	set_feature(TAKO_EDITOR false)
+	set_feature(TAKO_EDITOR true)
 	set_feature(TAKO_IMGUI true)
 else()
 	set_feature(TAKO_EDITOR false)
@@ -119,12 +128,12 @@ endif()
 
 if (WIN32)
 target_sources(${TAKO_DLL} PRIVATE
-	"src/platform/win32/Main.cppm"
 	#"src/platform/win32/Window.cpp"
 	"src/platform/win32/Log.cpp"
 	"include/WinUtility.hpp"
 	"src/platform/win32/WinUtility.cpp"
 	#"src/platform/default/Timer.cpp"
+	"src/platform/default/IO.cpp"
 	PUBLIC FILE_SET CXX_MODULES FILES
 	"src/platform/default/FileSystem.cppm"
 )
@@ -134,21 +143,21 @@ target_sources(${TAKO_DLL} PRIVATE
 	"src/platform/web/Log.cpp"
 	#"src/platform/web/Timer.cpp"
 	"src/platform/default/Timer.cpp" # Temporary, as emscripten_get_now() seems to be broken
-	"src/platform/default/Main.cpp"
+	"src/platform/default/IO.cpp"
 	PUBLIC FILE_SET CXX_MODULES FILES
 	"src/platform/web/FileSystem.cppm"
 	)
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 target_sources(${TAKO_DLL} PRIVATE
-		"src/platform/default/Main.cpp"
 		"src/platform/default/Log.cpp"
+		"src/platform/default/IO.cpp"
 		PUBLIC FILE_SET CXX_MODULES FILES
 		"src/platform/default/FileSystem.cppm"
 		)
 else()
 target_sources(${TAKO_DLL} PRIVATE
-		"src/platform/default/Main.cpp"
 		"src/platform/default/Log.cpp"
+		"src/platform/default/IO.cpp"
 		PUBLIC FILE_SET CXX_MODULES FILES
 		"src/platform/default/FileSystem.cppm")
 endif()
@@ -250,7 +259,6 @@ target_include_directories(${TAKO_DLL} PUBLIC "include")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/stb")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/dr_libs")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/tinyobjloader")
-target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/yaml-cpp/include")
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/json/include")
 target_include_directories(${TAKO_DLL} PUBLIC "${CMAKE_BINARY_DIR}/shader")
 
@@ -268,57 +276,17 @@ endif()
 #MiniAudio
 target_include_directories(${TAKO_DLL} PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/miniaudio")
 
+FetchContent_MakeAvailable(yaml-cpp)
 target_link_libraries(${TAKO_DLL} PUBLIC yaml-cpp)
 target_link_libraries(${TAKO_DLL} PRIVATE nlohmann_json::nlohmann_json)
 
 #imgui
 if (TAKO_IMGUI)
-	add_library(imgui STATIC
-		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui.h"
-		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui.cpp"
-		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_draw.cpp"
-		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_tables.cpp"
-		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_widgets.cpp"
-		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_internal.h"
-		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imstb_rectpack.h"
-		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imstb_textedit.h"
-		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imstb_truetype.h"
-		"${PROJECT_SOURCE_DIR}/dependencies/imgui/imgui_demo.cpp"
-	)
-	target_compile_definitions(imgui PUBLIC IMGUI_IMPL_WEBGPU_BACKEND_DAWN)
-
-
-	if (TAKO_GLFW)
-		target_sources(imgui PUBLIC
-			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_glfw.h"
-			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_glfw.cpp"
-		)
-	elseif (TAKO_WIN32)
-		target_sources(imgui PUBLIC
-			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_win32.h"
-			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_win32.cpp"
-		)
-	endif()
-
-	if (TAKO_OPENGL)
-		target_sources(imgui PUBLIC
-			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_opengl3.h"
-			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_opengl3.cpp"
-		)
-	endif()
-	if (TAKO_WEBGPU)
-		target_sources(imgui PUBLIC
-			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_wgpu.h"
-			"${PROJECT_SOURCE_DIR}/dependencies/imgui/backends/imgui_impl_wgpu.cpp"
-		)
-	endif()
-	target_include_directories(imgui PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/imgui")
-	target_include_directories(imgui PUBLIC "${PROJECT_SOURCE_DIR}/dependencies/imgui/backends")
-	target_link_libraries(imgui PUBLIC glfw webgpu_dawn)
-	target_link_libraries(${TAKO_DLL} PUBLIC imgui)
+	add_subdirectory("src/ImGui")
 endif()
 
 add_subdirectory("src/RmlUi")
+add_subdirectory("src/CSG")
 
 if (TAKO_GLFW)
 	target_link_libraries(${TAKO_DLL} PUBLIC glfw)
@@ -342,6 +310,16 @@ endif(TAKO_EDITOR)
 
 
 target_link_libraries(${TAKO_DLL} PUBLIC fmt)
+
+FetchContent_MakeAvailable(rapidhash)
+FetchContent_GetProperties(rapidhash)
+add_library(rapidhash INTERFACE)
+target_include_directories(rapidhash INTERFACE "${rapidhash_SOURCE_DIR}")
+add_library(rapidhash::rapidhash ALIAS rapidhash)
+
+target_link_libraries(${TAKO_DLL} PRIVATE rapidhash)
+
+add_subdirectory(Runtime)
 
 add_executable(ECSBench "test/ECSBench.cpp")
 target_link_libraries(ECSBench PRIVATE tako)

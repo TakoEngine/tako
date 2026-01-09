@@ -1,10 +1,11 @@
 module;
 #include "Utility.hpp"
-//#include "fmt/format.h"
 #include <string_view>
+#include "Reflection.hpp"
 export module Tako.Math;
 
 export import Tako.NumberTypes;
+import Tako.Reflection;
 
 export namespace tako
 {
@@ -187,6 +188,13 @@ namespace Math
 		{
 			return v.normalize();
 		}
+
+		constexpr static float Dot(const Vector2& lhs, const Vector2& rhs)
+		{
+			return lhs.x * rhs.x + lhs.y * rhs.y;
+		}
+
+		REFLECT(Vector2, x, y)
 	};
 
 	struct Point
@@ -194,8 +202,9 @@ namespace Math
 		constexpr Point() : x(0), y(0) {}
 		constexpr Point(int x, int y) : x(x), y(y) {}
 		int x, y;
-	};
 
+		REFLECT(Point, x, y)
+	};
 
 
 	struct Vector3
@@ -278,6 +287,11 @@ namespace Math
 			return *this;
 		}
 
+		constexpr Vector3 operator-() const
+		{
+			return { -x, -y, -z };
+		}
+
 		float magnitude() const
 		{
 			return mathf::sqrt(x * x + y * y + z * z);
@@ -335,9 +349,14 @@ namespace Math
 			return Vector3::cross(*this, rhs);
 		}
 
-		constexpr static float dot(const Vector3& lhs, const Vector3& rhs)
+		constexpr static float Dot(const Vector3& lhs, const Vector3& rhs)
 		{
 			return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
+		}
+
+		constexpr static float dot(const Vector3& lhs, const Vector3& rhs)
+		{
+			return Dot(lhs, rhs);
 		}
 
 		constexpr static Vector3 Lerp(Vector3 a, Vector3 b, float t)
@@ -350,6 +369,26 @@ namespace Math
 			return -2 * dot(normal, direction) * normal + direction;
 		}
 
+		constexpr static Vector3 Min(const Vector3& a, const Vector3& b)
+		{
+			return Vector3
+			{
+				std::min(a.x, b.x),
+				std::min(a.y, b.y),
+				std::min(a.z, b.z)
+			};
+		}
+
+		constexpr static Vector3 Max(const Vector3& a, const Vector3& b)
+		{
+			return Vector3
+			{
+				std::max(a.x, b.x),
+				std::max(a.y, b.y),
+				std::max(a.z, b.z)
+			};
+		}
+
 		float& operator[](size_t i)
 		{
 			return (&x)[i];
@@ -360,7 +399,36 @@ namespace Math
 			return (&x)[i];
 		}
 
+		constexpr Vector2 xy() const
+		{
+			return Vector2(x, y);
+		}
+
+		constexpr Vector2 xz() const
+		{
+			return Vector2(x, z);
+		}
+
+		constexpr Vector2 yz() const
+		{
+			return Vector2(y, z);
+		}
+
+		static const Vector3 left;
+		static const Vector3 right;
+		static const Vector3 up;
+		static const Vector3 down;
+		static const Vector3 forward;
+		static const Vector3 back;
+		REFLECT(Vector3, x, y, z)
 	};
+
+	const Vector3 Vector3::left    { -1, 0,  0 };
+	const Vector3 Vector3::right   { 1,  0,  0 };
+	const Vector3 Vector3::up      { 0,  1,  0 };
+	const Vector3 Vector3::down    { 0, -1,  0 };
+	const Vector3 Vector3::forward { 0,  0,  1 };
+	const Vector3 Vector3::back    { 0,  0, -1 };
 
 	struct Vector4
 	{
@@ -391,7 +459,7 @@ namespace Math
 			x /= factor;
 			y /= factor;
 			z /= factor;
-            w /= factor;
+			w /= factor;
 			return *this;
 		}
 
@@ -403,6 +471,144 @@ namespace Math
 		const float& operator[](size_t i) const
 		{
 			return (&x)[i];
+		}
+
+		constexpr Vector2 xy() const
+		{
+			return Vector2(x, y);
+		}
+
+		constexpr Vector2 xz() const
+		{
+			return Vector2(x, z);
+		}
+
+		constexpr Vector2 yz() const
+		{
+			return Vector2(y, z);
+		}
+
+		constexpr Vector3 xyz() const
+		{
+			return Vector3(x, y, z);
+		}
+
+		REFLECT(Vector4, x, y, z, w)
+	};
+
+	struct Matrix3
+	{
+		float m[9];
+
+		constexpr Matrix3() : m() {}
+		constexpr Matrix3(
+			float m1, float m2, float m3,
+			float m4, float m5, float m6,
+			float m7, float m8, float m9) : m{ m1, m2, m3, m4, m5, m6, m7, m8, m9 } {}
+
+		constexpr float& operator[](int i)
+		{
+			return m[i];
+		}
+
+		constexpr const float& operator[](int i) const
+		{
+			return m[i];
+		}
+
+		friend constexpr Vector3 operator*(const Matrix3 m, const Vector3 v)
+		{
+			Vector3 r = { 0, 0, 0};
+			for (size_t i = 0; i < 3; i++)
+			{
+				for (size_t j = 0; j < 3; j++)
+				{
+					r[j] += m[i * 3 + j] * v[i];
+				}
+			}
+
+			return r;
+		}
+
+		friend constexpr Matrix3 operator*(const Matrix3 lhs, const Matrix3 rhs)
+		{
+			Matrix3 res;
+			for (int i = 0; i < 3; i++)
+			{
+				for (int j = 0; j < 3; j++)
+				{
+					float sum = 0;
+					for (int x = 0; x < 3; x++)
+					{
+						sum += lhs[i + x * 3] * rhs[x + j * 3];
+					}
+
+					res[i + j * 3] = sum;
+				}
+			}
+			return res;
+		}
+
+		constexpr static Matrix3 Transpose(const Matrix3& m)
+		{
+			return Matrix3
+			{
+				m[0], m[3], m[6],
+				m[1], m[4], m[7],
+				m[2], m[5], m[8]
+			};
+		}
+
+		constexpr static Matrix3 Inverse(const Matrix3& m)
+		{
+			Matrix3 inv;
+
+			inv[0] = m[4] * m[8] - m[5] * m[7];
+			inv[1] = -m[1] * m[8] + m[2] * m[7];
+			inv[2] = m[1] * m[5] - m[2] * m[4];
+
+			inv[3] = -m[3] * m[8] + m[5] * m[6];
+			inv[4] = m[0] * m[8] - m[2] * m[6];
+			inv[5] = -m[0] * m[5] + m[2] * m[3];
+
+			inv[6] = m[3] * m[7] - m[4] * m[6];
+			inv[7] = -m[0] * m[7] + m[1] * m[6];
+			inv[8] = m[0] * m[4] - m[1] * m[3];
+
+			float det = m[0] * inv[0] + m[1] * inv[3] + m[2] * inv[6];
+			if (det == 0.0f)
+			{
+				return {};
+			}
+
+			float invDet = 1.0f / det;
+			Matrix3 out;
+			for (int i = 0; i < 9; i++)
+			{
+				out[i] = inv[i] * invDet;
+			}
+
+			return out;
+		}
+
+		constexpr static Matrix3 SkewSymmetric(const Vector3& v)
+		{
+			return Matrix3
+			{
+				0, -v.z, v.y,
+				v.z, 0, -v.x,
+				-v.y, v.x, 0
+			};
+		}
+
+		friend constexpr Matrix3 operator*(const Matrix3& m, float scalar)
+		{
+			Matrix3 res;
+			for (int i = 0; i < 9; i++)
+			{
+				res[i] = m[i] * scalar;
+			}
+			return res;
 		}
 	};
 
@@ -416,7 +622,15 @@ namespace Math
 			float m5, float m6, float m7, float m8,
 			float m9, float m10, float m11, float m12,
 			float m13, float m14, float m15, float m16) : m{ m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15, m16 } {}
+		constexpr explicit Matrix4(const Matrix3& m3) : m
+		{
+			m3[0], m3[1], m3[2], 0,
+			m3[3], m3[4], m3[5], 0,
+			m3[6], m3[7], m3[8], 0,
+			    0,     0,     0, 1
+		} {}
 		static const Matrix4 identity;
+
 
 		constexpr float& operator[](int i)
 		{
@@ -534,7 +748,7 @@ namespace Math
 				m[13] * m[2] * m[11] +
 				m[13] * m[3] * m[10];
 
-		    inv[5] =
+			inv[5] =
 				m[0]  * m[10] * m[15] -
 				m[0]  * m[11] * m[14] -
 				m[8]  * m[2] * m[15] +
@@ -542,7 +756,7 @@ namespace Math
 				m[12] * m[2] * m[11] -
 				m[12] * m[3] * m[10];
 
-		    inv[9] =
+			inv[9] =
 				-m[0]  * m[9] * m[15] +
 				m[0]  * m[11] * m[13] +
 				m[8]  * m[1] * m[15] -
@@ -681,35 +895,6 @@ namespace Math
 			);
 		}
 
-		static Matrix4 lookAt(const Vector3& eye, const Vector3& target, const Vector3& upDir)
-		{
-			Vector3 forward = eye - target;
-			forward.normalize();
-
-			Vector3 left = upDir.cross(forward);
-			left.normalize();
-
-			Vector3 up = forward.cross(left);
-
-			Matrix4 matrix = Matrix4::identity;
-
-			matrix[0] = left.x;
-			matrix[4] = left.y;
-			matrix[8] = left.z;
-			matrix[1] = up.x;
-			matrix[5] = up.y;
-			matrix[9] = up.z;
-			matrix[2] = forward.x;
-			matrix[6] = forward.y;
-			matrix[10] = forward.z;
-
-			matrix[12] = -left.x * eye.x - left.y * eye.y - left.z * eye.z;
-			matrix[13] = -up.x * eye.x - up.y * eye.y - up.z * eye.z;
-			matrix[14] = -forward.x * eye.x - forward.y * eye.y - forward.z * eye.z;
-
-			return matrix;
-		}
-
 		static Matrix4 cameraViewMatrix(const Vector3 position, const Quaternion& rotation);
 
 		constexpr static Matrix4 perspective(float fov, float aspect, float nearDist, float farDist)
@@ -720,16 +905,14 @@ namespace Math
 			}
 
 			Matrix4 result;
-			float tanHalfFov = tan(fov / 2);
+			float tanHalfFov = tan(fov * mathf::PI / 180 / 2);
 
 
 			result[0] = 1 / (aspect * tanHalfFov);
 			result[5] = 1 / tanHalfFov;
-			result[10] = farDist / (nearDist - farDist);
-			result[11] = -1;
+			result[10] = farDist / (farDist - nearDist);
+			result[11] = 1;
 			result[14] = -(farDist * nearDist) / (farDist - nearDist);
-
-			//result[5] *= -1; // Correct for gltf following opengl convention
 
 			return result;
 		}
@@ -749,6 +932,16 @@ namespace Math
 
 		static Matrix4 DirectionToRotation(const Vector3& direction, const Vector3& up = { 0, 1, 0 });
 
+		constexpr Matrix3 ExtractMatrix3() const
+		{
+			return Matrix3
+			(
+				m[0], m[1], m[2],
+				m[4], m[5], m[6],
+				m[8], m[9], m[10]
+			);
+		}
+
 		void Print();
 	};
 
@@ -758,15 +951,24 @@ namespace Math
 		constexpr Quaternion() : x(0), y(0), z(0), w(1) {}
 		constexpr Quaternion(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
 
+		constexpr Matrix3 ToRotationMatrix3() const
+		{
+			return Matrix3
+			(
+				1 - 2 * (y * y + z * z), 2 * (x * y - w * z), 2 * (x * z + w * y),
+				2 * (x * y + w * z), 1 - 2 * (x * x + z * z), 2 * (y * z - w * x),
+				2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y)
+			);
+		}
+
+		constexpr Matrix4 ToRotationMatrix4() const
+		{
+			return Matrix4(ToRotationMatrix3());
+		}
+
 		constexpr Matrix4 ToRotationMatrix() const
 		{
-			return Matrix4
-			(
-				1-2*z*z-2*w*w, 2*y*z-2*x*w,   2*y*w+2*x*z,   0,
-				2*y*z+2*x*w,   1-2*y*y-2*w*w, 2*z*w-2*x*y,   0,
-				2*y*w-2*x*z,   2*z*w+2*x*y,   1-2*y*y-2*z*z, 0,
-				0,0,0,1
-			);
+			return ToRotationMatrix4();
 		}
 
 		static Quaternion FromEuler(Vector3 euler)
@@ -779,6 +981,25 @@ namespace Math
 				std::cos(euler.x / 2) * std::cos(euler.y / 2) * std::sin(euler.z / 2) + std::sin(euler.x / 2) * std::sin(euler.y / 2) * std::cos(euler.z / 2),
 				std::cos(euler.x / 2) * std::cos(euler.y / 2) * std::cos(euler.z / 2) - std::sin(euler.x / 2) * std::sin(euler.y / 2) * std::sin(euler.z / 2),
 			};
+		}
+
+		float Yaw() const
+		{
+			return std::atan2(2.0f * (w * z + x * y), 1.0f - 2.0f * (y * y + z * z)) * 180 / mathf::PI;
+		}
+
+		float Pitch() const
+		{
+			float sinp = 2.0f * (w * y - z * x);
+			if (std::abs(sinp) >= 1)
+			{
+				return std::copysign(90.0f, sinp);
+			}
+			else
+			{
+				return std::asin(sinp) * 180 / mathf::PI;
+			}
+			
 		}
 
 		static Quaternion AngleAxis(float degrees, Vector3 axis)
@@ -804,7 +1025,7 @@ namespace Math
 			axis.normalize();
 			deg = mathf::toRad(deg / 2);
 			float sd = std::sin(deg);
-			return { std::cos(deg), axis.x * sd , axis.y * sd, axis.z * sd };
+			return { axis.x * sd , axis.y * sd, axis.z * sd, std::cos(deg) };
 		}
 
 		static Quaternion Rotation(Vector3 start, Vector3 target)
@@ -828,6 +1049,16 @@ namespace Math
 
 			auto rotAxis = Vector3::cross(start, target);
 			return Quaternion::AngleAxisRadians(std::acos(dot), rotAxis);
+		}
+
+		constexpr bool operator==(const Quaternion& rhs) const
+		{
+			return x == rhs.x && y == rhs.y && z == rhs.z && w == rhs.w;
+		}
+
+		constexpr bool operator!=(const Quaternion& rhs) const
+		{
+			return !(*this == rhs);
 		}
 
 		friend constexpr Quaternion operator*(const Quaternion& q, const Quaternion& r)
@@ -946,6 +1177,66 @@ namespace Math
 
 			return Quaternion(-q.x / normSq, -q.y / normSq, -q.z / normSq, q.w / normSq);
 		}
+
+		static Quaternion LookAtRotation(const Vector3& eye, const Vector3& target, const Vector3& upDir)
+		{
+			Vector3 forward = (target - eye).normalized();
+			Vector3 right = Vector3::cross(upDir, forward).normalized();
+			Vector3 up = Vector3::cross(forward, right);
+
+			return Quaternion::FromBasis(right, up, forward);
+		}
+
+		static Quaternion DirectionToRotation(const Vector3& direction, const Vector3& upDir)
+		{
+			Vector3 forward = direction.normalized();
+			Vector3 right = Vector3::cross(upDir, forward).normalized();
+			Vector3 up = Vector3::cross(forward, right);
+			return Quaternion::FromBasis(right, up, forward);
+		}
+
+		static Quaternion FromBasis(const Vector3& right, const Vector3& up, const Vector3& forward)
+		{
+			float trace = right.x + up.y + forward.z;
+			Quaternion q;
+
+			if (trace > 0.0f)
+			{
+				float s = std::sqrt(trace + 1.0f) * 2.0f;
+				q.w = 0.25f * s;
+				q.x = (forward.y - up.z) / s;
+				q.y = (right.z - forward.x) / s;
+				q.z = (up.x - right.y) / s;
+			}
+			else if (right.x > up.y && right.x > forward.z)
+			{
+				float s = std::sqrt(1.0f + right.x - up.y - forward.z) * 2.0f;
+				q.w = (forward.y - up.z) / s;
+				q.x = 0.25f * s;
+				q.y = (up.x + right.y) / s;
+				q.z = (forward.x + right.z) / s;
+			}
+			else if (up.y > forward.z)
+			{
+				float s = std::sqrt(1.0f + up.y - right.x - forward.z) * 2.0f;
+				q.w = (right.z - forward.x) / s;
+				q.x = (up.x + right.y) / s;
+				q.y = 0.25f * s;
+				q.z = (forward.y + up.z) / s;
+			}
+			else
+			{
+				float s = std::sqrt(1.0f + forward.z - right.x - up.y) * 2.0f;
+				q.w = (up.x - right.y) / s;
+				q.x = (forward.x + right.z) / s;
+				q.y = (forward.y + up.z) / s;
+				q.z = 0.25f * s;
+			}
+
+			return Quaternion::Normalize(q);
+		}
+
+		REFLECT(Quaternion, x, y, z, w)
 	};
 
 
@@ -1052,6 +1343,8 @@ namespace Math
 			if (t < 2.0f / 3) return p + (q - p) * (2.0f / 3 - t) * 6;
 			return p;
 		}
+
+		REFLECT(Color, r, g, b, a)
 	};
 }
 	using Vector2 = Math::Vector2;
@@ -1094,12 +1387,9 @@ namespace tako
 
 	Matrix4 Matrix4::cameraViewMatrix(const Vector3 position, const Quaternion& rotation)
 	{
-		auto mat = rotation.ToRotationMatrix();
-		mat[12] = -position.x;
-		mat[13] = -position.y;
-		mat[14] = -position.z;
+		auto mat = Quaternion::Inverse(rotation).ToRotationMatrix();
 
-		return Matrix4::inverse(mat);
+		return mat * Matrix4::translation(-position);
 	}
 
 	Matrix4 Matrix4::DirectionToRotation(const Vector3& direction, const Vector3& up)
