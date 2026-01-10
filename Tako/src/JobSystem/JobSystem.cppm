@@ -7,6 +7,7 @@ module;
 #include <coroutine>
 #include <queue>
 #include <mutex>
+#include <condition_variable>
 export module Tako.JobSystem;
 
 import Tako.Allocators.FreeListAllocator;
@@ -15,7 +16,7 @@ import Tako.Allocators.PoolAllocator;
 
 namespace tako
 {
-	class JobSystem;
+	export class JobSystem;
 
 	template<typename R, bool IsVoid = std::is_same_v<void, R>>
 	struct PromiseBase;
@@ -37,7 +38,7 @@ namespace tako
 		std::optional<R> result;
 	};
 
-	template<typename R>
+	export template<typename R>
 	class Task;
 
 	struct InitialTaskAwaiter
@@ -45,10 +46,7 @@ namespace tako
 		constexpr bool await_ready() const noexcept { return false; }
 
 		template<typename Promise>
-		constexpr void await_suspend(std::coroutine_handle<Promise> handle) const noexcept
-		{
-			JobSystem::ScheduleJob(handle.promise().task);
-		}
+		constexpr void await_suspend(std::coroutine_handle<Promise> handle) const noexcept;
 
 		constexpr void await_resume() const noexcept {}
 	};
@@ -82,7 +80,7 @@ namespace tako
 		friend JobSystem;
 		template<typename R>
 		friend struct TaskAwaiter;
-		template<typename R = void>
+		template<typename R>
 		friend struct Promise;
 	public:
 		virtual bool Done() = 0;
@@ -121,7 +119,7 @@ namespace tako
 		}
 	};
 
-	export template<typename R = void>
+	template<typename R = void>
 	class Task : public Job
 	{
 	public:
@@ -139,7 +137,9 @@ namespace tako
 
 		constexpr ~Task() noexcept
 		{
-			if (m_handle)
+			//TODO: figure out root cause for double free, instead of preventing the damage
+			bool destroyed = m_destroyed;
+			if (!destroyed && !m_destroyed.compare_exchange_strong(destroyed, true))
 			{
 				m_handle.destroy();
 				m_handle = {};
@@ -189,19 +189,14 @@ namespace tako
 		}
 	private:
 		std::atomic<bool> m_done = false;
+		std::atomic<bool> m_destroyed = false;
 		std::atomic<Job*> m_waitingFor = nullptr;
 		std::coroutine_handle<promise_type> m_handle;
 
-		void CheckRescheduleAfterAwait(Job* child)
-		{
-			if (m_waitingFor.compare_exchange_strong(child, nullptr))
-			{
-				JobSystem::ReScheduleJob(this);
-			}
-		}
+		void CheckRescheduleAfterAwait(Job* child);
 	};
 
-	export class JobSystem
+	class JobSystem
 	{
 		template<typename R>
 		friend class Task;
@@ -383,4 +378,19 @@ namespace tako
 			return job;
 		}
 	};
+
+	template<typename R>
+	void Task<R>::CheckRescheduleAfterAwait(Job* child)
+	{
+		if (m_waitingFor.compare_exchange_strong(child, nullptr))
+		{
+			JobSystem::ReScheduleJob(this);
+		}
+	}
+
+	template<typename Promise>
+	constexpr void InitialTaskAwaiter::await_suspend(std::coroutine_handle<Promise> handle) const noexcept
+	{
+		JobSystem::ScheduleJob(handle.promise().task);
+	}
 }
