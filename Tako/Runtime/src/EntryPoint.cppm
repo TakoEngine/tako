@@ -3,6 +3,7 @@ module;
 #include "Timer.hpp"
 #include <thread>
 #include <functional>
+#include <coroutine>
 //#include "OpenGLPixelArtDrawer.hpp"
 #ifdef TAKO_EMSCRIPTEN
 #include <emscripten.h>
@@ -76,7 +77,7 @@ namespace tako
 
 	};
 
-	void Tick(void* p)
+	Task<> Tick(void* p)
 	{
 		//LOG("Tick Start");
 		static tako::Timer timer;
@@ -106,11 +107,27 @@ namespace tako
 		}
 #endif
 
+		size_t frameDataSize;
+		auto allocateFrameDataTask = JobSystem::Taskify([&]()
+		{
+			if (data->config.CheckFrameDataSizeChange)
+			{
+				data->config.CheckFrameDataSizeChange(data->gameData, data->config.frameDataSize);
+			}
+			frameDataSize = data->config.frameDataSize;
+			/*
+			while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
+			void* frameData = data->frameDataAllocator.Allocate(frameDataSize);
+			data->frameDataPoolLock.clear(std::memory_order_release);
+			*/
+			return malloc(frameDataSize);
+		});
+
+
 #ifdef TAKO_GLFW
-		data->jobSys.ScheduleForThread(0, [=]()
-#else
-		data->jobSys.Schedule([=]()
+		JobSystem::ScheduleNextTaskOnMain();
 #endif
+		auto inputPollTask = JobSystem::Taskify([&]()
 		{
 			data->window.Poll();
 			data->input.Update();
@@ -138,114 +155,91 @@ namespace tako
 #endif
 		});
 
+		co_await inputPollTask;
+		void* frameData = co_await allocateFrameDataTask;
 
-		if (data->config.CheckFrameDataSizeChange)
+		if (data->config.Update)
 		{
-			data->config.CheckFrameDataSizeChange(data->gameData, data->config.frameDataSize);
-		}
-		auto frameDataSize = data->config.frameDataSize;
-		/*
-		while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
-		void* frameData = data->frameDataAllocator.Allocate(frameDataSize);
-		data->frameDataPoolLock.clear(std::memory_order_release);
-		*/
-		void* frameData = malloc(frameDataSize);
-
-		data->jobSys.Continuation([=]()
-		{
+			GameStageData stageData
+			{
+				data->gameData,
+				frameData,
+				frameDataSize
+			};
 			if (data->config.Update)
 			{
-				data->jobSys.Schedule([=]()
-				{
-					GameStageData stageData
-					{
-						data->gameData,
-						frameData,
-						frameDataSize
-					};
-					if (data->config.Update)
-					{
-						data->config.Update(stageData, &data->input, dt);
-					}
-					data->ui.Update();
-				});
+				data->config.Update(stageData, &data->input, dt);
 			}
-			data->jobSys.Continuation([=]()
+			data->ui.Update();
+		}
+
+		if (data->window.ShouldExit() || !data->keepRunning)
+		{
+			data->keepRunning = false;
+			data->jobSys.Stop();
+			co_return;
+		}
+		//data->jobSys.Schedule([=]()
+		#ifdef TAKO_EMSCRIPTEN
+		//data->proxyQueue.proxySync(data->mainThread, [=]()
+		#endif
+		{
+			data->context.Begin();
+			if (data->config.Draw)
 			{
-				if (data->window.ShouldExit() || !data->keepRunning)
+				GameStageData stageData
 				{
-					data->jobSys.Stop();
-					return;
-				}
-				//LOG("Start Draw {}", thisFrame);
-				//data->jobSys.Schedule([=]()
-				#ifdef TAKO_EMSCRIPTEN
-				//data->proxyQueue.proxySync(data->mainThread, [=]()
+					data->gameData,
+					frameData,
+					frameDataSize
+				};
+				data->config.Draw(stageData);
+			}
+			data->ui.Draw();
+			#ifdef TAKO_IMGUI
+			ImGui::Render();
+			switch (data->context.GetAPI())
+			{
+				#ifdef TAKO_OPENGL
+				case GraphicsAPI::OpenGL:
+					ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+					break;
 				#endif
-				{
-					data->context.Begin();
-					if (data->config.Draw)
-					{
-						GameStageData stageData
-						{
-							data->gameData,
-							frameData,
-							frameDataSize
-						};
-						data->config.Draw(stageData);
-					}
-					data->ui.Draw();
-					#ifdef TAKO_IMGUI
-					ImGui::Render();
-					switch (data->context.GetAPI())
-					{
-						#ifdef TAKO_OPENGL
-						case GraphicsAPI::OpenGL:
-							ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-							break;
-						#endif
-						#ifdef TAKO_WEBGPU
-						case GraphicsAPI::WebGPU:
-							WebGPUContext* wcontext = reinterpret_cast<WebGPUContext*>(&data->context);
-							ImGui_ImplWGPU_RenderDrawData(ImGui::GetDrawData(), wcontext->GetRenderPass());
-							break;
-						#endif
-					}
-					#endif
-					data->context.End();
-
-					#ifdef TAKO_IMGUI
-					if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-					{
-						ImGui::UpdatePlatformWindows();
-						ImGui::RenderPlatformWindowsDefault();
-					}
-					#endif
-					data->context.Present();
-					//LOG("Tick End");
-				#ifdef TAKO_EMSCRIPTEN
-				}
-				#else
-				}
+				#ifdef TAKO_WEBGPU
+				case GraphicsAPI::WebGPU:
+					WebGPUContext* wcontext = reinterpret_cast<WebGPUContext*>(&data->context);
+					ImGui_ImplWGPU_RenderDrawData(ImGui::GetDrawData(), wcontext->GetRenderPass());
+					break;
 				#endif
+			}
+			#endif
+			data->context.End();
 
-				#ifndef EMSCRIPTEN
-					data->jobSys.ScheduleDetached(std::bind(Tick, p));
-				#endif
+			#ifdef TAKO_IMGUI
+			if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+			{
+				ImGui::UpdatePlatformWindows();
+				ImGui::RenderPlatformWindowsDefault();
+			}
+			#endif
+			data->context.Present();
+			//LOG("Tick End");
+		#ifdef TAKO_EMSCRIPTEN
+		}
+		#else
+		}
+		#endif
 
-				data->jobSys.Continuation([=]()
-				{
-					/*
-					while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
-					data->frameDataAllocator.Deallocate(frameData, frameDataSize);
-					data->frameDataPoolLock.clear(std::memory_order_release);
-					*/
-					free(frameData);
-					//LOG("Tick End");
-				});
-			});
-		});
+		#ifndef EMSCRIPTEN
+			//data->jobSys.ScheduleDetached(std::bind(Tick, p));
+		#endif
 
+		/*
+		while (data->frameDataPoolLock.test_and_set(std::memory_order_acquire));
+		data->frameDataAllocator.Deallocate(frameData, frameDataSize);
+		data->frameDataPoolLock.clear(std::memory_order_release);
+		*/
+		free(frameData);
 	}
 
 	void EmscriptenDelayed(void* p)
@@ -254,10 +248,10 @@ namespace tako
 		data->jobSys.Init();
 		if (data->config.Setup)
 		{
-			data->jobSys.RunJob([=]()
+			//data->jobSys.RunJob([=]()
 			{
 				data->config.Setup(data->gameData, { &data->context, &data->vfs, &data->resources, &data->audio, &data->ui });
-			});
+			}//);
 		}
 	}
 
@@ -265,28 +259,39 @@ namespace tako
 	{
 		//LOG("Schedule Tick")
 		TickStruct* data = reinterpret_cast<TickStruct*>(p);
-		data->jobSys.RunJob(std::bind(Tick, p));
+		//data->jobSys.RunJob(std::bind(Tick, p));
 	}
+
+	Task<int> MainLoop(JobSystem& jobSys);
 
 	export int RunGameLoop(int argc, char* argv[])
 	{
 		LOG("Init!");
 		Application::argc = argc;
 		Application::argv = argv;
+
 		JobSystem jobSys;
-		#ifndef EMSCRIPTEN
-			jobSys.Init();
-		#endif
+#ifndef EMSCRIPTEN
+		jobSys.Init();
+#endif
+		return jobSys.Start(MainLoop(jobSys));
+	}
+
+	Task<int> MainLoop(JobSystem& jobSys)
+	{
 		GameConfig config = {};
 		tako::InitTakoConfig(config);
 
 		Audio audio;
-		//TODO: jobify
-		if (!config.initAudioDelayed)
+		auto audioTask = JobSystem::Taskify([&]()
 		{
-			audio.Init();
-			LOG("Audio initialized!");
-		};
+			if (!config.initAudioDelayed)
+			{
+				audio.Init();
+				LOG("Audio initialized!");
+			};
+		});
+
 		auto api = tako::ResolveGraphicsAPI(config.graphicsAPI);
 		tako::Window window(api);
 		tako::Input input;
@@ -434,10 +439,17 @@ namespace tako
 #endif
 		};
 
+		co_await audioTask;
+
 
 #ifndef TAKO_EMSCRIPTEN
-		jobSys.Schedule(std::bind(Tick, &data));
-		jobSys.JoinAsWorker();
+		//jobSys.Schedule(std::bind(Tick, &data));
+		//jobSys.JoinAsWorker();
+		while (keepRunning)
+		{
+			auto tick = Tick(&data);
+			co_await tick;
+		}
 #else
 		emscripten_push_main_loop_blocker(EmscriptenDelayed, &data);
 		emscripten_set_main_loop_arg(ScheduleTick, &data, 0, 1);
@@ -447,6 +459,7 @@ namespace tako
 		free(gameData);
 
 		LOG("terminating");
-		return 0;
+		//co_return 0;
+		co_return 0;
 	}
 }

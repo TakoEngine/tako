@@ -1,11 +1,13 @@
 site_name: Tako Engine
-# site_url:
+site_url: https://takoengine.org/
 repo_url: https://github.com/TakoEngine/tako
 nav:
   - index.md
   - concepts.md
   - Systems:
-    - Reflection: systems/reflection.md
+    - Core:
+      - Job System: systems/jobsystem.md
+      - Reflection: systems/reflection.md
     - ECS: systems/ecs.md
 theme:
   name: material
