@@ -4,11 +4,11 @@ Tako is game engine/framework which adapts to your needs,
 written in C++20.
 
 ## Features
-- Performant ECS system
-- Reflection system
+- [Performant ECS system](./systems/ecs.md)
+- [Reflection system](./systems/reflection.md)
 - Cross graphics api abstraction layer
 - Virtual File System
-- Job System
+- [Job System](./systems/jobsystem.md)
 - Create geometry via *CSG* (Constructive Solid Geometry)
 - Ingame UI via [RmlUi](https://github.com/mikke89/RmlUi)
 
@@ -17,4 +17,7 @@ written in C++20.
 - Linux
 - Web
 
-The engine and documentation are both a work in progress.
+## Project Status
+
+Tako is actively developed alongside a game project.
+Both the engine and its documentation are **work in progress**.
