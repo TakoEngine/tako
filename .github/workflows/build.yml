@@ -1,0 +1,45 @@
+name: Build
+on:
+  workflow_call:
+    inputs:
+      platform:
+        required: true
+        type: string
+      config:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  Build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - name: Cache CMake build files
+        id: cache-cmake
+        uses: actions/cache@v4
+        with:
+          path: build-${{ inputs.platform }}-${{ inputs.config }}
+          key: cmake-${{ inputs.platform }}-${{ inputs.config }}-${{ hashFiles('**/CMakeLists.txt', '**/CMakePresets.json') }}-${{ github.run_id }}
+          restore-keys: cmake-${{ inputs.platform }}-${{ inputs.config }}-${{ hashFiles('**/CMakeLists.txt', '**/CMakePresets.json') }}
+      - name: Generate Build Files
+        uses: devcontainers/ci@v0.3
+        if: ${{ steps.cache-cmake.outputs.cache-hit == '' }}
+        with:
+          cacheFrom: ghcr.io/TakoEngine/devcontainer-{{ inputs.platform }}
+          configFile: .devcontainer/${{ inputs.platform }}/devcontainer.json
+          push: never
+          runCmd: cmake --preset ${{ inputs.platform }}-${{ inputs.config }}
+      - name: Build
+        uses: devcontainers/ci@v0.3
+        with:
+          cacheFrom: ghcr.io/TakoEngine/devcontainer-{{ inputs.platform }}
+          configFile: .devcontainer/${{ inputs.platform }}/devcontainer.json
+          push: never
+          runCmd: cmake --build --preset mgg-${{ inputs.platform }}-${{ inputs.config }}
+

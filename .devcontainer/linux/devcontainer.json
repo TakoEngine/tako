@@ -1,0 +1,43 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/cpp
+{
+	"name": "Emscripten",
+	"build": {
+		"dockerfile": "../Dockerfile.Fedora"
+	},
+
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	// "features": {},
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+
+	//"onCreateCommand": "cd ~ && git clone https://aur.archlinux.org/llvm17.git && cd llvm17 && makepkg -si --noconfirm --skippgpcheck",
+
+	// Use 'postCreateCommand' to run commands after the container is created.
+	//"postCreateCommand": "git submodule update --init",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-vscode.cpptools-extension-pack",
+				"EditorConfig.EditorConfig"
+			]
+		}
+	},
+	//"containerEnv": {
+	//	"DISPLAY": "${localEnv:DISPLAY}"
+	//},
+	//"remoteEnv": {
+	//	"DOCKER_BUILDKIT": "0"
+	//},
+	//"runArgs": [
+	//	"--volume=/tmp/.X11-unix:/tmp/.X11-unix",
+	//	 "--net=host"
+	//]
+
+	// Configure tool-specific properties.
+	// "customizations": {},
+
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "root"
+}
