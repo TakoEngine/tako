@@ -112,5 +112,37 @@
         "CMAKE_BUILD_TYPE": "Release"
       }
     }
+  ],
+  "buildPresets": [
+    {
+      "name": "tako-windows-debug",
+      "configurePreset": "windows-debug",
+      "targets": [ "tako-lib" ]
+    },
+    {
+      "name": "tako-windows-release",
+      "configurePreset": "windows-release",
+      "targets": [ "tako-lib" ]
+    },
+    {
+      "name": "tako-linux-debug",
+      "configurePreset": "linux-debug",
+      "targets": [ "tako-lib" ]
+    },
+    {
+      "name": "tako-linux-release",
+      "configurePreset": "linux-release",
+      "targets": [ "tako-lib" ]
+    },
+    {
+      "name": "tako-emscripten-debug",
+      "configurePreset": "emscripten-debug",
+      "targets": [ "tako-lib" ]
+    },
+    {
+      "name": "tako-emscripten-release",
+      "configurePreset": "emscripten-release",
+      "targets": [ "tako-lib" ]
+    }
   ]
 }

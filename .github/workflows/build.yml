@@ -41,5 +41,5 @@ jobs:
           cacheFrom: ghcr.io/TakoEngine/devcontainer-{{ inputs.platform }}
           configFile: .devcontainer/${{ inputs.platform }}/devcontainer.json
           push: never
-          runCmd: cmake --build --preset mgg-${{ inputs.platform }}-${{ inputs.config }}
+          runCmd: cmake --build --preset tako-${{ inputs.platform }}-${{ inputs.config }}
 
