@@ -4,6 +4,10 @@ on:
     branches:
     - 'main'
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   Setup:
     if: github.repository_owner == 'TakoEngine'
@@ -19,10 +23,10 @@ jobs:
       - name: Build Emscripten Container
         uses: devcontainers/ci@v0.3
         with:
-          imageName: ghcr.io/TakoEngine/devcontainer-emscripten
+          imageName: ghcr.io/takoengine/devcontainer-emscripten
           configFile: .devcontainer/emscripten/devcontainer.json
       - name: Build Linux Container
         uses: devcontainers/ci@v0.3
         with:
-          imageName: ghcr.io/TakoEngine/devcontainer-linux
+          imageName: ghcr.io/takoengine/devcontainer-linux
           configFile: .devcontainer/linux/devcontainer.json
