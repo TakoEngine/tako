@@ -17,4 +17,5 @@ written in C++20.
 - Linux
 - Web
 
-The API is still very volatile, so expect breaking changes
+Tako is actively developed alongside a game project,
+and is therefore a **work in progress**.

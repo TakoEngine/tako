@@ -3,7 +3,7 @@
 {
 	"name": "Emscripten",
 	"build": {
-		"dockerfile": "Dockerfile.Emscripten"
+		"dockerfile": "../Dockerfile.Emscripten"
 	},
 
 	// Features to add to the dev container. More info: https://containers.dev/features.

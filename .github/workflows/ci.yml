@@ -1,0 +1,14 @@
+name: CI
+on:
+  push:
+
+jobs:
+  Build:
+    uses: ./.github/workflows/build.yml
+    strategy:
+      matrix:
+        platform: ["emscripten", "linux"]
+        config: ["debug", "release"]
+    with:
+      platform: ${{ matrix.platform }}
+      config: ${{ matrix.config }}

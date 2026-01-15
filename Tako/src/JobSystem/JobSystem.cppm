@@ -8,6 +8,9 @@ module;
 #include <queue>
 #include <mutex>
 #include <condition_variable>
+#ifdef EMSCRIPTEN
+#include <emscripten.h>
+#endif
 export module Tako.JobSystem;
 
 import Tako.Allocators.FreeListAllocator;
